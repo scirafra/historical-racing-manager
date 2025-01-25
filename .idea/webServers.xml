@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="0ef1fc98-4613-4c9d-bb07-41629c0c634f" name="Diplomka hra" url="http://localhost">
+        <fileTransfer mountedRoot="C:\Users\feris\OneDrive\Desktop\python\F1 Game" accessType="MOUNT" port="0" />
+      </webServer>
+    </option>
+  </component>
+</project>
