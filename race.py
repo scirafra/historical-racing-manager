@@ -18,6 +18,9 @@ stands=[]
 pointSystem=[]
 
 def load(name):
+
+
+
     global driver_stands
     global team_stands
     global engine_stands
@@ -34,12 +37,17 @@ def load(name):
     pneu_stands = pd.read_csv(name + 'pneu_stands.csv')
     stands = pd.read_csv(name + 'stands.csv')
     races = pd.read_csv(name+'races.csv')
+    #print("Load races", races)
+    races["race_date"] = pd.to_datetime(races["race_date"], format="%d-%m-%Y")
     pointSystem = pd.read_csv(name+'pointSystem.csv')
     results = pd.read_csv(name+'results.csv')
+    #print("Load races",races)
+
 
 def save(name):
+
     if len(name)>0:
-        races.to_csv(name + 'races.csv', index=False)
+        races.to_csv(name + 'craces.csv', index=False)
         driver_stands.to_csv(name + 'driver_stands.csv', index=False)
         team_stands.to_csv(name + 'team_stands.csv', index=False)
         engine_stands.to_csv(name + 'engine_stands.csv', index=False)
@@ -51,8 +59,10 @@ def save(name):
 
     else:
         print('Nezadal si meno')
-def prepare_race(races_this_day,i,dat):
 
+def prepare_race(races_this_day,i,dat):
+    ss = time.time()
+    print("today race",races_this_day.name)
     active_DTcontracts = co.DTcontract[(co.DTcontract['startYear'] <= dat.year) & (co.DTcontract['endYear'] >= dat.year)]
     #print(active_DTcontracts)
     #print(c)
@@ -87,16 +97,23 @@ def prepare_race(races_this_day,i,dat):
     #print(current_rules)
     filtered_ps = pointSystem[(pointSystem['psId'] == current_rules.loc[0]['psId'])]
 
-    return race_data,filtered_ps,current_rules
+
+    es = time.time()
+    et = es - ss
+
+    #print(f"Prepare race data Time: {et} seconds")
+    return race_data, filtered_ps, current_rules
 
 #!!!!TODO more drivers in 1 car, more drivers in results
 def race(race,race_data,current_rules,ps): #,results,driver_stands
     global stands
+    ss = time.time()
 
     x=[]
     for i in range(len(race_data)-1,-1,-1):
         x.append(i)
     res=[]
+    rep=[]
     for i in range(len(race_data)-1):
         d=x[0]
         for j in range(1,len(x)):
@@ -105,7 +122,13 @@ def race(race,race_data,current_rules,ps): #,results,driver_stands
                 d=x[j]
 
         res.append(d)
+        #dr.drivers.loc[dr.drivers['driverId'] == d, 'reputation_race'] += race['reputation'] // i
+        rep.append(race_data.loc[d]['driverId'])
+        #dr.active_drivers.loc[dr.active_drivers['driverId'] == d, 'reputation_race'] += race['reputation'] // len(res)
+        #print(race['reputation'] // len(res))
         x.remove(d)
+    dr.race_reputations(race['reputation'],rep)
+
     if len(x)==1:
         res.append(x[0])
     for i in range(len(res)):
@@ -114,7 +137,10 @@ def race(race,race_data,current_rules,ps): #,results,driver_stands
     #print(x,res)
     #print('Results', results)
     #pointS
+    sss = time.time()
     if race.loc['championship']:
+        final = pd.DataFrame(columns=stands.columns).astype(stands.dtypes)
+        prefiltered=stands[(stands['seriesId'] == race.loc['seriesId']) & (stands['year'] == race.loc['season']) ]
         for typ in ('driver', 'team', 'engine', 'chassi', 'pneu'):
 
             subject = race_data[[typ+'Id']].drop_duplicates()
@@ -124,12 +150,12 @@ def race(race,race_data,current_rules,ps): #,results,driver_stands
                 subject['cars'] = current_rules.iloc[0][typ+'Cts']
             subject['points'] = 0
             #drivers
-            filtered_df = stands[(stands['seriesId'] == race.loc['seriesId']) & (stands['year'] == race.loc['season']) & (stands['typ'] == typ)]
-            #filtered_df = stands[(stands['seriesId'] == 4) & (stands['year'] == 1916)]
+            filtered_df = prefiltered[ (prefiltered['typ'] == typ)]
+
             # Get the row with the highest round
             this_round=filtered_df['round'].max()
             result_subject = filtered_df[filtered_df['round'] == this_round].copy()
-            #print('a',subject)
+
 
 
             if len(result_subject )==0:
@@ -145,8 +171,7 @@ def race(race,race_data,current_rules,ps): #,results,driver_stands
                                                                                                                             0][
                                                                                                                             i + 1]]
 
-                #print('cs', current_subject)
-                #print('s', subject)
+
                 subject['raceId'] = race.loc['raceId']
                 subject['year'] = race.loc['season']
                 subject['round'] = 1
@@ -154,28 +179,27 @@ def race(race,race_data,current_rules,ps): #,results,driver_stands
                 subject['seriesId'] = race.loc['seriesId']
                 subject['typ'] = typ
                 subject.drop('cars', axis=1, inplace=True)
-                #print('b', subject)
+
 
 
                 sorted = subject.sort_values(by='points', ascending=False)
                 sorted['position'] = range(1, len(subject) + 1)
                 sorted.rename(columns={typ+'Id': 'subjectId'}, inplace=True)
-                #print('b', sorted)
-                stands = pd.concat([stands, sorted], ignore_index=True)
+
+                #final = pd.concat([final, sorted], ignore_index=True)
 
 
 
 
             else:
-                #print('vysledky',res)
+
                 for i in range(len(res)):
-                    #last_res = result[(result['driverId'] == race_data.loc[res[i]]['driverId'])]
+
 
                     current_subject = race_data.loc[res[i]][typ+'Id']
                     subject.loc[(subject[typ+'Id'] == current_subject) & (subject['cars'] > 0), ['cars', 'points']] = subject.loc[(subject[typ+'Id'] == current_subject) & (subject['cars'] > 0), ['cars', 'points']] + [-1, ps.iloc[0][i + 1]]
 
-                    #result = result[result['driverId'] != race_data.loc[res[i]]['driverId']]
-                #result = result.reset_index(drop=True)
+
 
 
 
@@ -203,19 +227,29 @@ def race(race,race_data,current_rules,ps): #,results,driver_stands
                 sorted.rename(columns={typ + 'Id': 'subjectId'}, inplace=True)
                 sorted['subjectId'] = sorted['subjectId'].astype(int)
                 #print('c',sorted)
-                stands = pd.concat([stands, sorted], ignore_index=True)
+            final = pd.concat([final, sorted], ignore_index=True)
                 #print(c)
 
-
+        stands = pd.concat([stands, final], ignore_index=True)
 
 
 
         #print(merged_with_all_columns)
     #print(stands)
-    return results,driver_stands
+
+    es = time.time()
+    et = es - sss
+
+    #print(f"Points Time: {et} seconds")
+    et = es - ss
+
+    #print(f"Race Time: {et} seconds")
+
+    return results, driver_stands
 
 def plan_races(dat):
     global races
+    ss = time.time()
     year=dat.year
     x=0
     a=0
@@ -244,7 +278,9 @@ def plan_races(dat):
                         'layoutId': 24,
                         'race_date': dat,
                         'name': 'Preteky '+filtered_series.iloc[i]['name'],
-                        'championship': ch
+                        'championship': ch,
+                        'reputation': 1000//filtered_series.iloc[i]['reputation'],
+                        'reward': 1000000,
                     }
 
                     races.loc[len(races)] = new_row
@@ -254,17 +290,22 @@ def plan_races(dat):
         dat = dat + timedelta(days=1)
 
     print(a,year)
+    es = time.time()
+    et = es - ss
 
+    #print(f"Plan Race Time: {et} seconds")
 
 def print_champ(year,series):
+
     for i in ('driver','team','engine','chassi','pneu'):
-        print(i)
+        #print(i)
         year_stands=stands[
                 (stands['year'] == year) &
                 (stands['typ'] == i) &
                 (stands['seriesId'] == series)
                  ]
         if year_stands.empty:
+            continue
             print("No data found for the specified year and seriesId.")
         else:
             max_round = year_stands['round'].max()
@@ -279,8 +320,8 @@ def print_champ(year,series):
                 merged_df = pd.merge(highest_round_rows, tm.teams,  left_on='subjectId', right_on='teamId')
                 merged_df = merged_df[['teamName', 'points', 'position']]
             #f_year_stands=year_stands[(year_stands['round']==highest_value_row)]
-            print(series,year)
-            print(merged_df)
+            #print(series,year)
+            #print(merged_df)
 
 
 

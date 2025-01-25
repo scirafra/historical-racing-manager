@@ -7,11 +7,11 @@ active_drivers=[]
 
 def load(name):
     global drivers
-    drivers = pd.read_csv(name+'drivers.csv')
+    drivers = pd.read_csv(name+'cdrivers.csv')
 
 def save(name):
     if len(name)>0:
-        drivers.to_csv(name + 'drivers.csv', index=False)
+        drivers.to_csv(name + 'cdrivers.csv', index=False)
     else:
         print('Nezadal si meno')
 
@@ -24,14 +24,24 @@ data_types = {'raceId': 'int', 'year': 'int', 'round': 'int', 'circuitId': 'int'
 # Create an empty DataFrame with specified columns and data types
 transform_races = pd.DataFrame({col: pd.Series(dtype=dt) for col, dt in data_types.items()})
 
-
+def race_reputations(rep,res):
+    for i in range(len(res)):
+        print(res[i])
+        active_drivers.loc[active_drivers['driverId'] == res[i], 'reputation_race'] += rep//(i+1)
+    print(active_drivers)
 def choose_active_drivers(dat):
     global active_drivers
     active_drivers = drivers[(dat.year - drivers['year'] > (14)) & (drivers['ability'] > 35)]
-    active_drivers = active_drivers.sort_values(by='ability', ascending=False)
+    active_drivers = active_drivers.sort_values(by='reputation_race', ascending=False)
     active_drivers = active_drivers.reset_index(drop=True)
 
-
+def update_reputations():
+    global drivers
+    drivers.loc[drivers['driverId'].isin(active_drivers['driverId']), 'reputation_race'] = (
+            drivers.loc[drivers['driverId'].isin(active_drivers['driverId']), 'driverId']
+            .map(active_drivers.set_index('driverId')['reputation_race'])
+            // 2)
+    #print(active_drivers)
 
 def custom_sort(row):
     return tuple(-row.get(pos, 0) for pos in sorted(aq['position'].unique()))
@@ -76,6 +86,8 @@ def generate_drivers(begin_year,end_year,drivers_per_year):
     drivers_to_remove = set(indy_500_drivers) - set(other_races_drivers)
     filtered_drivers_df = df[~df['driverId'].isin(drivers_to_remove)]
     df=filtered_drivers_df
+    with pd.option_context('display.max_columns', None):
+        print("drivers",df)
 
 
 
@@ -87,11 +99,18 @@ def generate_drivers(begin_year,end_year,drivers_per_year):
     df4['seriesId'] = 1
     aa = pd.merge(df4, result_sorted, on=['raceId'])
     aa=aa[['driverId','position','year']]
-    ab=pd.merge(aa, df, on=['driverId'])
-    ab=ab[['driverId','code','surname','year','position']]
+    dfr = pd.read_csv('custom_original/craces.csv')
+    ac = pd.concat([aa, dfr], ignore_index=True)
+    dfd = pd.read_csv('custom_original/cdrivers.csv')
+    drd = pd.concat([dfd, df], ignore_index=True)
+    ab = pd.merge(aa, df, on=['driverId'])
+    ab = ab[['driverId', 'code', 'surname', 'year', 'position']]
 
     ab2 = ab.groupby('year').apply(reassign_positions).reset_index(drop=True)
-    ab = ab2.sort_values(by=['year','position'], ascending=[True,True])
+    ac = pd.merge(dfr, drd, on=['driverId'])
+    ac = ac[['driverId', 'code', 'surname', 'year', 'position']]
+    a3 = pd.concat([ab2, ac], ignore_index=True)
+    ab = a3.sort_values(by=['year', 'position'], ascending=[True, True])
     aq = ab[ab['year'] < 2050]
 
     #driver sorting
@@ -99,11 +118,11 @@ def generate_drivers(begin_year,end_year,drivers_per_year):
 
     sorted_df = position_counts.sort_values(by=position_counts.columns.tolist(), ascending=[False]*len(position_counts.columns))
     sorted_df = sorted_df.reset_index()
-    dr = pd.merge(sorted_df,df, on=['driverId'])
+    dr = pd.merge(sorted_df,drd, on=['driverId'])
     dr['year']=dr['dob'].str.slice(0, 4)
     dr['year']=dr['year'].astype('int64')
     dr=dr[dr['year']>1800]
-    missing_driver_ids = df[~df['driverId'].isin(dr['driverId'])]
+    missing_driver_ids = drd[~drd['driverId'].isin(dr['driverId'])]
 
     # Filter df to keep only rows with missing driverId values
     new_rows = missing_driver_ids.copy()
@@ -125,7 +144,7 @@ def generate_drivers(begin_year,end_year,drivers_per_year):
         max_year = dr['year'].max()
     else:
         max_year = end_year
-    print(min_year,'-',max_year)
+    #print(min_year,'-',max_year)
     all_years = pd.Series(range(min_year, max_year + 1))
     driver_counts = dr.groupby('year').size().reindex(all_years, fill_value=0)
     years_with_fewer_than_two_drivers = driver_counts[driver_counts < drivers_per_year]
@@ -140,7 +159,7 @@ def generate_drivers(begin_year,end_year,drivers_per_year):
         needed_count = drivers_per_year - years_with_fewer_than_two_drivers[year]
 
         new_drivers_df = generate_new_drivers(year, needed_count,df,nationality_weights,x)
-        print(year, needed_count,new_drivers_df)
+        #print(year, needed_count,new_drivers_df)
         x+=needed_count
         new_drivers_list.append(new_drivers_df)
     new_drivers_df = pd.concat(new_drivers_list, ignore_index=True)
@@ -151,6 +170,8 @@ def generate_drivers(begin_year,end_year,drivers_per_year):
     final['ability'] = 0
     final['ability_original'] = 0
     final['ability_best'] = 0
+    final['reputation_race'] = 0
+    final['reputation_season'] = 0
 
     # Initialize variables
     x = 1
@@ -170,8 +191,8 @@ def generate_drivers(begin_year,end_year,drivers_per_year):
         # Increase x by 1 for the next group of drivers
         x += 1
 
-    #print(final.head(60))
-    print(final.tail(60))
+    print(final.head(60))
+    #print(final.tail(60))
     drivers=final
     #print(len(final))
     #return final
@@ -203,7 +224,7 @@ def update_drivers(dat):
             (drivers['ability'] > 35)
             ]
         if len(filtered_drivers)>0:
-            filtered_drivers = filtered_drivers.sort_values(by='ability', ascending=False)
+            filtered_drivers = filtered_drivers.sort_values(by='reputation_race', ascending=False)
             filtered_drivers = filtered_drivers.reset_index(drop=True)
 
             n = len(filtered_drivers)

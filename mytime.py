@@ -9,11 +9,13 @@ import mytime as mt
 import series as se
 import contracts as co
 import random as rd
+import time
 
 from datetime import datetime, timedelta
 begin=1843
 dat = datetime.strptime('01-01-'+str(begin), '%d-%m-%Y')
-
+ss = time.time()
+es = time.time()
 def sim_day(dat,days):
     #global races
     global drivers
@@ -21,16 +23,28 @@ def sim_day(dat,days):
     global DTcontract
     global results
     global stands
+    global ss
+    global es
+
     for i in range(days):
         dat = dat + timedelta(days=1)
 
         if dat.day == 1 and dat.month == 1:
-            if dat.year > 1930:
-            #if dat.year > 1893:
+            es = time.time()
+            et = es - ss
+
+            #print(f"This year: {et} seconds")
+            ss = time.time()
+            #if dat.year > 1930:
+            if dat.year > 1896:
                 rc.plan_races(dat)
+            #with pd.option_context('display.max_columns', None):
+                #print(rc.races)
+
 
             dr.update_drivers(dat)
             #print('som tu',dat.year)
+            dr.update_reputations()
             dr.choose_active_drivers(dat)
             active_series = se.series[
             (se.series['startYear'] <= dat.year) &

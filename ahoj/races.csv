@@ -1,154 +1,206 @@
 raceId,seriesId,season,trackId,layoutId,race_date,name,championship
-0,1,1931,14,24,1931-01-18,Preteky Formula 1,True
-1,5,1931,14,24,1931-01-18,Preteky Formula 2,True
-2,6,1931,14,24,1931-01-18,Preteky Formula 3,True
-3,1,1931,14,24,1931-02-08,Preteky Formula 1,True
-4,5,1931,14,24,1931-02-08,Preteky Formula 2,True
-5,6,1931,14,24,1931-02-08,Preteky Formula 3,False
-6,1,1931,14,24,1931-03-01,Preteky Formula 1,True
-7,5,1931,14,24,1931-03-01,Preteky Formula 2,True
-8,6,1931,14,24,1931-03-01,Preteky Formula 3,True
-9,1,1931,14,24,1931-03-22,Preteky Formula 1,True
-10,5,1931,14,24,1931-03-22,Preteky Formula 2,True
-11,6,1931,14,24,1931-03-22,Preteky Formula 3,False
-12,1,1931,14,24,1931-04-12,Preteky Formula 1,True
-13,5,1931,14,24,1931-04-12,Preteky Formula 2,True
-14,6,1931,14,24,1931-04-12,Preteky Formula 3,True
-15,1,1931,14,24,1931-05-03,Preteky Formula 1,True
-16,5,1931,14,24,1931-05-03,Preteky Formula 2,True
-17,6,1931,14,24,1931-05-03,Preteky Formula 3,False
-18,1,1931,14,24,1931-05-24,Preteky Formula 1,True
-19,5,1931,14,24,1931-05-24,Preteky Formula 2,True
-20,6,1931,14,24,1931-05-24,Preteky Formula 3,True
-21,1,1931,14,24,1931-06-14,Preteky Formula 1,True
-22,5,1931,14,24,1931-06-14,Preteky Formula 2,True
-23,6,1931,14,24,1931-06-14,Preteky Formula 3,False
-24,1,1931,14,24,1931-07-05,Preteky Formula 1,True
-25,5,1931,14,24,1931-07-05,Preteky Formula 2,True
-26,6,1931,14,24,1931-07-05,Preteky Formula 3,True
-27,1,1931,14,24,1931-07-26,Preteky Formula 1,True
-28,5,1931,14,24,1931-07-26,Preteky Formula 2,True
-29,6,1931,14,24,1931-07-26,Preteky Formula 3,False
-30,1,1931,14,24,1931-08-16,Preteky Formula 1,True
-31,5,1931,14,24,1931-08-16,Preteky Formula 2,True
-32,6,1931,14,24,1931-08-16,Preteky Formula 3,True
-33,1,1931,14,24,1931-09-06,Preteky Formula 1,True
-34,5,1931,14,24,1931-09-06,Preteky Formula 2,True
-35,6,1931,14,24,1931-09-06,Preteky Formula 3,False
-36,1,1931,14,24,1931-09-27,Preteky Formula 1,True
-37,5,1931,14,24,1931-09-27,Preteky Formula 2,True
-38,6,1931,14,24,1931-09-27,Preteky Formula 3,True
-39,1,1931,14,24,1931-10-18,Preteky Formula 1,True
-40,5,1931,14,24,1931-10-18,Preteky Formula 2,True
-41,6,1931,14,24,1931-10-18,Preteky Formula 3,False
-42,1,1931,14,24,1931-11-08,Preteky Formula 1,True
-43,5,1931,14,24,1931-11-08,Preteky Formula 2,True
-44,6,1931,14,24,1931-11-08,Preteky Formula 3,True
-45,1,1931,14,24,1931-11-29,Preteky Formula 1,True
-46,5,1931,14,24,1931-11-29,Preteky Formula 2,True
-47,6,1931,14,24,1931-11-29,Preteky Formula 3,False
-48,1,1931,14,24,1931-12-20,Preteky Formula 1,True
-49,5,1931,14,24,1931-12-20,Preteky Formula 2,True
-50,6,1931,14,24,1931-12-20,Preteky Formula 3,True
-51,1,1932,14,24,1932-01-17,Preteky Formula 1,True
-52,5,1932,14,24,1932-01-17,Preteky Formula 2,True
-53,6,1932,14,24,1932-01-17,Preteky Formula 3,True
-54,1,1932,14,24,1932-02-07,Preteky Formula 1,True
-55,5,1932,14,24,1932-02-07,Preteky Formula 2,True
-56,6,1932,14,24,1932-02-07,Preteky Formula 3,False
-57,1,1932,14,24,1932-02-28,Preteky Formula 1,True
-58,5,1932,14,24,1932-02-28,Preteky Formula 2,True
-59,6,1932,14,24,1932-02-28,Preteky Formula 3,True
-60,1,1932,14,24,1932-03-20,Preteky Formula 1,True
-61,5,1932,14,24,1932-03-20,Preteky Formula 2,True
-62,6,1932,14,24,1932-03-20,Preteky Formula 3,False
-63,1,1932,14,24,1932-04-10,Preteky Formula 1,True
-64,5,1932,14,24,1932-04-10,Preteky Formula 2,True
-65,6,1932,14,24,1932-04-10,Preteky Formula 3,True
-66,1,1932,14,24,1932-05-01,Preteky Formula 1,True
-67,5,1932,14,24,1932-05-01,Preteky Formula 2,True
-68,6,1932,14,24,1932-05-01,Preteky Formula 3,False
-69,1,1932,14,24,1932-05-22,Preteky Formula 1,True
-70,5,1932,14,24,1932-05-22,Preteky Formula 2,True
-71,6,1932,14,24,1932-05-22,Preteky Formula 3,True
-72,1,1932,14,24,1932-06-12,Preteky Formula 1,True
-73,5,1932,14,24,1932-06-12,Preteky Formula 2,True
-74,6,1932,14,24,1932-06-12,Preteky Formula 3,False
-75,1,1932,14,24,1932-07-03,Preteky Formula 1,True
-76,5,1932,14,24,1932-07-03,Preteky Formula 2,True
-77,6,1932,14,24,1932-07-03,Preteky Formula 3,True
-78,1,1932,14,24,1932-07-24,Preteky Formula 1,True
-79,5,1932,14,24,1932-07-24,Preteky Formula 2,True
-80,6,1932,14,24,1932-07-24,Preteky Formula 3,False
-81,1,1932,14,24,1932-08-14,Preteky Formula 1,True
-82,5,1932,14,24,1932-08-14,Preteky Formula 2,True
-83,6,1932,14,24,1932-08-14,Preteky Formula 3,True
-84,1,1932,14,24,1932-09-04,Preteky Formula 1,True
-85,5,1932,14,24,1932-09-04,Preteky Formula 2,True
-86,6,1932,14,24,1932-09-04,Preteky Formula 3,False
-87,1,1932,14,24,1932-09-25,Preteky Formula 1,True
-88,5,1932,14,24,1932-09-25,Preteky Formula 2,True
-89,6,1932,14,24,1932-09-25,Preteky Formula 3,True
-90,1,1932,14,24,1932-10-16,Preteky Formula 1,True
-91,5,1932,14,24,1932-10-16,Preteky Formula 2,True
-92,6,1932,14,24,1932-10-16,Preteky Formula 3,False
-93,1,1932,14,24,1932-11-06,Preteky Formula 1,True
-94,5,1932,14,24,1932-11-06,Preteky Formula 2,True
-95,6,1932,14,24,1932-11-06,Preteky Formula 3,True
-96,1,1932,14,24,1932-11-27,Preteky Formula 1,True
-97,5,1932,14,24,1932-11-27,Preteky Formula 2,True
-98,6,1932,14,24,1932-11-27,Preteky Formula 3,False
-99,1,1932,14,24,1932-12-18,Preteky Formula 1,True
-100,5,1932,14,24,1932-12-18,Preteky Formula 2,True
-101,6,1932,14,24,1932-12-18,Preteky Formula 3,True
-102,1,1933,14,24,1933-01-15,Preteky Formula 1,True
-103,5,1933,14,24,1933-01-15,Preteky Formula 2,True
-104,6,1933,14,24,1933-01-15,Preteky Formula 3,True
-105,1,1933,14,24,1933-02-05,Preteky Formula 1,True
-106,5,1933,14,24,1933-02-05,Preteky Formula 2,True
-107,6,1933,14,24,1933-02-05,Preteky Formula 3,False
-108,1,1933,14,24,1933-02-26,Preteky Formula 1,True
-109,5,1933,14,24,1933-02-26,Preteky Formula 2,True
-110,6,1933,14,24,1933-02-26,Preteky Formula 3,True
-111,1,1933,14,24,1933-03-19,Preteky Formula 1,True
-112,5,1933,14,24,1933-03-19,Preteky Formula 2,True
-113,6,1933,14,24,1933-03-19,Preteky Formula 3,False
-114,1,1933,14,24,1933-04-09,Preteky Formula 1,True
-115,5,1933,14,24,1933-04-09,Preteky Formula 2,True
-116,6,1933,14,24,1933-04-09,Preteky Formula 3,True
-117,1,1933,14,24,1933-04-30,Preteky Formula 1,True
-118,5,1933,14,24,1933-04-30,Preteky Formula 2,True
-119,6,1933,14,24,1933-04-30,Preteky Formula 3,False
-120,1,1933,14,24,1933-05-21,Preteky Formula 1,True
-121,5,1933,14,24,1933-05-21,Preteky Formula 2,True
-122,6,1933,14,24,1933-05-21,Preteky Formula 3,True
-123,1,1933,14,24,1933-06-11,Preteky Formula 1,True
-124,5,1933,14,24,1933-06-11,Preteky Formula 2,True
-125,6,1933,14,24,1933-06-11,Preteky Formula 3,False
-126,1,1933,14,24,1933-07-02,Preteky Formula 1,True
-127,5,1933,14,24,1933-07-02,Preteky Formula 2,True
-128,6,1933,14,24,1933-07-02,Preteky Formula 3,True
-129,1,1933,14,24,1933-07-23,Preteky Formula 1,True
-130,5,1933,14,24,1933-07-23,Preteky Formula 2,True
-131,6,1933,14,24,1933-07-23,Preteky Formula 3,False
-132,1,1933,14,24,1933-08-13,Preteky Formula 1,True
-133,5,1933,14,24,1933-08-13,Preteky Formula 2,True
-134,6,1933,14,24,1933-08-13,Preteky Formula 3,True
-135,1,1933,14,24,1933-09-03,Preteky Formula 1,True
-136,5,1933,14,24,1933-09-03,Preteky Formula 2,True
-137,6,1933,14,24,1933-09-03,Preteky Formula 3,False
-138,1,1933,14,24,1933-09-24,Preteky Formula 1,True
-139,5,1933,14,24,1933-09-24,Preteky Formula 2,True
-140,6,1933,14,24,1933-09-24,Preteky Formula 3,True
-141,1,1933,14,24,1933-10-15,Preteky Formula 1,True
-142,5,1933,14,24,1933-10-15,Preteky Formula 2,True
-143,6,1933,14,24,1933-10-15,Preteky Formula 3,False
-144,1,1933,14,24,1933-11-05,Preteky Formula 1,True
-145,5,1933,14,24,1933-11-05,Preteky Formula 2,True
-146,6,1933,14,24,1933-11-05,Preteky Formula 3,True
-147,1,1933,14,24,1933-11-26,Preteky Formula 1,True
-148,5,1933,14,24,1933-11-26,Preteky Formula 2,True
-149,6,1933,14,24,1933-11-26,Preteky Formula 3,False
-150,1,1933,14,24,1933-12-17,Preteky Formula 1,True
-151,5,1933,14,24,1933-12-17,Preteky Formula 2,True
-152,6,1933,14,24,1933-12-17,Preteky Formula 3,True
+0,1,1894,1,1,22-07-1894,Paris-Rouen,0
+1,1,1895,14,24,1895-01-20 00:00:00,Preteky Formula 1,True
+2,5,1895,14,24,1895-01-20 00:00:00,Preteky Formula 2,True
+3,6,1895,14,24,1895-01-20 00:00:00,Preteky Formula 3,True
+4,1,1895,14,24,1895-02-10 00:00:00,Preteky Formula 1,True
+5,5,1895,14,24,1895-02-10 00:00:00,Preteky Formula 2,True
+6,6,1895,14,24,1895-02-10 00:00:00,Preteky Formula 3,False
+7,1,1895,14,24,1895-03-03 00:00:00,Preteky Formula 1,True
+8,5,1895,14,24,1895-03-03 00:00:00,Preteky Formula 2,True
+9,6,1895,14,24,1895-03-03 00:00:00,Preteky Formula 3,True
+10,1,1895,14,24,1895-03-24 00:00:00,Preteky Formula 1,True
+11,5,1895,14,24,1895-03-24 00:00:00,Preteky Formula 2,True
+12,6,1895,14,24,1895-03-24 00:00:00,Preteky Formula 3,False
+13,1,1895,14,24,1895-04-14 00:00:00,Preteky Formula 1,True
+14,5,1895,14,24,1895-04-14 00:00:00,Preteky Formula 2,True
+15,6,1895,14,24,1895-04-14 00:00:00,Preteky Formula 3,True
+16,1,1895,14,24,1895-05-05 00:00:00,Preteky Formula 1,True
+17,5,1895,14,24,1895-05-05 00:00:00,Preteky Formula 2,True
+18,6,1895,14,24,1895-05-05 00:00:00,Preteky Formula 3,False
+19,1,1895,14,24,1895-05-26 00:00:00,Preteky Formula 1,True
+20,5,1895,14,24,1895-05-26 00:00:00,Preteky Formula 2,True
+21,6,1895,14,24,1895-05-26 00:00:00,Preteky Formula 3,True
+22,1,1895,14,24,1895-06-16 00:00:00,Preteky Formula 1,True
+23,5,1895,14,24,1895-06-16 00:00:00,Preteky Formula 2,True
+24,6,1895,14,24,1895-06-16 00:00:00,Preteky Formula 3,False
+25,1,1895,14,24,1895-07-07 00:00:00,Preteky Formula 1,True
+26,5,1895,14,24,1895-07-07 00:00:00,Preteky Formula 2,True
+27,6,1895,14,24,1895-07-07 00:00:00,Preteky Formula 3,True
+28,1,1895,14,24,1895-07-28 00:00:00,Preteky Formula 1,True
+29,5,1895,14,24,1895-07-28 00:00:00,Preteky Formula 2,True
+30,6,1895,14,24,1895-07-28 00:00:00,Preteky Formula 3,False
+31,1,1895,14,24,1895-08-18 00:00:00,Preteky Formula 1,True
+32,5,1895,14,24,1895-08-18 00:00:00,Preteky Formula 2,True
+33,6,1895,14,24,1895-08-18 00:00:00,Preteky Formula 3,True
+34,1,1895,14,24,1895-09-08 00:00:00,Preteky Formula 1,True
+35,5,1895,14,24,1895-09-08 00:00:00,Preteky Formula 2,True
+36,6,1895,14,24,1895-09-08 00:00:00,Preteky Formula 3,False
+37,1,1895,14,24,1895-09-29 00:00:00,Preteky Formula 1,True
+38,5,1895,14,24,1895-09-29 00:00:00,Preteky Formula 2,True
+39,6,1895,14,24,1895-09-29 00:00:00,Preteky Formula 3,True
+40,1,1895,14,24,1895-10-20 00:00:00,Preteky Formula 1,True
+41,5,1895,14,24,1895-10-20 00:00:00,Preteky Formula 2,True
+42,6,1895,14,24,1895-10-20 00:00:00,Preteky Formula 3,False
+43,1,1895,14,24,1895-11-10 00:00:00,Preteky Formula 1,True
+44,5,1895,14,24,1895-11-10 00:00:00,Preteky Formula 2,True
+45,6,1895,14,24,1895-11-10 00:00:00,Preteky Formula 3,True
+46,1,1895,14,24,1895-12-01 00:00:00,Preteky Formula 1,True
+47,5,1895,14,24,1895-12-01 00:00:00,Preteky Formula 2,True
+48,6,1895,14,24,1895-12-01 00:00:00,Preteky Formula 3,False
+49,1,1895,14,24,1895-12-22 00:00:00,Preteky Formula 1,True
+50,5,1895,14,24,1895-12-22 00:00:00,Preteky Formula 2,True
+51,6,1895,14,24,1895-12-22 00:00:00,Preteky Formula 3,True
+52,1,1896,14,24,1896-01-19 00:00:00,Preteky Formula 1,True
+53,5,1896,14,24,1896-01-19 00:00:00,Preteky Formula 2,True
+54,6,1896,14,24,1896-01-19 00:00:00,Preteky Formula 3,True
+55,1,1896,14,24,1896-02-09 00:00:00,Preteky Formula 1,True
+56,5,1896,14,24,1896-02-09 00:00:00,Preteky Formula 2,True
+57,6,1896,14,24,1896-02-09 00:00:00,Preteky Formula 3,False
+58,1,1896,14,24,1896-03-01 00:00:00,Preteky Formula 1,True
+59,5,1896,14,24,1896-03-01 00:00:00,Preteky Formula 2,True
+60,6,1896,14,24,1896-03-01 00:00:00,Preteky Formula 3,True
+61,1,1896,14,24,1896-03-22 00:00:00,Preteky Formula 1,True
+62,5,1896,14,24,1896-03-22 00:00:00,Preteky Formula 2,True
+63,6,1896,14,24,1896-03-22 00:00:00,Preteky Formula 3,False
+64,1,1896,14,24,1896-04-12 00:00:00,Preteky Formula 1,True
+65,5,1896,14,24,1896-04-12 00:00:00,Preteky Formula 2,True
+66,6,1896,14,24,1896-04-12 00:00:00,Preteky Formula 3,True
+67,1,1896,14,24,1896-05-03 00:00:00,Preteky Formula 1,True
+68,5,1896,14,24,1896-05-03 00:00:00,Preteky Formula 2,True
+69,6,1896,14,24,1896-05-03 00:00:00,Preteky Formula 3,False
+70,1,1896,14,24,1896-05-24 00:00:00,Preteky Formula 1,True
+71,5,1896,14,24,1896-05-24 00:00:00,Preteky Formula 2,True
+72,6,1896,14,24,1896-05-24 00:00:00,Preteky Formula 3,True
+73,1,1896,14,24,1896-06-14 00:00:00,Preteky Formula 1,True
+74,5,1896,14,24,1896-06-14 00:00:00,Preteky Formula 2,True
+75,6,1896,14,24,1896-06-14 00:00:00,Preteky Formula 3,False
+76,1,1896,14,24,1896-07-05 00:00:00,Preteky Formula 1,True
+77,5,1896,14,24,1896-07-05 00:00:00,Preteky Formula 2,True
+78,6,1896,14,24,1896-07-05 00:00:00,Preteky Formula 3,True
+79,1,1896,14,24,1896-07-26 00:00:00,Preteky Formula 1,True
+80,5,1896,14,24,1896-07-26 00:00:00,Preteky Formula 2,True
+81,6,1896,14,24,1896-07-26 00:00:00,Preteky Formula 3,False
+82,1,1896,14,24,1896-08-16 00:00:00,Preteky Formula 1,True
+83,5,1896,14,24,1896-08-16 00:00:00,Preteky Formula 2,True
+84,6,1896,14,24,1896-08-16 00:00:00,Preteky Formula 3,True
+85,1,1896,14,24,1896-09-06 00:00:00,Preteky Formula 1,True
+86,5,1896,14,24,1896-09-06 00:00:00,Preteky Formula 2,True
+87,6,1896,14,24,1896-09-06 00:00:00,Preteky Formula 3,False
+88,1,1896,14,24,1896-09-27 00:00:00,Preteky Formula 1,True
+89,5,1896,14,24,1896-09-27 00:00:00,Preteky Formula 2,True
+90,6,1896,14,24,1896-09-27 00:00:00,Preteky Formula 3,True
+91,1,1896,14,24,1896-10-18 00:00:00,Preteky Formula 1,True
+92,5,1896,14,24,1896-10-18 00:00:00,Preteky Formula 2,True
+93,6,1896,14,24,1896-10-18 00:00:00,Preteky Formula 3,False
+94,1,1896,14,24,1896-11-08 00:00:00,Preteky Formula 1,True
+95,5,1896,14,24,1896-11-08 00:00:00,Preteky Formula 2,True
+96,6,1896,14,24,1896-11-08 00:00:00,Preteky Formula 3,True
+97,1,1896,14,24,1896-11-29 00:00:00,Preteky Formula 1,True
+98,5,1896,14,24,1896-11-29 00:00:00,Preteky Formula 2,True
+99,6,1896,14,24,1896-11-29 00:00:00,Preteky Formula 3,False
+100,1,1896,14,24,1896-12-20 00:00:00,Preteky Formula 1,True
+101,5,1896,14,24,1896-12-20 00:00:00,Preteky Formula 2,True
+102,6,1896,14,24,1896-12-20 00:00:00,Preteky Formula 3,True
+103,1,1897,14,24,1897-01-17 00:00:00,Preteky Formula 1,True
+104,5,1897,14,24,1897-01-17 00:00:00,Preteky Formula 2,True
+105,6,1897,14,24,1897-01-17 00:00:00,Preteky Formula 3,True
+106,1,1897,14,24,1897-02-07 00:00:00,Preteky Formula 1,True
+107,5,1897,14,24,1897-02-07 00:00:00,Preteky Formula 2,True
+108,6,1897,14,24,1897-02-07 00:00:00,Preteky Formula 3,False
+109,1,1897,14,24,1897-02-28 00:00:00,Preteky Formula 1,True
+110,5,1897,14,24,1897-02-28 00:00:00,Preteky Formula 2,True
+111,6,1897,14,24,1897-02-28 00:00:00,Preteky Formula 3,True
+112,1,1897,14,24,1897-03-21 00:00:00,Preteky Formula 1,True
+113,5,1897,14,24,1897-03-21 00:00:00,Preteky Formula 2,True
+114,6,1897,14,24,1897-03-21 00:00:00,Preteky Formula 3,False
+115,1,1897,14,24,1897-04-11 00:00:00,Preteky Formula 1,True
+116,5,1897,14,24,1897-04-11 00:00:00,Preteky Formula 2,True
+117,6,1897,14,24,1897-04-11 00:00:00,Preteky Formula 3,True
+118,1,1897,14,24,1897-05-02 00:00:00,Preteky Formula 1,True
+119,5,1897,14,24,1897-05-02 00:00:00,Preteky Formula 2,True
+120,6,1897,14,24,1897-05-02 00:00:00,Preteky Formula 3,False
+121,1,1897,14,24,1897-05-23 00:00:00,Preteky Formula 1,True
+122,5,1897,14,24,1897-05-23 00:00:00,Preteky Formula 2,True
+123,6,1897,14,24,1897-05-23 00:00:00,Preteky Formula 3,True
+124,1,1897,14,24,1897-06-13 00:00:00,Preteky Formula 1,True
+125,5,1897,14,24,1897-06-13 00:00:00,Preteky Formula 2,True
+126,6,1897,14,24,1897-06-13 00:00:00,Preteky Formula 3,False
+127,1,1897,14,24,1897-07-04 00:00:00,Preteky Formula 1,True
+128,5,1897,14,24,1897-07-04 00:00:00,Preteky Formula 2,True
+129,6,1897,14,24,1897-07-04 00:00:00,Preteky Formula 3,True
+130,1,1897,14,24,1897-07-25 00:00:00,Preteky Formula 1,True
+131,5,1897,14,24,1897-07-25 00:00:00,Preteky Formula 2,True
+132,6,1897,14,24,1897-07-25 00:00:00,Preteky Formula 3,False
+133,1,1897,14,24,1897-08-15 00:00:00,Preteky Formula 1,True
+134,5,1897,14,24,1897-08-15 00:00:00,Preteky Formula 2,True
+135,6,1897,14,24,1897-08-15 00:00:00,Preteky Formula 3,True
+136,1,1897,14,24,1897-09-05 00:00:00,Preteky Formula 1,True
+137,5,1897,14,24,1897-09-05 00:00:00,Preteky Formula 2,True
+138,6,1897,14,24,1897-09-05 00:00:00,Preteky Formula 3,False
+139,1,1897,14,24,1897-09-26 00:00:00,Preteky Formula 1,True
+140,5,1897,14,24,1897-09-26 00:00:00,Preteky Formula 2,True
+141,6,1897,14,24,1897-09-26 00:00:00,Preteky Formula 3,True
+142,1,1897,14,24,1897-10-17 00:00:00,Preteky Formula 1,True
+143,5,1897,14,24,1897-10-17 00:00:00,Preteky Formula 2,True
+144,6,1897,14,24,1897-10-17 00:00:00,Preteky Formula 3,False
+145,1,1897,14,24,1897-11-07 00:00:00,Preteky Formula 1,True
+146,5,1897,14,24,1897-11-07 00:00:00,Preteky Formula 2,True
+147,6,1897,14,24,1897-11-07 00:00:00,Preteky Formula 3,True
+148,1,1897,14,24,1897-11-28 00:00:00,Preteky Formula 1,True
+149,5,1897,14,24,1897-11-28 00:00:00,Preteky Formula 2,True
+150,6,1897,14,24,1897-11-28 00:00:00,Preteky Formula 3,False
+151,1,1897,14,24,1897-12-19 00:00:00,Preteky Formula 1,True
+152,5,1897,14,24,1897-12-19 00:00:00,Preteky Formula 2,True
+153,6,1897,14,24,1897-12-19 00:00:00,Preteky Formula 3,True
+154,1,1898,14,24,1898-01-16 00:00:00,Preteky Formula 1,True
+155,5,1898,14,24,1898-01-16 00:00:00,Preteky Formula 2,True
+156,6,1898,14,24,1898-01-16 00:00:00,Preteky Formula 3,True
+157,1,1898,14,24,1898-02-06 00:00:00,Preteky Formula 1,True
+158,5,1898,14,24,1898-02-06 00:00:00,Preteky Formula 2,True
+159,6,1898,14,24,1898-02-06 00:00:00,Preteky Formula 3,False
+160,1,1898,14,24,1898-02-27 00:00:00,Preteky Formula 1,True
+161,5,1898,14,24,1898-02-27 00:00:00,Preteky Formula 2,True
+162,6,1898,14,24,1898-02-27 00:00:00,Preteky Formula 3,True
+163,1,1898,14,24,1898-03-20 00:00:00,Preteky Formula 1,True
+164,5,1898,14,24,1898-03-20 00:00:00,Preteky Formula 2,True
+165,6,1898,14,24,1898-03-20 00:00:00,Preteky Formula 3,False
+166,1,1898,14,24,1898-04-10 00:00:00,Preteky Formula 1,True
+167,5,1898,14,24,1898-04-10 00:00:00,Preteky Formula 2,True
+168,6,1898,14,24,1898-04-10 00:00:00,Preteky Formula 3,True
+169,1,1898,14,24,1898-05-01 00:00:00,Preteky Formula 1,True
+170,5,1898,14,24,1898-05-01 00:00:00,Preteky Formula 2,True
+171,6,1898,14,24,1898-05-01 00:00:00,Preteky Formula 3,False
+172,1,1898,14,24,1898-05-22 00:00:00,Preteky Formula 1,True
+173,5,1898,14,24,1898-05-22 00:00:00,Preteky Formula 2,True
+174,6,1898,14,24,1898-05-22 00:00:00,Preteky Formula 3,True
+175,1,1898,14,24,1898-06-12 00:00:00,Preteky Formula 1,True
+176,5,1898,14,24,1898-06-12 00:00:00,Preteky Formula 2,True
+177,6,1898,14,24,1898-06-12 00:00:00,Preteky Formula 3,False
+178,1,1898,14,24,1898-07-03 00:00:00,Preteky Formula 1,True
+179,5,1898,14,24,1898-07-03 00:00:00,Preteky Formula 2,True
+180,6,1898,14,24,1898-07-03 00:00:00,Preteky Formula 3,True
+181,1,1898,14,24,1898-07-24 00:00:00,Preteky Formula 1,True
+182,5,1898,14,24,1898-07-24 00:00:00,Preteky Formula 2,True
+183,6,1898,14,24,1898-07-24 00:00:00,Preteky Formula 3,False
+184,1,1898,14,24,1898-08-14 00:00:00,Preteky Formula 1,True
+185,5,1898,14,24,1898-08-14 00:00:00,Preteky Formula 2,True
+186,6,1898,14,24,1898-08-14 00:00:00,Preteky Formula 3,True
+187,1,1898,14,24,1898-09-04 00:00:00,Preteky Formula 1,True
+188,5,1898,14,24,1898-09-04 00:00:00,Preteky Formula 2,True
+189,6,1898,14,24,1898-09-04 00:00:00,Preteky Formula 3,False
+190,1,1898,14,24,1898-09-25 00:00:00,Preteky Formula 1,True
+191,5,1898,14,24,1898-09-25 00:00:00,Preteky Formula 2,True
+192,6,1898,14,24,1898-09-25 00:00:00,Preteky Formula 3,True
+193,1,1898,14,24,1898-10-16 00:00:00,Preteky Formula 1,True
+194,5,1898,14,24,1898-10-16 00:00:00,Preteky Formula 2,True
+195,6,1898,14,24,1898-10-16 00:00:00,Preteky Formula 3,False
+196,1,1898,14,24,1898-11-06 00:00:00,Preteky Formula 1,True
+197,5,1898,14,24,1898-11-06 00:00:00,Preteky Formula 2,True
+198,6,1898,14,24,1898-11-06 00:00:00,Preteky Formula 3,True
+199,1,1898,14,24,1898-11-27 00:00:00,Preteky Formula 1,True
+200,5,1898,14,24,1898-11-27 00:00:00,Preteky Formula 2,True
+201,6,1898,14,24,1898-11-27 00:00:00,Preteky Formula 3,False
+202,1,1898,14,24,1898-12-18 00:00:00,Preteky Formula 1,True
+203,5,1898,14,24,1898-12-18 00:00:00,Preteky Formula 2,True
+204,6,1898,14,24,1898-12-18 00:00:00,Preteky Formula 3,True

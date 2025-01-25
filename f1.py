@@ -26,16 +26,26 @@ dr.choose_active_drivers(dat)
 
 
 
-dat=mt.sim_year(dat,75)
+dat=mt.sim_year(dat,90)
 print('aa ',dat)
 #rc.plan_races(dat)
 x=0
 
-
-
+"""
+ss = time.time()
 ld.save('ahoj')
+es = time.time()
+et = es - ss
+print(f"Save Time: {et} seconds")
+
+ss = time.time()
 ld.load_all('ahoj')
+es = time.time()
+et = es - ss
+print(f"Load Time: {et} seconds")
+
 dat=mt.sim_year(dat,1)
+"""
 end_time = time.time()
 
 # Time taken in seconds

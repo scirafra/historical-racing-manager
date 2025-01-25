@@ -1,1 +1,10 @@
-raceId,seriesId,season,trackId,layoutId,race_date,name,championship
+raceId,seriesId,season,trackId,layoutId,race_date,name,championship,reputation,reward
+0,1,1894,1,1,22-07-1894,"Paris-Rouen",False,1000,1000000
+1,1,1895,1,1,18-05-1895,"Torino–Asti–Torino",False,1000,1000000
+2,1,1895,1,1,13-6-1895,"Paris–Bordeaux–Paris",False,1000,1000000
+3,1,1895,1,1,28-11-1895,"Chicago Times-Herald",False,1000,1000000
+4,1,1896,1,1,25-05-1896,"Bordeaux–Agen–Bordeaux",False,1000,1000000
+5,1,1896,1,1,30-05-1896,"Cosmopolitan Magazine New York City–Irvington",False,1000,1000000
+6,1,1896,1,1,11-07-1896,"Meeting of Spa",False,1000,1000000
+7,1,1896,1,1,03-10-1896,"Paris–Marseille–Paris",False,1000,1000000
+8,1,1896,1,1,14-11-1896,"London–Brighton",False,1000,1000000
