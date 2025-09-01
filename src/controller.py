@@ -9,14 +9,14 @@ import load as ld
 import manufacturer as mf
 import race as rc
 import series as se
-import teams as tm
 from drivers import DriversModel
 from graphics import Graphics
+from teams import TeamsModel
 
 
 class Controller:
     def __init__(self):
-        # Simulation configuration
+        # Simulation config
         self.begin_year = 1843
         self.end_year = 3000
         self.drivers_per_year = 4
@@ -28,33 +28,33 @@ class Controller:
         self.new_game = True
         self.ss = time.time()
 
-        # Core game models
-        self.drivers = DriversModel()
+        # Models
+        self.drivers_model = DriversModel()
+        self.teams_model = TeamsModel()
 
-        # View layer
+        # View
         self.view = Graphics(self)
 
-    # ====== PUBLIC API FOR VIEW ======
+    # ====== PUBLIC API ======
 
     def start_new_season(self):
-        """Start a new season by loading game state and simulating years."""
         self.load_game("my_data")
         self.current_date = self.sim_year(self.current_date, self.sim_years_step)
 
     def save_game(self, name: str):
-        """Persist current simulation state."""
         if not os.path.isdir(name):
             os.makedirs(name, exist_ok=True)
+
         meta = pd.DataFrame(
             {"date": [self.current_date], "begin": [self.begin_date], "new_game": [self.new_game]}
         )
         meta.to_csv(f"{name}/data.csv", index=False)
 
-        self.drivers.save(name)  # save drivers model
+        self.drivers_model.save(name)
+        self.teams_model.save(name)
         ld.save(name)
 
     def load_game(self, name: str):
-        """Load game state from disk."""
         if not os.path.exists(f"{name}/data.csv"):
             return False
 
@@ -64,41 +64,35 @@ class Controller:
         self.begin_year = self.begin_date.year
         self.new_game = bool(meta.loc[0, "new_game"])
 
-        if self.new_game:
-            # Here you could generate initial drivers if needed
-            self.new_game = False
-
         ld.load_all(name)
-        self.drivers.load(name)
-        self.drivers.choose_active_drivers(self.current_date)
+        self.drivers_model.load(name)
+        self.teams_model.load(name)
 
-        # Fast-forward to first season start
+        self.drivers_model.choose_active_drivers(self.current_date)
+
+        # Fast-forward to first season
         while self.current_date.year < 1894:
             self.current_date = self.sim_day(self.current_date, 1)
+
+        self.new_game = False
         return True
 
     def get_date(self) -> str:
-        """Return current simulation date as string."""
         return self.current_date.strftime("%Y-%m-%d %A")
 
     def get_series_names(self):
-        """List available series names."""
         return se.get_series()["name"].tolist()
 
     def update_seasons(self, series_name: str):
-        """Update list of seasons for given series."""
         self.seasons = rc.get_seasons_for_series(se.get_series_id(series_name))
 
     def get_season_list(self):
-        """Return seasons as list of strings."""
         return [str(y) for y in self.seasons]
 
     def simulate_days(self, days: int):
-        """Simulate given number of days."""
         self.current_date = self.sim_day(self.current_date, days)
 
     def get_results(self, series_name: str, season_str: str) -> pd.DataFrame:
-        """Return processed race results for display."""
         sid = se.get_series_id(series_name)
         season = int(season_str)
         df = rc.pivot_results_by_race(sid, season)
@@ -114,7 +108,7 @@ class Controller:
 
         # Merge driver info
         df = df.merge(
-            self.drivers.drivers[["driverID", "forename", "surname", "year"]],
+            self.drivers_model.drivers[["driverID", "forename", "surname", "year"]],
             on="driverID",
             how="left",
         )
@@ -122,7 +116,7 @@ class Controller:
         df.drop(columns=["year", "driverID"], inplace=True)
 
         # Merge team info
-        df = df.merge(tm.teams[["teamID", "teamName"]], on="teamID", how="left")
+        df = df.merge(self.teams_model.teams[["teamID", "teamName"]], on="teamID", how="left")
         df.drop(columns=["teamID"], inplace=True)
 
         # Rename for display
@@ -147,7 +141,6 @@ class Controller:
         others = [c for c in df.columns if c not in base_cols]
         df = df[base_cols + others]
 
-        # Format results columns
         def fmt(x):
             if x in ("Crash", "Death"):
                 return x
@@ -164,78 +157,98 @@ class Controller:
 
     # ====== SIMULATION ======
 
-    def sim_day(self, dat: datetime, days: int) -> datetime:
-        """Simulate a given number of days in the season."""
+    def sim_day(self, date: datetime, days: int) -> datetime:
         for _ in range(days):
-            dat += timedelta(days=1)
+            date += timedelta(days=1)
 
-            # Season start
-            if 2999 > dat.year and dat.day == 1 and dat.month == 1:
-                if dat.year > 1896:
-                    rc.plan_races(dat)
+            if self._is_season_start(date):
+                self._handle_season_start(date)
 
-                ct.disable_contracts(self.drivers.get_retiring_drivers())
-                self.drivers.update_drivers(dat)
-                self.drivers.update_reputations()
-                tm.update_reputations()
+            self._handle_races(date)
 
-                retire = self.drivers.choose_active_drivers(dat)
-
-                active_series = se.series[
-                    (se.series["startYear"] <= dat.year) & (se.series["endYear"] >= dat.year)
-                    ]
-
-                # all_time_best now takes drivers_model
-                rc.all_time_best(self.drivers, 1)
-
-                if dat.year >= 1894:
-                    mf.develop_part(dat)
-                    ct.sign_car_part_contracts(active_series, dat, mf.car_parts, self.view.root)
-                    ct.sign_driver_contracts(
-                        active_series,
-                        dat,
-                        ct.DTcontract,
-                        self.drivers.active_drivers,
-                        se.point_rules,
-                        ct.STcontract,
-                        False,
-                        self.view.root,
-                    )
-
-                tm.invest_fin_all(dat, self.view.root)
-
-            # Races on this day
-            races_today = rc.races[rc.races["race_date"] == dat].copy()
-            if not races_today.empty:
-                died = []
-                for i in range(len(races_today)):
-                    # prepare_race now takes drivers_model
-                    died += rc.prepare_race(self.drivers, races_today, i, dat)
-                if died:
-                    self.drivers.mark_drivers_dead(died, dat)
-                    ct.disable_contracts(died)
-                    active_series = se.series[
-                        (se.series["startYear"] <= dat.year) & (se.series["endYear"] >= dat.year)
-                        ]
-                    if dat.year >= 1894:
-                        ct.sign_driver_contracts(
-                            active_series,
-                            dat,
-                            ct.DTcontract,
-                            self.drivers.active_drivers,
-                            se.point_rules,
-                            ct.STcontract,
-                            True,
-                            self.view.root,
-                        )
-        return dat
+        return date
 
     def sim_year(self, start_date: datetime, years: int) -> datetime:
-        """Simulate given number of years."""
         for _ in range(years * 365):
             start_date = self.sim_day(start_date, 1)
         return start_date
 
     def run(self):
-        """Run the main loop (delegated to view)."""
         self.view.run()
+
+    # ====== PRIVATE HELPERS ======
+
+    def _is_season_start(self, date: datetime) -> bool:
+        return 2999 > date.year and date.day == 1 and date.month == 1
+
+    def _handle_season_start(self, date: datetime):
+        if date.year > 1896:
+            rc.plan_races(date)
+
+        ct.disable_contracts(self.drivers_model.get_retiring_drivers())
+        self.drivers_model.update_drivers(date)
+        self.drivers_model.update_reputations()
+        self.teams_model.update_reputations()
+
+        self.drivers_model.choose_active_drivers(date)
+
+        active_series = se.series[
+            (se.series["startYear"] <= date.year) & (se.series["endYear"] >= date.year)
+        ]
+
+        rc.all_time_best(self.drivers_model, 1)
+
+        if date.year >= 1894:
+            mf.develop_part(date, ct.get_MScontract())
+            ct.sign_car_part_contracts(
+                active_series,
+                date,
+                mf.car_parts,
+                self.teams_model.teams,
+                mf.manufacturers,
+                self.view.root,
+            )
+            ct.sign_driver_contracts(
+                active_series,
+                date,
+                ct.DTcontract,
+                self.drivers_model.active_drivers,
+                se.point_rules,
+                ct.STcontract,
+                False,
+                self.teams_model.teams,
+                self.view.root,
+            )
+
+        # View získa vstup od používateľa a model spracuje
+        investments = self.view.ask_finance_investments(self.teams_model.get_human_teams(date))
+        self.teams_model.invest_finance(date.year, investments)
+
+    def _handle_races(self, date: datetime):
+        races_today = rc.races[rc.races["race_date"] == date].copy()
+        if races_today.empty:
+            return
+
+        died = []
+        for i in range(len(races_today)):
+            died += rc.prepare_race(self.drivers_model, races_today, i, date)
+
+        if died:
+            self.drivers_model.mark_drivers_dead(died, date)
+            ct.disable_contracts(died)
+
+            active_series = se.series[
+                (se.series["startYear"] <= date.year) & (se.series["endYear"] >= date.year)
+            ]
+            if date.year >= 1894:
+                ct.sign_driver_contracts(
+                    active_series,
+                    date,
+                    ct.DTcontract,
+                    self.drivers_model.active_drivers,
+                    se.point_rules,
+                    ct.STcontract,
+                    True,
+                    self.teams_model.teams,
+                    self.view.root,
+                )

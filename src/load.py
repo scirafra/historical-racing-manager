@@ -30,11 +30,12 @@ def load_all(name):
         if not rc.load(name):
             print("rc not loaded")
             return False
-        if not tm.load(name):
+        tmmodel = tm.TeamsModel()
+        if not tmmodel.load(name):
             print("tm not loaded")
             return False
-        model = dr.DriversModel()
-        if not model.load(name):
+        drmodel = dr.DriversModel()
+        if not drmodel.load(name):
             print("dr not loaded")
             return False
         if not mf.load(name):

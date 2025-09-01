@@ -3,8 +3,6 @@ import os
 import numpy as np
 import pandas as pd
 
-import contracts as co
-
 car_parts = pd.DataFrame()
 car_part_models = pd.DataFrame()
 cars = pd.DataFrame()
@@ -51,11 +49,11 @@ def save(name):
         rules.to_csv(name + "rules.csv", index=False)
 
 
-def develop_part(dat):
+def develop_part(dat, contracts):
     global car_parts
 
     merged = pd.merge(
-        co.MScontract,
+        contracts,
         rules,
         left_on=["seriesID", "partType"],
         right_on=["seriesID", "partType"],

@@ -141,3 +141,58 @@ class Graphics:
             self.tree.column(col, width=100, anchor="center")
         for row in df.itertuples(index=False):
             self.tree.insert("", "end", values=row)
+
+    def ask_finance_investments(self, human_teams_df):
+        """
+        Displays a dialog for each human-controlled team to ask for the number of finance employees.
+        human_teams_df: DataFrame with at least the columns ['teamID', 'teamName', 'money']
+        Return: dict {teamID: number_of_finance_employees}
+        """
+
+        investments = {}
+
+        for _, row in human_teams_df.iterrows():
+            max_fin = row["money"] // 2500
+            if max_fin <= 0:
+                continue
+
+            top = tk.Toplevel(self.root)
+            top.transient(self.root)
+            top.grab_set()
+
+            tk.Label(
+                top,
+                text=f"Tím: {row['teamName']}\nDostupné financie: {row['money']}\n"
+                     f"Zadaj počet finančných zamestnancov (0–{max_fin}):",
+            ).pack(padx=10, pady=(10, 0))
+
+            entry = tk.Entry(top)
+            entry.pack(padx=10, pady=(0, 10))
+
+            result = {"value": None}
+
+            def on_done():
+                val = entry.get()
+                if val.isdigit():
+                    val = int(val)
+                    if 0 <= val <= max_fin:
+                        result["value"] = val
+                        top.destroy()
+                        return
+                messagebox.showerror("Chyba", f"Zadaj číslo medzi 0 a {max_fin}")
+
+            def on_cancel():
+                result["value"] = 0
+                top.destroy()
+
+            btn_frame = tk.Frame(top)
+            btn_frame.pack(pady=10)
+            tk.Button(btn_frame, text="Potvrdiť", command=on_done).pack(side="left", padx=5)
+            tk.Button(btn_frame, text="Zrušiť", command=on_cancel).pack(side="left", padx=5)
+
+            self.root.wait_window(top)
+
+            if result["value"] is not None:
+                investments[row["teamID"]] = result["value"]
+
+        return investments

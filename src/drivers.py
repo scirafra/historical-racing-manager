@@ -125,7 +125,7 @@ class DriversModel:
             (self.drivers["age"] >= 15)
             & (self.drivers["age"] <= self.drivers["retire"])
             & (self.drivers["alive"])
-            ].copy()
+        ].copy()
 
     def get_retiring_drivers(self):
         if len(self.retiring_drivers) == 0:
@@ -151,7 +151,7 @@ class DriversModel:
         self.retiring_drivers = self.active_drivers[
             (self.active_drivers["age"] > self.active_drivers["retire"])
             | (self.active_drivers["age"] < 15)
-            ]
+        ]
 
         # Pridať nových
         if not new_drivers.empty:
@@ -225,7 +225,7 @@ class DriversModel:
                 (current_date.year - self.active_drivers["year"] > (15 + 3 * offset))
                 & (current_date.year - self.active_drivers["year"] < (19 + 3 * offset))
                 & (self.active_drivers["ability"] > 35)
-                ]
+            ]
             if filtered.empty:
                 continue
 
@@ -241,7 +241,7 @@ class DriversModel:
             a2 = 1 if remainder == 1 else 0
 
             positions = (
-                    ["first"] * (a + a1) + ["second"] * (a + a2) + ["third"] * (n - 2 * a - a1 - a2)
+                ["first"] * (a + a1) + ["second"] * (a + a2) + ["third"] * (n - 2 * a - a1 - a2)
             )
             filtered["position"] = positions
 
@@ -276,7 +276,7 @@ class DriversModel:
 
     @classmethod
     def generate_new_drivers(
-            cls, year: int, count: int, df: pd.DataFrame, nationality_weights: pd.Series, id_offset: int
+        cls, year: int, count: int, df: pd.DataFrame, nationality_weights: pd.Series, id_offset: int
     ) -> pd.DataFrame:
         """
         Generate new drivers using the fixed ability distribution.
