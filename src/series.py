@@ -18,6 +18,7 @@ def load(name):
         return False
     series = pd.read_csv(name + "series.csv")
     point_rules = pd.read_csv(name + "point_rules.csv")
+
     return True
 
 
@@ -29,13 +30,14 @@ def save(name):
 
 def get_series():
     df = series[["seriesID", "name"]].copy()
-    print(df)
+
     return df.reset_index(drop=True)
 
 
 def get_series_id(series_name):
     result = series[series["name"] == series_name]
     if not result.empty:
+
         return int(result["seriesID"].values[0])
     else:
         return None

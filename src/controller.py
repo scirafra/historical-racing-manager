@@ -174,19 +174,19 @@ class Controller:
                 if dat.year > 1896:
                     rc.plan_races(dat)
 
+                ct.disable_contracts(self.drivers.get_retiring_drivers())
                 self.drivers.update_drivers(dat)
                 self.drivers.update_reputations()
                 tm.update_reputations()
 
                 retire = self.drivers.choose_active_drivers(dat)
-                print("Controller retire", retire)
+
                 active_series = se.series[
                     (se.series["startYear"] <= dat.year) & (se.series["endYear"] >= dat.year)
-                ]
+                    ]
 
                 # all_time_best now takes drivers_model
                 rc.all_time_best(self.drivers, 1)
-                ct.disable_contracts(retire)
 
                 if dat.year >= 1894:
                     mf.develop_part(dat)
@@ -216,7 +216,7 @@ class Controller:
                     ct.disable_contracts(died)
                     active_series = se.series[
                         (se.series["startYear"] <= dat.year) & (se.series["endYear"] >= dat.year)
-                    ]
+                        ]
                     if dat.year >= 1894:
                         ct.sign_driver_contracts(
                             active_series,

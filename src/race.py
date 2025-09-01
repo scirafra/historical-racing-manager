@@ -497,13 +497,7 @@ def _update_standings(
         subj_col = f"{typ}ID"
         subjects = race_data[[subj_col]].drop_duplicates().copy()
         subjects["cars"] = (
-            1
-            if typ == "driver"
-            else (
-                int(current_point_rules.iloc[0][f"{typ}Cts"])
-                if f"{typ}Cts" in current_point_rules.columns
-                else 1
-            )
+            1 if typ == "driver" else (int(current_point_rules.iloc[0].get(f"{typ}Cts", 1)))
         )
         subjects["points"] = 0
 
@@ -515,24 +509,20 @@ def _update_standings(
             else pd.DataFrame(columns=["subjectID", "points"])
         )
 
-        # Award points to finishers according to ps (row 0 has columns: 1,2,3,...)
+        # Award points to finishers
         for pos, (fin_idx, _) in enumerate(ranking, start=1):
+            if fin_idx not in finish.index:
+                continue  # skip invalid index
             current_subject = int(finish.loc[fin_idx, subj_col])
-            pts = int(ps.iloc[0][pos]) if pos in ps.columns else 0
+            pts = int(ps.iloc[0].get(str(pos), 0))  # use str(pos) to match column names
             mask = (subjects[subj_col] == current_subject) & (subjects["cars"] > 0)
-            subjects.loc[mask, ["cars", "points"]] = subjects.loc[mask, ["cars", "points"]] + [
-                -1,
-                pts,
-            ]
+            subjects.loc[mask, ["cars", "points"]] += [-1, pts]
 
-        # Count DNS/DNF entries (consume car slot, no points)
+        # Count DNS/DNF entries
         for _, row in not_finish.iterrows():
             current_subject = int(row[subj_col])
             mask = (subjects[subj_col] == current_subject) & (subjects["cars"] > 0)
-            subjects.loc[mask, ["cars", "points"]] = subjects.loc[mask, ["cars", "points"]] + [
-                -1,
-                0,
-            ]
+            subjects.loc[mask, ["cars", "points"]] += [-1, 0]
 
         # Compose block for this round
         subjects["raceID"] = int(race_row["raceID"])
@@ -542,19 +532,18 @@ def _update_standings(
         subjects["seriesID"] = int(race_row["seriesID"])
         subjects["typ"] = typ
 
-        # Carry previous points for continuing subjects
+        # Carry previous points
         if not last_round_block.empty:
             prev_pts = last_round_block.set_index("subjectID")["points"]
             subjects["points"] = subjects[subj_col].map(prev_pts).fillna(0).astype(int) + subjects[
                 "points"
             ].astype(int)
 
-            # Add subjects that had points previously but were not present this race
+            # Add missing subjects
             missing = last_round_block[
                 ~last_round_block["subjectID"].isin(subjects[subj_col])
             ].copy()
             if not missing.empty:
-                missing = missing.copy()
                 missing["round"] = int(subjects["round"].iloc[0])
                 missing["raceID"] = int(race_row["raceID"])
                 missing = missing.rename(columns={"subjectID": subj_col})
@@ -576,11 +565,9 @@ def _update_standings(
         ).reset_index(drop=True)
         subjects["position"] = range(1, len(subjects) + 1)
 
-        # Ensure dtypes are consistent
-        subjects["subjectID"] = subjects["subjectID"].astype(int)
-        subjects["seriesID"] = subjects["seriesID"].astype(int)
-        subjects["year"] = subjects["year"].astype(int)
-        subjects["round"] = subjects["round"].astype(int)
+        # Ensure dtypes
+        for col in ["subjectID", "seriesID", "year", "round"]:
+            subjects[col] = subjects[col].astype(int)
 
         final_blocks.append(subjects)
 

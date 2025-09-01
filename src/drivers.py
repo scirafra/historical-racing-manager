@@ -16,6 +16,7 @@ class DriversModel:
     def __init__(self, ability_min: int = 36, ability_max: int = 69):
         self.drivers = pd.DataFrame()
         self.active_drivers = pd.DataFrame()
+        self.retiring_drivers = pd.DataFrame()
         self.old_active_drivers = pd.DataFrame()
         self.dead_drivers: list = []
         self.ability_min = ability_min
@@ -117,50 +118,49 @@ class DriversModel:
 
     def _initialize_active_drivers(self, current_date: date):
         """First-time active driver selection."""
-        print("Init ", current_date.year)
+
         self.drivers["age"] = current_date.year - self.drivers["year"]
 
         self.active_drivers = self.drivers[
             (self.drivers["age"] >= 15)
-            # & (self.drivers["ability"] >= self.ability_min)
             & (self.drivers["age"] <= self.drivers["retire"])
             & (self.drivers["alive"])
             ].copy()
 
-        print("Init self.active_drivers", self.active_drivers)
+    def get_retiring_drivers(self):
+        if len(self.retiring_drivers) == 0:
+            return []
+        return self.retiring_drivers["driverID"].tolist()
 
     def _update_active_driver_list(self, current_date: date):
         """Add rookies and remove retirees."""
-        print("Update ", current_date.year)
+
         self.drivers["age"] = current_date.year - self.drivers["year"]
         self.active_drivers["age"] = current_date.year - self.active_drivers["year"]
 
         # Noví jazdci
         new_drivers = self.drivers[self.drivers["age"] == 15]
-        print("Update new_drivers", new_drivers)
-
-        # Odchod do dôchodku alebo neplatní jazdci
-        retired_drivers = self.active_drivers[
-            (self.active_drivers["age"] > self.active_drivers["retire"])
-            | (self.active_drivers["age"] < 15)
-            # | (self.active_drivers["ability"] < self.ability_min)
-            # | (~self.active_drivers["alive"])
-            ]
-        print("Update retired_drivers", retired_drivers, self.ability_min)
 
         # Odstrániť dôchodcov
-        self.active_drivers = self.active_drivers[
-            ~self.active_drivers["driverID"].isin(retired_drivers["driverID"])
-        ]
+
+        if len(self.retiring_drivers) > 0:
+            self.active_drivers = self.active_drivers[
+                ~self.active_drivers["driverID"].isin(self.retiring_drivers["driverID"])
+            ]
+        # Odchod do dôchodku alebo neplatní jazdci
+        self.retiring_drivers = self.active_drivers[
+            (self.active_drivers["age"] > self.active_drivers["retire"])
+            | (self.active_drivers["age"] < 15)
+            ]
 
         # Pridať nových
         if not new_drivers.empty:
             self.active_drivers = pd.concat([self.active_drivers, new_drivers], ignore_index=True)
 
         # Update v hlavnom DF
-        self.drivers.update(retired_drivers.set_index("driverID"))
+        self.drivers.update(self.retiring_drivers.set_index("driverID"))
 
-        return retired_drivers
+        return self.retiring_drivers
 
     def sort_active_drivers(self):
         """Sort active drivers by race reputation and year."""
@@ -259,9 +259,6 @@ class DriversModel:
             filtered.set_index("driverID", inplace=True)
             self.active_drivers.update(filtered)
             self.active_drivers.reset_index(inplace=True)
-            print(current_date.year)
-            with pd.option_context("display.max_rows", None, "display.max_columns", None):
-                print(self.active_drivers)
 
     # ====== DRIVER CREATION ======
 
