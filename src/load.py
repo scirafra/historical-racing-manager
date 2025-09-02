@@ -1,48 +1,43 @@
-import contracts as co
-import drivers as dr
-import manufacturer as mf
 import race as rc
-import series as se
-import teams as tm
 
 
-def save(name):
+def save(name, teams_model, series_model, drivers_model, manufacturer_model, contracts_model):
+    """Save all game data to the given folder."""
     if len(name) > 0:
         name = name + "/"
         rc.save(name)
-        co.save(name)
-        tm.save(name)
-        se.save(name)
-        dr.save(name)
-        mf.save(name)
+        contracts_model.save(name)
+        teams_model.save(name)
+        series_model.save(name)
+        drivers_model.save(name)
+        manufacturer_model.save(name)
 
 
-def load_all(name):
+def load_all(name, series_model, teams_model, drivers_model, manufacturer_model, contracts_model):
+    """Load all game data into the provided model instances."""
     if len(name) > 0:
         name = name + "/"
 
-        if not se.load(name):
-            print("se not loaded")
+        if not series_model.load(name):
+            print("Series not loaded")
             return False
-        if not co.load(name):
-            print("co not loaded")
+        if not contracts_model.load(name):
+            print("Contracts not loaded")
             return False
         if not rc.load(name):
-            print("rc not loaded")
+            print("Races not loaded")
             return False
-        tmmodel = tm.TeamsModel()
-        if not tmmodel.load(name):
-            print("tm not loaded")
+        if not teams_model.load(name):
+            print("Teams not loaded")
             return False
-        drmodel = dr.DriversModel()
-        if not drmodel.load(name):
-            print("dr not loaded")
+        if not drivers_model.load(name):
+            print("Drivers not loaded")
             return False
-        if not mf.load(name):
-            print("mf not loaded")
+        if not manufacturer_model.load(name):
+            print("Manufacturers not loaded")
             return False
 
         return True
     else:
-        print("Nezadal si meno")
+        print("No name provided")
         return False

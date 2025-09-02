@@ -1,493 +1,296 @@
 import os
-import random as rd
-import tkinter as tk
-from tkinter import ttk
+import random
 
 import numpy as np
 import pandas as pd
 
-from teams import TeamsModel
 
-teams_model = TeamsModel()
+class ContractsModel:
+    def __init__(self):
+        self.DTcontract = pd.DataFrame()
+        self.STcontract = pd.DataFrame()
+        self.CScontract = pd.DataFrame()
+        self.MScontract = pd.DataFrame()
+        self.MTcontract = pd.DataFrame()
 
-CScontract = pd.DataFrame()
-DTcontract = pd.DataFrame()
-STcontract = pd.DataFrame()
-MScontract = pd.DataFrame()
-MTcontract = pd.DataFrame()
+    # --- Persistence ---
+    def load(self, folder: str) -> bool:
+        """Load all contract-related CSVs."""
+        try:
+            self.DTcontract = pd.read_csv(os.path.join(folder, "DTcontract.csv"))
+            self.STcontract = pd.read_csv(os.path.join(folder, "STcontract.csv"))
+            self.CScontract = pd.read_csv(os.path.join(folder, "CScontract.csv"))
+            self.MScontract = pd.read_csv(os.path.join(folder, "MScontract.csv"))
+            self.MTcontract = pd.read_csv(os.path.join(folder, "MTcontract.csv"))
 
-
-def load(name):
-    global CScontract
-    global DTcontract
-    global STcontract
-    global MScontract
-    global MTcontract
-
-    CScontract = pd.DataFrame(columns=CScontract.columns)
-    DTcontract = pd.DataFrame(columns=DTcontract.columns)
-    STcontract = pd.DataFrame(columns=STcontract.columns)
-    MScontract = pd.DataFrame(columns=MScontract.columns)
-    MTcontract = pd.DataFrame(columns=MTcontract.columns)
-    if not os.path.exists(name + "CScontract.csv"):
-        return False
-    if not os.path.exists(name + "DTcontract.csv"):
-        return False
-    if not os.path.exists(name + "STcontract.csv"):
-        return False
-    if not os.path.exists(name + "MScontract.csv"):
-        return False
-    if not os.path.exists(name + "MTcontract.csv"):
-        return False
-
-    CScontract = pd.read_csv(name + "CScontract.csv")
-    DTcontract = pd.read_csv(name + "DTcontract.csv")
-    STcontract = pd.read_csv(name + "STcontract.csv")
-    MScontract = pd.read_csv(name + "MScontract.csv")
-    MTcontract = pd.read_csv(name + "MTcontract.csv")
-    return True
-
-
-def save(name):
-    if len(name) > 0:
-        STcontract.to_csv(name + "STcontract.csv", index=False)
-        DTcontract.to_csv(name + "DTcontract.csv", index=False)
-        CScontract.to_csv(name + "CScontract.csv", index=False)
-        MScontract.to_csv(name + "MScontract.csv", index=False)
-        MTcontract.to_csv(name + "MTcontract.csv", index=False)
-
-
-def get_MScontract():
-    return MScontract
-
-
-def show_dataframe(tree, dataframe):
-    cols = list(dataframe.columns)
-
-    tree["columns"] = cols
-    tree["show"] = "tree headings"
-
-    tree.heading("#0", text="ID")
-    tree.column("#0", width=50, anchor="center")
-
-    for col in cols:
-        tree.heading(col, text=col)
-        tree.column(col, width=100, anchor="center")
-
-    for idx, row in dataframe.iterrows():
-        tree.insert("", "end", text=str(idx), values=list(row))
-
-
-def open_window(parent, labels, spandas, keep, what):
-    top = tk.Toplevel(parent)
-    top.transient(parent)
-    top.grab_set()
-    entries = []
-    for text in labels:
-        tk.Label(top, text=text).pack(padx=10, pady=(10, 0))
-        e = tk.Entry(top)
-        e.pack(padx=10, pady=(0, 10))
-        entries.append(e)
-
-    result = []
-
-    def on_done():
-
-        for e in entries:
-            result.append(e.get())
-        good = True
-        if what == "D":
-            d = result[0]
-            if d.isdigit():
-                d = int(d)
-                if d < 0 or d >= len(spandas):
-                    good = False
-
-            else:
-                good = False
-            m = result[1]
-            if m.isdigit() and good:
-                m = int(m)
-                if m < spandas.loc[d, "minSalary"]:
-                    good = False
-            else:
-                good = False
-            l = result[2]
-            if l.isdigit():
-                l = int(l)
-                if l < 0 or l > 4:
-                    good = False
-            else:
-                good = False
-        if what == "P":
-            d = result[0]
-            if d.isdigit():
-                d = int(d)
-                if d < 0 or d >= len(spandas):
-                    good = False
-            else:
-                good = False
-            l = result[1]
-            if l.isdigit():
-                l = int(l)
-                if l < 0 or l > 4:
-                    good = False
-            else:
-                good = False
-        if good:
-            top.destroy()
-        else:
-            result.clear()
-
-    def on_cancel():
-        top.destroy()
-
-    btn_frame = tk.Frame(top)
-    btn_frame.pack(pady=10)
-    tk.Button(btn_frame, text="Offer", command=on_done).pack(side="left", padx=5)
-    tk.Button(btn_frame, text="Give Up", command=on_cancel).pack(side="left", padx=5)
-
-    frame = ttk.Frame(top)
-    frame.pack(fill="both", expand=True)
-
-    tree = ttk.Treeview(frame)
-    vsb = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
-    hsb = ttk.Scrollbar(frame, orient="horizontal", command=tree.xview)
-    tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
-
-    tree.grid(row=0, column=0, sticky="nsew")
-    vsb.grid(row=0, column=1, sticky="ns")
-    hsb.grid(row=1, column=0, sticky="ew")
-    frame.rowconfigure(0, weight=1)
-    frame.columnconfigure(0, weight=1)
-
-    show_dataframe(tree, spandas[keep])
-
-    parent.wait_window(top)
-    return result
-
-
-def disable_contracts(drivers):
-    for d in drivers:
-        DTcontract.loc[DTcontract["driverID"] == d, "active"] = False
-
-
-def sign_car_part_contracts(active_series, dat, car_parts, teams, manufacturers, root):
-    global MTcontract
-    alive = True
-    active_series = active_series.sort_values(by="reputation", ascending=True)
-    active_series = active_series.reset_index(drop=True)
-    new_contracts = MTcontract.head(0).copy()
-    teams = teams.sort_values(by="reputation", ascending=True)
-
-    active_contracts = MTcontract[
-        (MTcontract["startYear"] <= dat.year) & (MTcontract["endYear"] >= dat.year)
-        ]
-    human_teams = teams[
-        (teams["ai"] == False) & (teams["found"] <= dat.year) & (teams["folded"] >= dat.year)
-        ]
-    will_pay = active_contracts[(active_contracts["teamID"].isin(human_teams["teamID"]))]
-
-    pay_by_team = will_pay.groupby("teamID")["cost"].sum()
-
-    for team_id, total_cost in pay_by_team.items():
-        teams.loc[teams["teamID"] == team_id, "money"] -= total_cost
-    for si in active_series["seriesID"]:
-        series_car_parts = car_parts[
-            (car_parts["seriesID"] == si) & (car_parts["year"] == dat.year)
-            ]
-        teams_in_series = STcontract[STcontract["seriesID"] == si]["teamID"]
-        for h in ["e", "c", "p"]:
-            type_car_part = series_car_parts[(series_car_parts["partType"] == h)]
-            type_car_part = type_car_part.reset_index(drop=True)
-            type_car_part = pd.merge(
-                type_car_part,
-                manufacturers,
-                left_on=["manufacturerID"],
-                right_on=["manufacturerID"],
-                how="left",
+            # Ensure required columns exist
+            self._ensure_columns(
+                self.DTcontract,
+                {
+                    "driverID": None,
+                    "teamID": None,
+                    "salary": 0,
+                    "wanted_reputation": 0,
+                    "startYear": 0,
+                    "endYear": 0,
+                    "active": True,
+                },
             )
-            type_car_part["cost"] = type_car_part["cost"].astype(int)
 
-            type_car_part.rename(columns={"cost": "Cost"}, inplace=True)
-            type_car_part.rename(columns={"name": "Name"}, inplace=True)
+            return True
+        except Exception as e:
+            print("Contract load failed:", e)
+            return False
 
-            for j in teams_in_series:
+    def save(self, folder: str):
+        """Save all contract-related CSVs."""
+        self.DTcontract.to_csv(os.path.join(folder, "DTcontract.csv"), index=False)
+        self.STcontract.to_csv(os.path.join(folder, "STcontract.csv"), index=False)
+        self.CScontract.to_csv(os.path.join(folder, "CScontract.csv"), index=False)
+        self.MScontract.to_csv(os.path.join(folder, "MScontract.csv"), index=False)
+        self.MTcontract.to_csv(os.path.join(folder, "MTcontract.csv"), index=False)
 
-                current_contract = active_contracts[
-                    (active_contracts["seriesID"] == si)
-                    & (active_contracts["teamID"] == j)
-                    & (active_contracts["partType"] == h)
-                    ]
-                if len(current_contract) == 0:
-                    if j in human_teams["teamID"].values and alive:
-                        manufacturer = 0
-                        contract_len = 0
+    def _ensure_columns(self, df, required: dict):
+        """Ensure DataFrame has all required columns."""
+        for col, default in required.items():
+            if col not in df.columns:
+                df[col] = default
 
-                        suciastka = ""
-                        if h == "e":
-                            suciastka = "Engine"
-                        elif h == "c":
-                            suciastka = "Chassi"
-                        elif h == "p":
-                            suciastka = "Tyre"
+    # --- Business logic ---
+    def disable_driver_contracts(self, driver_ids):
+        """Deactivate contracts for given driver IDs."""
+        self._ensure_columns(self.DTcontract, {"active": True})
+        for d in driver_ids:
+            self.DTcontract.loc[self.DTcontract["driverID"] == d, "active"] = False
 
-                        keep = ["Name", "Cost"]
+    def get_MScontract(self):
+        """Return manufacturer-series contracts."""
+        return self.MScontract
 
-                        labels = [
-                            f"Component: {suciastka}, year {dat.year}, available finance: {teams.loc[teams['teamID'] == j, 'money'].values[0]}\nChoose index (0–{len(type_car_part) - 1}):",
-                            f"Contract length (0–4):",
-                        ]
-                        result = open_window(root, labels, type_car_part, keep, "P")
+    def sign_driver_contracts(
+            self,
+            active_series: pd.DataFrame,
+            teams_model,
+            date,
+            active_drivers: pd.DataFrame,
+            rules: pd.DataFrame,
+            temp: bool,
+            teams: pd.DataFrame,
+            team_inputs: dict,  # {teamID: (driverID, salary, contract_length)} or None
+    ):
+        """
+        Sign driver contracts for active series and teams.
 
-                        if len(result) != 2:
-                            teams_model.mark_all_as_ai()
-                            sampled_row = type_car_part.sample(1).iloc[0]
+        Args:
+            active_series: DataFrame of active series.
+            teams_model: TeamsModel instance.
+            date: Current simulation date.
+            active_drivers: DataFrame of available drivers.
+            rules: Point rules for current year.
+            temp: If True, contracts are temporary (maxLen = 1).
+            teams: Full teams DataFrame.
+            team_inputs: Dict of user inputs per teamID or None for AI selection.
+        """
+        self._ensure_columns(
+            self.DTcontract,
+            {
+                "driverID": None,
+                "teamID": None,
+                "salary": 0,
+                "wanted_reputation": 0,
+                "startYear": 0,
+                "endYear": 0,
+                "active": True,
+            },
+        )
 
-                            manufacturer = sampled_row["manufacturerID"]
-                            cost = sampled_row["Cost"]
+        active_series = active_series.sort_values(by="reputation", ascending=True).reset_index(
+            drop=True
+        )
+        teams = teams.sort_values(by="reputation", ascending=True)
 
-                            contract_len = rd.randint(0, 4)
-                            alive = False
-                        else:
-                            d_str, l_str = result
+        for si in active_series["seriesID"]:
+            series_rep = active_series.loc[active_series["seriesID"] == si, "reputation"].values[0]
+            rule = rules[rules["seriesID"] == si]
+            if rule.empty:
+                continue
 
-                            if not d_str:
-                                continue
-                            d, l = int(d_str), int(l_str)
-                            manufacturer = type_car_part.iloc[d]["manufacturerID"]
-                            cost = type_car_part.iloc[d]["Cost"]
-                            contract_len = l
-                    else:
-                        sampled_row = type_car_part.sample(1).iloc[0]
+            max_age = rule["maxAge"].iloc[0]
+            min_age = rule["minAge"].iloc[0]
+            max_cars = rule["maxCars"].iloc[0]
 
-                        manufacturer = sampled_row["manufacturerID"]
-                        cost = sampled_row["Cost"]
-
-                        contract_len = rd.randint(0, 4)
-
-                    new_contracts.loc[len(new_contracts)] = [
-                        si,
-                        j,
-                        manufacturer,
-                        h,
-                        dat.year,
-                        dat.year + contract_len,
-                        cost,
-                    ]
-                    teams.loc[teams["teamID"] == j, "money"] -= cost
-
-    MTcontract = pd.concat([MTcontract, new_contracts], ignore_index=True)
-
-
-def sign_driver_contracts(
-        active_series, dat, DTcontract, active_drivers, rules, STcontract, temp, teams, root
-):
-    active_series = active_series.sort_values(by="reputation", ascending=True)
-    active_series = active_series.reset_index(drop=True)
-
-    teams = teams.sort_values(by="reputation", ascending=True)
-    alive = True
-
-    for si in active_series["seriesID"]:
-        cd = DTcontract[
-            (DTcontract["active"] == True)
-            & (DTcontract["startYear"] <= dat.year)
-            & (DTcontract["endYear"] >= dat.year)
-            & (
-                    DTcontract["wanted_reputation"]
-                    <= active_series.loc[active_series["seriesID"] == si, "reputation"].values[0]
+            available_drivers = active_drivers[
+                (active_drivers["year"] >= date.year - max_age)
+                & (active_drivers["year"] <= date.year - min_age)
+                ].copy()
+            available_drivers["age"] = date.year - available_drivers["year"]
+            available_drivers["maxLen"] = (
+                1 if temp else np.minimum(4, max_age - available_drivers["age"])
             )
-            ]["driverID"]
-    active_drivers["minSalary"] = 2000000 / (active_drivers.index + 1)
-    x = 0
-    for si in active_series["seriesID"]:
-        active_rules = rules[(rules["startSeason"] <= dat.year) & (rules["endSeason"] >= dat.year)]
-        max_age = active_rules[active_rules["seriesID"] == si]["maxAge"].iloc[0]
-        min_age = active_rules[active_rules["seriesID"] == si]["minAge"].iloc[0]
-        available_drivers = active_drivers[
-            (active_drivers["year"] >= dat.year - max_age)
-            & (active_drivers["year"] <= dat.year - min_age)
-            ].copy()
-        available_drivers["age"] = dat.year - available_drivers["year"]
-        if temp:
-            available_drivers["maxLen"] = 1
-        else:
-            available_drivers["maxLen"] = np.minimum(4, max_age - available_drivers["age"])
-        cd = DTcontract[
-            (DTcontract["active"] == True)
-            & (DTcontract["startYear"] <= dat.year)
-            & (DTcontract["endYear"] >= dat.year)
-            & (
-                    DTcontract["wanted_reputation"]
-                    <= active_series.loc[active_series["seriesID"] == si, "reputation"].values[0]
-            )
-            ]
-        contracted_drivers = cd["driverID"]
-        human_teams = teams[
-            (teams["ai"] == False) & (teams["found"] <= dat.year) & (teams["folded"] >= dat.year)
-            ]
-        will_pay = cd[
-            (
-                    cd["wanted_reputation"]
-                    == active_series.loc[active_series["seriesID"] == si, "reputation"].values[0]
-            )
-            & (cd["teamID"].isin(human_teams["teamID"]))
-            ]
-        salary_by_team = will_pay.groupby("teamID")["salary"].sum()
 
-        for team_id, total_salary in salary_by_team.items():
-            teams.loc[teams["teamID"] == team_id, "money"] -= total_salary
+            contracted = self.DTcontract[
+                (self.DTcontract["active"] == True)
+                & (self.DTcontract["startYear"] <= date.year)
+                & (self.DTcontract["endYear"] >= date.year)
+                & (self.DTcontract["wanted_reputation"] <= series_rep)
+                ]["driverID"]
 
-        non_contracted_drivers = available_drivers[
-            ~available_drivers["driverID"].isin(contracted_drivers)
-        ]
-
-        active_DTcontracts = DTcontract[
-            (DTcontract["active"] == True)
-            & (DTcontract["startYear"] <= dat.year)
-            & (DTcontract["endYear"] >= dat.year)
-            & (
-                    DTcontract["wanted_reputation"]
-                    <= active_series.loc[active_series["seriesID"] == si, "reputation"].values[0]
-            )
-            ]
-
-        max_cars = active_rules[active_rules["seriesID"] == si]["maxCars"]
-
-        if len(max_cars) != 0:
-
-            teams_in_series = STcontract[STcontract["seriesID"] == si]["teamID"]
-
-            active_contracts_per_team = active_DTcontracts[
-                active_DTcontracts["teamID"].isin(teams_in_series)
-            ]
+            non_contracted = available_drivers[
+                ~available_drivers["driverID"].isin(contracted)
+            ].reset_index(drop=True)
+            teams_in_series = self.STcontract[self.STcontract["seriesID"] == si]["teamID"]
+            active_contracts = self.DTcontract[
+                (self.DTcontract["active"] == True)
+                & (self.DTcontract["startYear"] <= date.year)
+                & (self.DTcontract["endYear"] >= date.year)
+                & (self.DTcontract["teamID"].isin(teams_in_series))
+                ]
 
             contract_counts = (
-                active_contracts_per_team.groupby("teamID")
-                .size()
-                .reset_index(name="activeContracts")
+                active_contracts.groupby("teamID").size().reset_index(name="activeContracts")
             )
+            team_df = pd.DataFrame(teams_in_series).rename(columns={0: "teamID"})
+            team_df = team_df.merge(contract_counts, on="teamID", how="left").fillna(0)
+            team_df["activeContracts"] = team_df["activeContracts"].astype(int)
+            team_df = team_df.merge(teams, on="teamID")
 
-            all_teams_in_series = (
-                pd.DataFrame(teams_in_series)
-                .merge(contract_counts, on="teamID", how="left")
-                .fillna(0)
-            )
+            for i in range(max_cars):
+                for _, team_row in team_df.iterrows():
+                    if team_row["activeContracts"] == i and len(non_contracted) > 0:
+                        team_id = team_row["teamID"]
+                        is_human = not team_row["ai"]
+                        driver_row = non_contracted.iloc[0]
 
-            all_teams_in_series["activeContracts"] = all_teams_in_series["activeContracts"].astype(
-                int
-            )
-
-            all_teams_in_series = pd.merge(all_teams_in_series, teams, on="teamID")
-
-            non_contracted_drivers = non_contracted_drivers.reset_index(drop=True)
-            for i in range(max_cars.iloc[0]):
-                for j in range(len(all_teams_in_series)):
-
-                    if (
-                            all_teams_in_series.iloc[j]["activeContracts"] == i
-                            and len(non_contracted_drivers) > 0
-                    ):
-                        if all_teams_in_series.iloc[j]["ai"] == False and alive:
-                            show_drivers = non_contracted_drivers[
-                                ["driverID", "forename", "surname", "year", "maxLen", "minSalary"]
-                            ]
-                            show_drivers = show_drivers.rename(
-                                columns={
-                                    "forename": "Forename",
-                                    "surname": "Surname",
-                                    "year": "Birth year",
-                                }
-                            )
-                            show_drivers = show_drivers.sort_values(by="Surname", ascending=True)
-                            show_drivers = show_drivers.reset_index(drop=True)
-
-                            labels = [
-                                f"Available finance: {teams.loc[teams['teamID'] == all_teams_in_series.iloc[j]['teamID'], 'money'].values[0]} , year {dat.year}\nChoose index (0–{len(show_drivers) - 1}):",
-                                f"Salary:",
-                                f"Contract length (0–4):",
-                            ]
-                            keep = ["Forename", "Surname", "Birth year"]
-                            result = open_window(root, labels, show_drivers, keep, "D")
-
-                            if len(result) != 3:
-                                teams_model.mark_all_as_ai()
-                                d = 0
-                                DTcontract.loc[
-                                    DTcontract["driverID"]
-                                    == non_contracted_drivers.iloc[d]["driverID"],
-                                    "active",
-                                ] = False
-                                DTcontract.loc[len(DTcontract)] = [
-                                    non_contracted_drivers.iloc[d]["driverID"],
-                                    all_teams_in_series.iloc[j]["teamID"],
-                                    25000,
-                                    active_series.loc[
-                                        active_series["seriesID"] == si, "reputation"
-                                    ].values[0],
-                                    dat.year,
-                                    dat.year
-                                    + rd.randint(
-                                        0, min(4, non_contracted_drivers.iloc[d]["maxLen"])
-                                    ),
-                                    True,
-                                ]
-                                non_contracted_drivers = non_contracted_drivers.drop(d)
-                                alive = False
-                            else:
-                                d_str, m_str, l_str = result
-                                if not d_str:
-                                    continue
-                                d, m, l = int(d_str), int(m_str), int(l_str)
-
-                                teams.loc[
-                                    teams["teamID"] == all_teams_in_series.iloc[j]["teamID"],
-                                    "money",
-                                ] -= m
-                                DTcontract.loc[
-                                    DTcontract["driverID"] == show_drivers.iloc[d]["driverID"],
-                                    "active",
-                                ] = False
-                                DTcontract.loc[len(DTcontract)] = [
-                                    show_drivers.iloc[d]["driverID"],
-                                    all_teams_in_series.iloc[j]["teamID"],
-                                    m,
-                                    active_series.loc[
-                                        active_series["seriesID"] == si, "reputation"
-                                    ].values[0],
-                                    dat.year,
-                                    dat.year + l,
-                                    True,
-                                ]
-                                non_contracted_drivers = non_contracted_drivers[
-                                    non_contracted_drivers["driverID"]
-                                    != show_drivers.iloc[d]["driverID"]
-                                    ]
+                        if is_human and team_id in team_inputs and team_inputs[team_id]:
+                            driverID, salary, length = team_inputs[team_id]
                         else:
+                            # AI fallback
+                            driverID = driver_row["driverID"]
+                            salary = 25000
+                            length = random.randint(0, min(4, driver_row["maxLen"]))
 
-                            d = 0
-                            DTcontract.loc[
-                                DTcontract["driverID"]
-                                == non_contracted_drivers.iloc[d]["driverID"],
-                                "active",
-                            ] = False
-                            DTcontract.loc[len(DTcontract)] = [
-                                non_contracted_drivers.iloc[d]["driverID"],
-                                all_teams_in_series.iloc[j]["teamID"],
-                                25000,
-                                active_series.loc[
-                                    active_series["seriesID"] == si, "reputation"
-                                ].values[0],
-                                dat.year,
-                                dat.year
-                                + rd.randint(0, min(4, non_contracted_drivers.iloc[d]["maxLen"])),
-                                True,
-                            ]
-                            non_contracted_drivers = non_contracted_drivers.drop(d)
-                        all_teams_in_series.at[j, "activeContracts"] += 1
+                        # Deactivate previous contract
+                        self.DTcontract.loc[self.DTcontract["driverID"] == driverID, "active"] = (
+                            False
+                        )
 
-                        non_contracted_drivers = non_contracted_drivers.reset_index(drop=True)
-                        x += 1
+                        # Add new contract
+                        self.DTcontract.loc[len(self.DTcontract)] = [
+                            driverID,
+                            team_id,
+                            salary,
+                            series_rep,
+                            date.year,
+                            date.year + length,
+                            True,
+                        ]
 
-    return DTcontract
+                        # Update team money
+                        teams.loc[teams["teamID"] == team_id, "money"] -= salary
+
+                        # Remove driver from pool
+                        non_contracted = non_contracted[
+                            non_contracted["driverID"] != driverID
+                            ].reset_index(drop=True)
+                        team_df.loc[team_df["teamID"] == team_id, "activeContracts"] += 1
+
+    def sign_car_part_contracts(
+            self,
+            active_series: pd.DataFrame,
+            date,
+            car_parts: pd.DataFrame,
+            teams_model,
+            manufacturers: pd.DataFrame,
+            team_inputs: dict,  # {teamID: {partType: (manufacturerID, contract_length)}} or None
+    ):
+        """
+        Sign car part contracts for teams in active series.
+
+        Args:
+            active_series: DataFrame of active series.
+            date: Current simulation date.
+            car_parts: DataFrame of available car parts.
+            teams_model: TeamsModel instance.
+            manufacturers: DataFrame of manufacturers.
+            team_inputs: Dict of user inputs per teamID and partType or None for AI selection.
+        """
+        self._ensure_columns(
+            self.MTcontract,
+            {
+                "seriesID": None,
+                "teamID": None,
+                "manufacturerID": None,
+                "partType": "",
+                "startYear": 0,
+                "endYear": 0,
+                "cost": 0,
+            },
+        )
+
+        active_series = active_series.sort_values(by="reputation", ascending=True).reset_index(
+            drop=True
+        )
+        teams = teams_model.teams.sort_values(by="reputation", ascending=True)
+        human_teams = teams[
+            (teams["ai"] == False) & (teams["found"] <= date.year) & (teams["folded"] >= date.year)
+            ]
+
+        active_contracts = self.MTcontract[
+            (self.MTcontract["startYear"] <= date.year) & (self.MTcontract["endYear"] >= date.year)
+            ]
+        will_pay = active_contracts[active_contracts["teamID"].isin(human_teams["teamID"])]
+        pay_by_team = will_pay.groupby("teamID")["cost"].sum()
+
+        for team_id, total_cost in pay_by_team.items():
+            teams.loc[teams["teamID"] == team_id, "money"] -= total_cost
+
+        new_contracts = []
+
+        for si in active_series["seriesID"]:
+            series_parts = car_parts[
+                (car_parts["seriesID"] == si) & (car_parts["year"] == date.year)
+                ]
+            teams_in_series = self.STcontract[self.STcontract["seriesID"] == si]["teamID"]
+
+            for part_type in ["e", "c", "p"]:
+                parts_of_type = series_parts[series_parts["partType"] == part_type].copy()
+                parts_of_type = parts_of_type.merge(manufacturers, on="manufacturerID", how="left")
+                parts_of_type["cost"] = parts_of_type["cost"].astype(int)
+
+                for team_id in teams_in_series:
+                    current_contract = active_contracts[
+                        (active_contracts["seriesID"] == si)
+                        & (active_contracts["teamID"] == team_id)
+                        & (active_contracts["partType"] == part_type)
+                        ]
+                    if not current_contract.empty:
+                        continue
+
+                    is_human = team_id in human_teams["teamID"].values
+                    if is_human and team_inputs.get(team_id, {}).get(part_type):
+                        manufacturerID, contract_len = team_inputs[team_id][part_type]
+                        cost = parts_of_type.loc[
+                            parts_of_type["manufacturerID"] == manufacturerID, "cost"
+                        ].iloc[0]
+                    else:
+                        sampled = parts_of_type.sample(1).iloc[0]
+                        manufacturerID = sampled["manufacturerID"]
+                        cost = sampled["cost"]
+                        contract_len = random.randint(0, 4)
+
+                    new_contracts.append(
+                        {
+                            "seriesID": si,
+                            "teamID": team_id,
+                            "manufacturerID": manufacturerID,
+                            "partType": part_type,
+                            "startYear": date.year,
+                            "endYear": date.year + contract_len,
+                            "cost": cost,
+                        }
+                    )
+                    teams.loc[teams["teamID"] == team_id, "money"] -= cost
+
+        self.MTcontract = pd.concat(
+            [self.MTcontract, pd.DataFrame(new_contracts)], ignore_index=True
+        )

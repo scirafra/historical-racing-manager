@@ -4,13 +4,13 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
-import contracts as ct
 import load as ld
-import manufacturer as mf
 import race as rc
-import series as se
+from contracts import ContractsModel  # nový model
 from drivers import DriversModel
 from graphics import Graphics
+from manufacturer import ManufacturerModel
+from series import SeriesModel
 from teams import TeamsModel
 
 
@@ -31,11 +31,12 @@ class Controller:
         # Models
         self.drivers_model = DriversModel()
         self.teams_model = TeamsModel()
+        self.series_model = SeriesModel()
+        self.manufacturer_model = ManufacturerModel()
+        self.contracts_model = ContractsModel()
 
         # View
         self.view = Graphics(self)
-
-    # ====== PUBLIC API ======
 
     def start_new_season(self):
         self.load_game("my_data")
@@ -50,9 +51,14 @@ class Controller:
         )
         meta.to_csv(f"{name}/data.csv", index=False)
 
-        self.drivers_model.save(name)
-        self.teams_model.save(name)
-        ld.save(name)
+        ld.save(
+            name,
+            self.teams_model,
+            self.series_model,
+            self.drivers_model,
+            self.manufacturer_model,
+            self.contracts_model,
+        )
 
     def load_game(self, name: str):
         if not os.path.exists(f"{name}/data.csv"):
@@ -64,13 +70,17 @@ class Controller:
         self.begin_year = self.begin_date.year
         self.new_game = bool(meta.loc[0, "new_game"])
 
-        ld.load_all(name)
-        self.drivers_model.load(name)
-        self.teams_model.load(name)
+        ld.load_all(
+            name,
+            self.series_model,
+            self.teams_model,
+            self.drivers_model,
+            self.manufacturer_model,
+            self.contracts_model,
+        )
 
         self.drivers_model.choose_active_drivers(self.current_date)
 
-        # Fast-forward to first season
         while self.current_date.year < 1894:
             self.current_date = self.sim_day(self.current_date, 1)
 
@@ -81,10 +91,10 @@ class Controller:
         return self.current_date.strftime("%Y-%m-%d %A")
 
     def get_series_names(self):
-        return se.get_series()["name"].tolist()
+        return self.series_model.get_series()["name"].tolist()
 
     def update_seasons(self, series_name: str):
-        self.seasons = rc.get_seasons_for_series(se.get_series_id(series_name))
+        self.seasons = rc.get_seasons_for_series(self.series_model.get_series_id(series_name))
 
     def get_season_list(self):
         return [str(y) for y in self.seasons]
@@ -93,12 +103,11 @@ class Controller:
         self.current_date = self.sim_day(self.current_date, days)
 
     def get_results(self, series_name: str, season_str: str) -> pd.DataFrame:
-        sid = se.get_series_id(series_name)
+        sid = self.series_model.get_series_id(series_name)
         season = int(season_str)
         df = rc.pivot_results_by_race(sid, season)
 
-        # Map manufacturer IDs to names
-        mf_map = mf.manufacturers.set_index("manufacturerID")["name"].to_dict()
+        mf_map = self.manufacturer_model.manufacturers.set_index("manufacturerID")["name"].to_dict()
         for col_key, col_name in [("engine", "Engine"), ("chassi", "Chassi"), ("pneu", "Tyres")]:
             if col_key in df.columns:
                 df[col_name] = (
@@ -106,7 +115,6 @@ class Controller:
                 )
                 df.drop(columns=[col_key], inplace=True)
 
-        # Merge driver info
         df = df.merge(
             self.drivers_model.drivers[["driverID", "forename", "surname", "year"]],
             on="driverID",
@@ -115,11 +123,9 @@ class Controller:
         df["Age"] = season - df["year"]
         df.drop(columns=["year", "driverID"], inplace=True)
 
-        # Merge team info
         df = df.merge(self.teams_model.teams[["teamID", "teamName"]], on="teamID", how="left")
         df.drop(columns=["teamID"], inplace=True)
 
-        # Rename for display
         df.rename(
             columns={
                 "forename": "Forename",
@@ -183,44 +189,44 @@ class Controller:
 
     def _handle_season_start(self, date: datetime):
         if date.year > 1896:
-            rc.plan_races(date)
+            rc.plan_races(self.series_model, date)
 
-        ct.disable_contracts(self.drivers_model.get_retiring_drivers())
+        self.contracts_model.disable_driver_contracts(self.drivers_model.get_retiring_drivers())
         self.drivers_model.update_drivers(date)
         self.drivers_model.update_reputations()
         self.teams_model.update_reputations()
-
         self.drivers_model.choose_active_drivers(date)
-
-        active_series = se.series[
-            (se.series["startYear"] <= date.year) & (se.series["endYear"] >= date.year)
-        ]
-
         rc.all_time_best(self.drivers_model, 1)
 
         if date.year >= 1894:
-            mf.develop_part(date, ct.get_MScontract())
-            ct.sign_car_part_contracts(
-                active_series,
-                date,
-                mf.car_parts,
-                self.teams_model.teams,
-                mf.manufacturers,
-                self.view.root,
+            self.manufacturer_model.develop_part(date, self.contracts_model.get_MScontract())
+
+            car_part_inputs = self.view.ask_car_part_contracts(
+                self.teams_model.get_human_teams(date), self.manufacturer_model.car_parts, date.year
             )
-            ct.sign_driver_contracts(
-                active_series,
-                date,
-                ct.DTcontract,
-                self.drivers_model.active_drivers,
-                se.point_rules,
-                ct.STcontract,
-                False,
-                self.teams_model.teams,
-                self.view.root,
+            self.contracts_model.sign_car_part_contracts(
+                active_series=self.series_model.get_active_series(date.year),
+                date=date,
+                car_parts=self.manufacturer_model.car_parts,
+                teams_model=self.teams_model,
+                manufacturers=self.manufacturer_model.manufacturers,
+                team_inputs=car_part_inputs,
             )
 
-        # View získa vstup od používateľa a model spracuje
+            driver_inputs = self.view.ask_driver_contracts(
+                self.teams_model.get_human_teams(date), self.drivers_model.active_drivers, date.year
+            )
+            self.contracts_model.sign_driver_contracts(
+                active_series=self.series_model.get_active_series(date.year),
+                teams_model=self.teams_model,
+                date=date,
+                active_drivers=self.drivers_model.active_drivers,
+                rules=self.series_model.point_rules,
+                temp=False,
+                teams=self.teams_model.teams,
+                team_inputs=driver_inputs,
+            )
+
         investments = self.view.ask_finance_investments(self.teams_model.get_human_teams(date))
         self.teams_model.invest_finance(date.year, investments)
 
@@ -231,24 +237,28 @@ class Controller:
 
         died = []
         for i in range(len(races_today)):
-            died += rc.prepare_race(self.drivers_model, races_today, i, date)
+            died += rc.prepare_race(
+                self.drivers_model,
+                self.series_model,
+                self.manufacturer_model,
+                self.contracts_model,
+                races_today,
+                i,
+                date,
+            )
 
         if died:
-            self.drivers_model.mark_drivers_dead(died, date)
-            ct.disable_contracts(died)
+            self.drivers_model.mark_drivers_dead(died, date.year)
+            self.contracts_model.disable_driver_contracts(died)
 
-            active_series = se.series[
-                (se.series["startYear"] <= date.year) & (se.series["endYear"] >= date.year)
-            ]
             if date.year >= 1894:
-                ct.sign_driver_contracts(
-                    active_series,
-                    date,
-                    ct.DTcontract,
-                    self.drivers_model.active_drivers,
-                    se.point_rules,
-                    ct.STcontract,
-                    True,
-                    self.teams_model.teams,
-                    self.view.root,
+                self.contracts_model.sign_driver_contracts(
+                    active_series=self.series_model.get_active_series(date.year),
+                    teams_model=self.teams_model,
+                    date=date,
+                    active_drivers=self.drivers_model.active_drivers,
+                    rules=self.series_model.point_rules,
+                    temp=True,
+                    teams=self.teams_model.teams,
+                    team_inputs={},  # AI fallback only
                 )

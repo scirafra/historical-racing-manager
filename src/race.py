@@ -5,10 +5,6 @@ from datetime import timedelta
 import numpy as np
 import pandas as pd
 
-import contracts as co
-import manufacturer as mf
-import series as se
-
 # --------------------------------------
 # Model state (DataFrames persisted on disk)
 # --------------------------------------
@@ -208,7 +204,15 @@ def _simulate_outcome(row: pd.Series) -> str:
     return "Good"
 
 
-def prepare_race(drivers_model, races_today: pd.DataFrame, idx: int, current_date) -> list[int]:
+def prepare_race(
+        drivers_model,
+        series_model,
+        manufacturer_model,
+        contracts_model,
+        races_today: pd.DataFrame,
+        idx: int,
+        current_date,
+) -> list[int]:
     """Prepare and simulate a single race at index `idx` in `races_today`.
 
     Uses drivers_model.active_drivers and contract tables to assemble the grid,
@@ -216,16 +220,18 @@ def prepare_race(drivers_model, races_today: pd.DataFrame, idx: int, current_dat
     and calls the simulation.
     """
     # Active driver-team contracts for the year
-    active_dt = co.DTcontract[
-        (co.DTcontract["active"] == True)
-        & (co.DTcontract["startYear"] <= current_date.year)
-        & (co.DTcontract["endYear"] >= current_date.year)
-    ]
+    active_dt = contracts_model.DTcontract[
+        (contracts_model.DTcontract["active"] == True)
+        & (contracts_model.DTcontract["startYear"] <= current_date.year)
+        & (contracts_model.DTcontract["endYear"] >= current_date.year)
+        ]
     active_dt = active_dt[active_dt["driverID"].isin(drivers_model.active_drivers["driverID"])]
 
     # Teams allowed in this series
     series_id = int(races_today.iloc[idx]["seriesID"])
-    teams_in_series = co.STcontract[co.STcontract["seriesID"] == series_id]["teamID"]
+    teams_in_series = contracts_model.STcontract[
+        contracts_model.STcontract["seriesID"] == series_id
+        ]["teamID"]
     grid_dt = active_dt[active_dt["teamID"].isin(teams_in_series)]
 
     # Join with driver abilities
@@ -242,15 +248,16 @@ def prepare_race(drivers_model, races_today: pd.DataFrame, idx: int, current_dat
             selected[col] = 0
 
     # Manufacturer-team contracts and parts for this season
-    active_mt = co.MTcontract[
-        (co.MTcontract["startYear"] <= current_date.year)
-        & (co.MTcontract["endYear"] >= current_date.year)
-        & (co.MTcontract["seriesID"] == series_id)
-    ]
+    active_mt = contracts_model.MTcontract[
+        (contracts_model.MTcontract["startYear"] <= current_date.year)
+        & (contracts_model.MTcontract["endYear"] >= current_date.year)
+        & (contracts_model.MTcontract["seriesID"] == series_id)
+        ]
 
-    parts = mf.car_parts[
-        (mf.car_parts["seriesID"] == series_id) & (mf.car_parts["year"] == current_date.year)
-    ]
+    parts = manufacturer_model.car_parts[
+        (manufacturer_model.car_parts["seriesID"] == series_id)
+        & (manufacturer_model.car_parts["year"] == current_date.year)
+        ]
 
     merged = pd.merge(
         active_mt,
@@ -327,12 +334,11 @@ def prepare_race(drivers_model, races_today: pd.DataFrame, idx: int, current_dat
     race_data = race_data.sort_values(by="totalAbility", ascending=False).reset_index(drop=True)
 
     # Point rules for this series/season
-    rules = se.point_rules[
-        (se.point_rules["seriesID"] == series_id)
-        & (se.point_rules["startSeason"] <= current_date.year)
-        & (se.point_rules["endSeason"] >= current_date.year)
-    ].reset_index(drop=True)
-
+    rules = series_model.point_rules[
+        (series_model.point_rules["seriesID"] == series_id)
+        & (series_model.point_rules["startSeason"] <= current_date.year)
+        & (series_model.point_rules["endSeason"] >= current_date.year)
+        ].reset_index(drop=True)
     ps = point_system[point_system["psID"] == rules.loc[0, "psID"]].reset_index(drop=True)
 
     # Run the actual simulation
@@ -351,11 +357,11 @@ def race(drivers_model, race_row, race_data, current_point_rules, ps):
 
 
 def simulate_race(
-    drivers_model,
-    race_row: pd.Series,
-    race_data: pd.DataFrame,
-    current_point_rules: pd.DataFrame,
-    ps: pd.DataFrame,
+        drivers_model,
+        race_row: pd.Series,
+        race_data: pd.DataFrame,
+        current_point_rules: pd.DataFrame,
+        ps: pd.DataFrame,
 ) -> list[int]:
     """Full race simulation. Updates global `results` and `standings`.
 
@@ -412,7 +418,7 @@ def simulate_race(
         pre = standings[
             (standings["seriesID"] == race_row["seriesID"])
             & (standings["year"] == race_row["season"])
-        ]
+            ]
         round_no = 1 if pre.empty else int(pre["round"].max()) + 1
 
     # Write results for classified finishers
@@ -474,21 +480,21 @@ def simulate_race(
 
 
 def _update_standings(
-    race_row: pd.Series,
-    race_data: pd.DataFrame,
-    ranking: list,
-    finish: pd.DataFrame,
-    crash: pd.DataFrame,
-    death: pd.DataFrame,
-    current_point_rules: pd.DataFrame,
-    ps: pd.DataFrame,
+        race_row: pd.Series,
+        race_data: pd.DataFrame,
+        ranking: list,
+        finish: pd.DataFrame,
+        crash: pd.DataFrame,
+        death: pd.DataFrame,
+        current_point_rules: pd.DataFrame,
+        ps: pd.DataFrame,
 ) -> None:
     """Update global standings after a race."""
     global standings
 
     pre = standings[
         (standings["seriesID"] == race_row["seriesID"]) & (standings["year"] == race_row["season"])
-    ]
+        ]
 
     final_blocks = []
     not_finish = pd.concat([crash, death], ignore_index=True)
@@ -578,7 +584,7 @@ def _update_standings(
 # --------------------------------------
 # Calendar generation
 # --------------------------------------
-def plan_races(current_date) -> None:
+def plan_races(series_model, current_date) -> None:
     """Generate races for the given year starting from `current_date`.
 
     - Walks day by day for ~1 season (364 days)
@@ -594,9 +600,10 @@ def plan_races(current_date) -> None:
         if date.strftime("%a") == "Sun":
             week_counter += 1
             if week_counter % 5 == 0:
-                active_series = se.series[
-                    (se.series["startYear"] <= date.year) & (se.series["endYear"] >= date.year)
-                ]
+                active_series = series_model.series[
+                    (series_model.series["startYear"] <= date.year)
+                    & (series_model.series["endYear"] >= date.year)
+                    ]
                 for si, srow in active_series.iterrows():
                     new_race_id = 0 if races.empty else int(races["raceID"].max()) + 1
 

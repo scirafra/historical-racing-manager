@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 
+import numpy as np
+
 
 class Graphics:
     def __init__(self, controller):
@@ -196,3 +198,121 @@ class Graphics:
                 investments[row["teamID"]] = result["value"]
 
         return investments
+
+    def show_dataframe(self, tree, dataframe):
+        """
+        Zobrazí DataFrame v zadanom Treeview widgete.
+        """
+        tree["columns"] = list(dataframe.columns)
+        tree["show"] = "headings"
+
+        for col in dataframe.columns:
+            tree.heading(col, text=col)
+            tree.column(col, width=100, anchor="center")
+
+        for idx, row in dataframe.iterrows():
+            tree.insert("", "end", values=list(row))
+
+    def open_window(self, parent, labels, spandas, keep, what):
+        top = tk.Toplevel(parent)
+        top.transient(parent)
+        top.grab_set()
+        entries = []
+
+        for text in labels:
+            tk.Label(top, text=text).pack(padx=10, pady=(10, 0))
+            e = tk.Entry(top)
+            e.pack(padx=10, pady=(0, 10))
+            entries.append(e)
+
+        result = []
+
+        def on_done():
+            for e in entries:
+                result.append(e.get())
+            top.destroy()
+
+        def on_cancel():
+            result.clear()
+            top.destroy()
+
+        btn_frame = tk.Frame(top)
+        btn_frame.pack(pady=10)
+        tk.Button(btn_frame, text="Potvrdit", command=on_done).pack(side="left", padx=5)
+        tk.Button(btn_frame, text="Zrušit", command=on_cancel).pack(side="left", padx=5)
+
+        frame = ttk.Frame(top)
+        frame.pack(fill="both", expand=True)
+
+        tree = ttk.Treeview(frame)
+        vsb = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+        hsb = ttk.Scrollbar(frame, orient="horizontal", command=tree.xview)
+        tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+
+        tree.grid(row=0, column=0, sticky="nsew")
+        vsb.grid(row=0, column=1, sticky="ns")
+        hsb.grid(row=1, column=0, sticky="ew")
+        frame.rowconfigure(0, weight=1)
+        frame.columnconfigure(0, weight=1)
+
+        self.show_dataframe(tree, spandas[keep])
+        parent.wait_window(top)
+        return result
+
+    def ask_driver_contracts(self, human_teams_df, available_drivers_df, year) -> dict:
+        result = {}
+        for _, team in human_teams_df.iterrows():
+            team_id = team["teamID"]
+            budget = team["money"]
+
+            drivers = available_drivers_df.copy()
+            drivers["Age"] = year - drivers["year"]
+            drivers["maxLen"] = np.minimum(4, drivers["Age"].apply(lambda a: max(1, 40 - a)))
+            drivers["minSalary"] = 25000
+
+            drivers = drivers.rename(columns={"forename": "Forename", "surname": "Surname"})
+            print(drivers)
+            keep = ["Forename", "Surname", "Age", "minSalary"]
+
+            labels = [
+                f"Tým: {team['teamName']} | Rozpočet: {budget}\nZadej index jezdce (0–{len(drivers) - 1}):",
+                "Plat:",
+                "Délka smlouvy (0–4):",
+            ]
+
+            entry = self.open_window(self.root, labels, drivers, keep, "D")
+            if len(entry) == 3:
+                d, m, l = map(int, entry)
+                driver_id = drivers.iloc[d]["driverID"]
+                result[team_id] = (driver_id, m, l)
+            else:
+                result[team_id] = None
+        return result
+
+    def ask_car_part_contracts(self, human_teams_df, car_parts_df, year) -> dict:
+        result = {}
+        for _, team in human_teams_df.iterrows():
+            team_id = team["teamID"]
+            budget = team["money"]
+            result[team_id] = {}
+
+            for part_type, label in [("e", "Engine"), ("c", "Chassi"), ("p", "Tyre")]:
+                parts = car_parts_df[
+                    (car_parts_df["partType"] == part_type) & (car_parts_df["year"] == year)
+                    ].copy()
+                parts = parts.rename(columns={"cost": "Cost"})
+                keep = ["manufacturerID", "Cost"]
+
+                labels = [
+                    f"Tým: {team['teamName']} | Komponent: {label} | Rozpočet: {budget}\nZadej index (0–{len(parts) - 1}):",
+                    "Délka smlouvy (0–4):",
+                ]
+
+                entry = self.open_window(self.root, labels, parts, keep, "P")
+                if len(entry) == 2:
+                    d, l = map(int, entry)
+                    manufacturer_id = parts.iloc[d]["manufacturerID"]
+                    result[team_id][part_type] = (manufacturer_id, l)
+                else:
+                    result[team_id][part_type] = None
+        return result
