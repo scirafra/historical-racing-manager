@@ -68,15 +68,15 @@ class ContractsModel:
         return self.MScontract
 
     def sign_driver_contracts(
-            self,
-            active_series: pd.DataFrame,
-            teams_model,
-            date,
-            active_drivers: pd.DataFrame,
-            rules: pd.DataFrame,
-            temp: bool,
-            teams: pd.DataFrame,
-            team_inputs: dict,  # {teamID: (driverID, salary, contract_length)} or None
+        self,
+        active_series: pd.DataFrame,
+        teams_model,
+        date,
+        active_drivers: pd.DataFrame,
+        rules: pd.DataFrame,
+        temp: bool,
+        teams: pd.DataFrame,
+        team_inputs: dict,  # {teamID: (driverID, salary, contract_length)} or None
     ):
         """
         Sign driver contracts for active series and teams.
@@ -122,7 +122,7 @@ class ContractsModel:
             available_drivers = active_drivers[
                 (active_drivers["year"] >= date.year - max_age)
                 & (active_drivers["year"] <= date.year - min_age)
-                ].copy()
+            ].copy()
             available_drivers["age"] = date.year - available_drivers["year"]
             available_drivers["maxLen"] = (
                 1 if temp else np.minimum(4, max_age - available_drivers["age"])
@@ -133,7 +133,7 @@ class ContractsModel:
                 & (self.DTcontract["startYear"] <= date.year)
                 & (self.DTcontract["endYear"] >= date.year)
                 & (self.DTcontract["wanted_reputation"] <= series_rep)
-                ]["driverID"]
+            ]["driverID"]
 
             non_contracted = available_drivers[
                 ~available_drivers["driverID"].isin(contracted)
@@ -144,7 +144,7 @@ class ContractsModel:
                 & (self.DTcontract["startYear"] <= date.year)
                 & (self.DTcontract["endYear"] >= date.year)
                 & (self.DTcontract["teamID"].isin(teams_in_series))
-                ]
+            ]
 
             contract_counts = (
                 active_contracts.groupby("teamID").size().reset_index(name="activeContracts")
@@ -191,17 +191,17 @@ class ContractsModel:
                         # Remove driver from pool
                         non_contracted = non_contracted[
                             non_contracted["driverID"] != driverID
-                            ].reset_index(drop=True)
+                        ].reset_index(drop=True)
                         team_df.loc[team_df["teamID"] == team_id, "activeContracts"] += 1
 
     def sign_car_part_contracts(
-            self,
-            active_series: pd.DataFrame,
-            date,
-            car_parts: pd.DataFrame,
-            teams_model,
-            manufacturers: pd.DataFrame,
-            team_inputs: dict,  # {teamID: {partType: (manufacturerID, contract_length)}} or None
+        self,
+        active_series: pd.DataFrame,
+        date,
+        car_parts: pd.DataFrame,
+        teams_model,
+        manufacturers: pd.DataFrame,
+        team_inputs: dict,  # {teamID: {partType: (manufacturerID, contract_length)}} or None
     ):
         """
         Sign car part contracts for teams in active series.
@@ -233,11 +233,11 @@ class ContractsModel:
         teams = teams_model.teams.sort_values(by="reputation", ascending=True)
         human_teams = teams[
             (teams["ai"] == False) & (teams["found"] <= date.year) & (teams["folded"] >= date.year)
-            ]
+        ]
 
         active_contracts = self.MTcontract[
             (self.MTcontract["startYear"] <= date.year) & (self.MTcontract["endYear"] >= date.year)
-            ]
+        ]
         will_pay = active_contracts[active_contracts["teamID"].isin(human_teams["teamID"])]
         pay_by_team = will_pay.groupby("teamID")["cost"].sum()
 
@@ -249,7 +249,7 @@ class ContractsModel:
         for si in active_series["seriesID"]:
             series_parts = car_parts[
                 (car_parts["seriesID"] == si) & (car_parts["year"] == date.year)
-                ]
+            ]
             teams_in_series = self.STcontract[self.STcontract["seriesID"] == si]["teamID"]
 
             for part_type in ["e", "c", "p"]:
@@ -262,7 +262,7 @@ class ContractsModel:
                         (active_contracts["seriesID"] == si)
                         & (active_contracts["teamID"] == team_id)
                         & (active_contracts["partType"] == part_type)
-                        ]
+                    ]
                     if not current_contract.empty:
                         continue
 

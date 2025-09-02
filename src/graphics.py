@@ -165,7 +165,7 @@ class Graphics:
             tk.Label(
                 top,
                 text=f"Tím: {row['teamName']}\nDostupné financie: {row['money']}\n"
-                     f"Zadaj počet finančných zamestnancov (0–{max_fin}):",
+                f"Zadaj počet finančných zamestnancov (0–{max_fin}):",
             ).pack(padx=10, pady=(10, 0))
 
             entry = tk.Entry(top)
@@ -299,7 +299,7 @@ class Graphics:
             for part_type, label in [("e", "Engine"), ("c", "Chassi"), ("p", "Tyre")]:
                 parts = car_parts_df[
                     (car_parts_df["partType"] == part_type) & (car_parts_df["year"] == year)
-                    ].copy()
+                ].copy()
                 parts = parts.rename(columns={"cost": "Cost"})
                 keep = ["manufacturerID", "Cost"]
 
