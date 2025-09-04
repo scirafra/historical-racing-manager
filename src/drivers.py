@@ -130,6 +130,7 @@ class DriversModel:
     def get_retiring_drivers(self):
         if len(self.retiring_drivers) == 0:
             return []
+
         return self.retiring_drivers["driverID"].tolist()
 
     def _update_active_driver_list(self, current_date: date):
@@ -159,7 +160,7 @@ class DriversModel:
 
         # Update v hlavnom DF
         self.drivers.update(self.retiring_drivers.set_index("driverID"))
-
+        print(current_date.year, self.active_drivers[(self.active_drivers["age"] > 60)])
         return self.retiring_drivers
 
     def sort_active_drivers(self):

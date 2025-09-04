@@ -50,7 +50,7 @@ class TeamsModel:
                 if 0 <= fin_count <= max_fin:
                     idx = human_teams.index[human_teams["teamID"] == team_id][0]
                     human_teams.at[idx, "money"] -= fin_count * 2500
-                    human_teams.at[idx, "fin"] = fin_count
+                    human_teams.at[idx, "finance_employees"] = fin_count
                 else:
                     self.mark_all_as_ai()
 
@@ -63,17 +63,17 @@ class TeamsModel:
     def _update_money_for_team(row):
         """Calculate profit based on the number of finance employees."""
         earn_coef = [12000, 11000, 10000, 9000, 8000, 7000, 6000, 5000, 4000, 3000, 2000, 1000, 0]
-        money, fin = row["money"], row["fin"]
+        money, finance_employees = row["money"], row["finance_employees"]
 
         for coef in earn_coef:
-            if fin <= 0:
+            if finance_employees <= 0:
                 break
-            used = min(fin, 100)
+            used = min(finance_employees, 100)
             money += coef * used
-            fin -= used
+            finance_employees -= used
 
         row["money"] = int(money)
-        row["fin"] = int(fin)
+        row["finance_employees"] = int(finance_employees)
         return row
 
     def update_money(self):

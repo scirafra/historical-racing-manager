@@ -5,37 +5,34 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 import load as ld
-import race as rc
-from contracts import ContractsModel  # nový model
+from contracts import ContractsModel
 from drivers import DriversModel
 from graphics import Graphics
 from manufacturer import ManufacturerModel
+from race import RaceModel
 from series import SeriesModel
 from teams import TeamsModel
 
 
 class Controller:
     def __init__(self):
-        # Simulation config
         self.begin_year = 1843
         self.end_year = 3000
         self.drivers_per_year = 4
         self.sim_years_step = 36
 
-        # Time state
         self.begin_date = datetime.strptime(f"01-01-{self.begin_year}", "%d-%m-%Y")
         self.current_date = self.begin_date
         self.new_game = True
         self.ss = time.time()
 
-        # Models
         self.drivers_model = DriversModel()
         self.teams_model = TeamsModel()
         self.series_model = SeriesModel()
         self.manufacturer_model = ManufacturerModel()
         self.contracts_model = ContractsModel()
+        self.race_model = RaceModel()
 
-        # View
         self.view = Graphics(self)
 
     def start_new_season(self):
@@ -58,6 +55,7 @@ class Controller:
             self.drivers_model,
             self.manufacturer_model,
             self.contracts_model,
+            self.race_model,
         )
 
     def load_game(self, name: str):
@@ -77,6 +75,7 @@ class Controller:
             self.drivers_model,
             self.manufacturer_model,
             self.contracts_model,
+            self.race_model,
         )
 
         self.drivers_model.choose_active_drivers(self.current_date)
@@ -94,7 +93,8 @@ class Controller:
         return self.series_model.get_series()["name"].tolist()
 
     def update_seasons(self, series_name: str):
-        self.seasons = rc.get_seasons_for_series(self.series_model.get_series_id(series_name))
+        sid = self.series_model.get_series_id(series_name)
+        self.seasons = self.race_model.get_seasons_for_series(sid)
 
     def get_season_list(self):
         return [str(y) for y in self.seasons]
@@ -105,7 +105,7 @@ class Controller:
     def get_results(self, series_name: str, season_str: str) -> pd.DataFrame:
         sid = self.series_model.get_series_id(series_name)
         season = int(season_str)
-        df = rc.pivot_results_by_race(sid, season)
+        df = self.race_model.pivot_results_by_race(sid, season)
 
         mf_map = self.manufacturer_model.manufacturers.set_index("manufacturerID")["name"].to_dict()
         for col_key, col_name in [("engine", "Engine"), ("chassi", "Chassi"), ("pneu", "Tyres")]:
@@ -161,8 +161,6 @@ class Controller:
 
         return df
 
-    # ====== SIMULATION ======
-
     def sim_day(self, date: datetime, days: int) -> datetime:
         for _ in range(days):
             date += timedelta(days=1)
@@ -182,21 +180,19 @@ class Controller:
     def run(self):
         self.view.run()
 
-    # ====== PRIVATE HELPERS ======
-
     def _is_season_start(self, date: datetime) -> bool:
         return 2999 > date.year and date.day == 1 and date.month == 1
 
     def _handle_season_start(self, date: datetime):
         if date.year > 1896:
-            rc.plan_races(self.series_model, date)
-
+            self.race_model.plan_races(self.series_model, date)
+        print(date, self.drivers_model.get_retiring_drivers())
         self.contracts_model.disable_driver_contracts(self.drivers_model.get_retiring_drivers())
         self.drivers_model.update_drivers(date)
         self.drivers_model.update_reputations()
         self.teams_model.update_reputations()
         self.drivers_model.choose_active_drivers(date)
-        rc.all_time_best(self.drivers_model, 1)
+        self.race_model.all_time_best(self.drivers_model, 1)
 
         if date.year >= 1894:
             self.manufacturer_model.develop_part(date, self.contracts_model.get_MScontract())
@@ -231,13 +227,13 @@ class Controller:
         self.teams_model.invest_finance(date.year, investments)
 
     def _handle_races(self, date: datetime):
-        races_today = rc.races[rc.races["race_date"] == date].copy()
+        races_today = self.race_model.races[self.race_model.races["race_date"] == date].copy()
         if races_today.empty:
             return
 
         died = []
         for i in range(len(races_today)):
-            died += rc.prepare_race(
+            died += self.race_model.prepare_race(
                 self.drivers_model,
                 self.series_model,
                 self.manufacturer_model,

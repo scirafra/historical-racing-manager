@@ -1,11 +1,10 @@
-import race as rc
-
-
-def save(name, teams_model, series_model, drivers_model, manufacturer_model, contracts_model):
+def save(
+    name, teams_model, series_model, drivers_model, manufacturer_model, contracts_model, race_model
+):
     """Save all game data to the given folder."""
     if len(name) > 0:
         name = name + "/"
-        rc.save(name)
+        race_model.save(name)
         contracts_model.save(name)
         teams_model.save(name)
         series_model.save(name)
@@ -13,7 +12,9 @@ def save(name, teams_model, series_model, drivers_model, manufacturer_model, con
         manufacturer_model.save(name)
 
 
-def load_all(name, series_model, teams_model, drivers_model, manufacturer_model, contracts_model):
+def load_all(
+    name, series_model, teams_model, drivers_model, manufacturer_model, contracts_model, race_model
+):
     """Load all game data into the provided model instances."""
     if len(name) > 0:
         name = name + "/"
@@ -24,7 +25,7 @@ def load_all(name, series_model, teams_model, drivers_model, manufacturer_model,
         if not contracts_model.load(name):
             print("Contracts not loaded")
             return False
-        if not rc.load(name):
+        if not race_model.load(name):
             print("Races not loaded")
             return False
         if not teams_model.load(name):
