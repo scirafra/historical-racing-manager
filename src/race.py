@@ -8,7 +8,6 @@ import pandas as pd
 
 class RaceModel:
     def __init__(self):
-        # DataFrames
         self.results = pd.DataFrame()
         self.races = pd.DataFrame()
         self.standings = pd.DataFrame()
@@ -16,7 +15,6 @@ class RaceModel:
         self.circuits = pd.DataFrame()
         self.circuit_layouts = pd.DataFrame()
 
-        # Legacy counters
         self.crashes = 0
         self.deaths = 0
         self.f1_races = 0
@@ -31,9 +29,9 @@ class RaceModel:
             "circuits.csv",
             "circuit_layouts.csv",
         ]
-        for fname in required:
-            if not os.path.exists(base_path + fname):
-                return False
+        missing = [f for f in required if not os.path.exists(base_path + f)]
+        if missing:
+            return False
 
         self.standings = pd.read_csv(base_path + "stands.csv")
         self.races = pd.read_csv(base_path + "races.csv")
@@ -65,6 +63,33 @@ class RaceModel:
         ].copy()
         return df.reset_index(drop=True)
 
+    def get_seasons_for_series(self, series_id: int) -> list[int]:
+        if self.results.empty:
+            return []
+        seasons = self.results.loc[self.results["seriesID"] == series_id, "season"].unique()
+        return sorted(seasons.tolist())
+
+    def all_time_best(self, drivers_model, series_id: int) -> pd.DataFrame:
+        filtered = self.standings[
+            (self.standings["seriesID"] == series_id) & (self.standings["typ"] == "driver")
+        ]
+        if filtered.empty:
+            return pd.DataFrame()
+
+        max_rounds = filtered.groupby("year")["round"].max().reset_index()
+        result = pd.merge(filtered, max_rounds, on=["year", "round"])
+        result = result.rename(columns={"subjectID": "driverID"})
+
+        position_counts = result.pivot_table(
+            index="driverID", columns="position", aggfunc="size", fill_value=0
+        )
+        sorted_df = position_counts.sort_values(
+            by=position_counts.columns.tolist(), ascending=[False] * len(position_counts.columns)
+        ).reset_index()
+
+        names = drivers_model.drivers[["driverID", "forename", "surname"]]
+        return pd.merge(sorted_df, names, on="driverID", how="left")
+
     def pivot_results_by_race(self, series_id: int, season: int, fill_value=None) -> pd.DataFrame:
         df = self.get_results_for_series_and_season(series_id, season)
         if df.empty:
@@ -75,7 +100,6 @@ class RaceModel:
 
         zero_rids = sorted(df.loc[df["round"] == 0, "raceID"].unique())
         zero_map = {rid: f"NC{i + 1}" for i, rid in enumerate(zero_rids)}
-
         df["col_label"] = df.apply(
             lambda r: zero_map[r["raceID"]] if r["round"] == 0 else str(r["round"]), axis=1
         )
@@ -115,33 +139,6 @@ class RaceModel:
 
         return pivot
 
-    def get_seasons_for_series(self, series_id: int) -> list[int]:
-        if self.results.empty:
-            return []
-        seasons = self.results.loc[self.results["seriesID"] == series_id, "season"].unique()
-        return sorted(seasons.tolist())
-
-    def all_time_best(self, drivers_model, series_id: int) -> pd.DataFrame:
-        filtered = self.standings[
-            (self.standings["seriesID"] == series_id) & (self.standings["typ"] == "driver")
-        ]
-        if filtered.empty:
-            return pd.DataFrame()
-
-        max_rounds = filtered.groupby("year")["round"].max().reset_index()
-        result = pd.merge(filtered, max_rounds, on=["year", "round"])
-        result = result.rename(columns={"subjectID": "driverID"})
-
-        position_counts = result.pivot_table(
-            index="driverID", columns="position", aggfunc="size", fill_value=0
-        )
-        sorted_df = position_counts.sort_values(
-            by=position_counts.columns.tolist(), ascending=[False] * len(position_counts.columns)
-        ).reset_index()
-
-        names = drivers_model.drivers[["driverID", "forename", "surname"]]
-        return pd.merge(sorted_df, names, on="driverID", how="left")
-
     # ===== Simulation =====
     def prepare_race(
         self,
@@ -153,14 +150,17 @@ class RaceModel:
         idx: int,
         current_date,
     ) -> list[int]:
+        series_id = int(races_today.iloc[idx]["seriesID"])
+        layout_id = int(races_today.iloc[idx]["layoutID"])
+        layout_row = self.circuit_layouts[self.circuit_layouts["layoutID"] == layout_id].iloc[0]
+
         active_dt = contracts_model.DTcontract[
-            (contracts_model.DTcontract["active"] == True)
+            (contracts_model.DTcontract["active"])
             & (contracts_model.DTcontract["startYear"] <= current_date.year)
             & (contracts_model.DTcontract["endYear"] >= current_date.year)
         ]
         active_dt = active_dt[active_dt["driverID"].isin(drivers_model.active_drivers["driverID"])]
 
-        series_id = int(races_today.iloc[idx]["seriesID"])
         teams_in_series = contracts_model.STcontract[
             contracts_model.STcontract["seriesID"] == series_id
         ]["teamID"]
@@ -174,8 +174,7 @@ class RaceModel:
         )
 
         for col in ("power", "reliability", "safety", "e", "c", "p"):
-            if col not in selected:
-                selected[col] = 0
+            selected[col] = selected.get(col, 0)
 
         active_mt = contracts_model.MTcontract[
             (contracts_model.MTcontract["startYear"] <= current_date.year)
@@ -205,17 +204,8 @@ class RaceModel:
             selected.loc[mask, "reliability"] += int(part.get("reliability", 0))
             selected.loc[mask, "safety"] += int(part.get("safety", 0))
 
-        layout_id = int(races_today.iloc[idx]["layoutID"])
-        layout_row = self.circuit_layouts[self.circuit_layouts["layoutID"] == layout_id].iloc[0]
         corners = int(layout_row.get("corners", 1) or 1)
-
-        wet = races_today.iloc[idx].get("wet", 1)
-        try:
-            wet_val = float(wet)
-        except Exception:
-            wet_val = 1.0
-        wet_val = max(wet_val, 1.0)
-
+        wet_val = max(float(races_today.iloc[idx].get("wet", 1) or 1), 1.0)
         track_factor = max(int(corners / wet_val), 1)
 
         race_data = pd.DataFrame(
@@ -234,12 +224,11 @@ class RaceModel:
             ]
         )
 
-        for j in range(len(selected)):
-            row = selected.iloc[j]
-            power = int(row["power"]) if pd.notna(row["power"]) else 0
-            rel = int(row["reliability"]) if pd.notna(row["reliability"]) else 0
-            saf = int(row["safety"]) if pd.notna(row["safety"]) else 0
-            ability = int(row.get("ability", 0) or 0)
+        for j, row in selected.iterrows():
+            power = int(row.get("power", 0))
+            rel = int(row.get("reliability", 0))
+            saf = int(row.get("safety", 0))
+            ability = int(row.get("ability", 0))
 
             race_data.loc[len(race_data)] = [
                 int(row["driverID"]),
@@ -250,9 +239,9 @@ class RaceModel:
                 int(saf * wet_val),
                 int(power * track_factor + ability * 100),
                 int(row["teamID"]),
-                int(row.get("e", 0) or 0),
-                int(row.get("c", 0) or 0),
-                int(row.get("p", 0) or 0),
+                int(row.get("e", 0)),
+                int(row.get("c", 0)),
+                int(row.get("p", 0)),
             ]
 
         race_data = race_data.sort_values(by="totalAbility", ascending=False).reset_index(drop=True)
@@ -286,7 +275,6 @@ class RaceModel:
         race_data["carReliability"] = (race_data["carReliability"] * track_safety * wet_val).astype(
             int
         )
-
         race_data["finished"] = race_data.apply(self._simulate_outcome, axis=1)
 
         if int(race_row["seriesID"]) == 1 and int(race_row["season"]) > 1949:
@@ -407,7 +395,6 @@ class RaceModel:
             (self.standings["seriesID"] == race_row["seriesID"])
             & (self.standings["year"] == race_row["season"])
         ]
-
         final_blocks = []
         not_finish = pd.concat([crash, death], ignore_index=True)
 

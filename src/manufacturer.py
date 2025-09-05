@@ -77,16 +77,17 @@ class ManufacturerModel:
                 "cost",
             ]
         ]
-        new_parts["partID"] = self._generate_new_part_ids(len(new_parts))
+        new_parts.loc[:, "partID"] = self._generate_new_part_ids(len(new_parts))
+
         self.car_parts = pd.concat([self.car_parts, new_parts], ignore_index=True)
 
     def _merge_contracts_with_rules(self, contracts: pd.DataFrame, year: int) -> pd.DataFrame:
         merged = pd.merge(contracts, self.rules, on=["seriesID", "partType"], how="left")
         mask = (
-                (merged["startYear"] <= year)
-                & (merged["startSeason"] <= year)
-                & (merged["endYear"] >= year)
-                & (merged["endSeason"] >= year)
+            (merged["startYear"] <= year)
+            & (merged["startSeason"] <= year)
+            & (merged["endYear"] >= year)
+            & (merged["endSeason"] >= year)
         )
         return merged.loc[mask].copy()
 
