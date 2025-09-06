@@ -58,7 +58,7 @@ class RaceModel:
     def get_results_for_series_and_season(self, series_id: int, season: int) -> pd.DataFrame:
         df = self.results[
             (self.results["seriesID"] == series_id) & (self.results["season"] == season)
-            ][
+        ][
             ["driverID", "teamID", "engineID", "chassiID", "pneuID", "raceID", "position", "round"]
         ].copy()
         return df.reset_index(drop=True)
@@ -72,7 +72,7 @@ class RaceModel:
     def all_time_best(self, drivers_model, series_id: int) -> pd.DataFrame:
         filtered = self.standings[
             (self.standings["seriesID"] == series_id) & (self.standings["typ"] == "driver")
-            ]
+        ]
         if filtered.empty:
             return pd.DataFrame()
 
@@ -141,14 +141,14 @@ class RaceModel:
 
     # ===== Simulation =====
     def prepare_race(
-            self,
-            drivers_model,
-            series_model,
-            manufacturer_model,
-            contracts_model,
-            races_today: pd.DataFrame,
-            idx: int,
-            current_date,
+        self,
+        drivers_model,
+        series_model,
+        manufacturer_model,
+        contracts_model,
+        races_today: pd.DataFrame,
+        idx: int,
+        current_date,
     ) -> list[int]:
         series_id = int(races_today.iloc[idx]["seriesID"])
         layout_id = int(races_today.iloc[idx]["layoutID"])
@@ -158,12 +158,12 @@ class RaceModel:
             (contracts_model.DTcontract["active"])
             & (contracts_model.DTcontract["startYear"] <= current_date.year)
             & (contracts_model.DTcontract["endYear"] >= current_date.year)
-            ]
+        ]
         active_dt = active_dt[active_dt["driverID"].isin(drivers_model.active_drivers["driverID"])]
 
         teams_in_series = contracts_model.STcontract[
             contracts_model.STcontract["seriesID"] == series_id
-            ]["teamID"]
+        ]["teamID"]
         grid_dt = active_dt[active_dt["teamID"].isin(teams_in_series)]
 
         selected = pd.merge(
@@ -180,12 +180,12 @@ class RaceModel:
             (contracts_model.MTcontract["startYear"] <= current_date.year)
             & (contracts_model.MTcontract["endYear"] >= current_date.year)
             & (contracts_model.MTcontract["seriesID"] == series_id)
-            ]
+        ]
         print("amt", active_mt)
         parts = manufacturer_model.car_parts[
             (manufacturer_model.car_parts["seriesID"] == series_id)
             & (manufacturer_model.car_parts["year"] == current_date.year)
-            ]
+        ]
         with pd.option_context("display.max_columns", None, "display.max_rows", None):
             print("p", parts)
         merge_keys = ["seriesID", "manufacturerID"]
@@ -267,7 +267,7 @@ class RaceModel:
             (series_model.point_rules["seriesID"] == series_id)
             & (series_model.point_rules["startSeason"] <= current_date.year)
             & (series_model.point_rules["endSeason"] >= current_date.year)
-            ].reset_index(drop=True)
+        ].reset_index(drop=True)
 
         ps = self.point_system[self.point_system["psID"] == rules.loc[0, "psID"]].reset_index(
             drop=True
@@ -276,12 +276,12 @@ class RaceModel:
         return self.simulate_race(drivers_model, races_today.iloc[idx], race_data, rules, ps)
 
     def simulate_race(
-            self,
-            drivers_model,
-            race_row: pd.Series,
-            race_data: pd.DataFrame,
-            current_point_rules: pd.DataFrame,
-            ps: pd.DataFrame,
+        self,
+        drivers_model,
+        race_row: pd.Series,
+        race_data: pd.DataFrame,
+        current_point_rules: pd.DataFrame,
+        ps: pd.DataFrame,
     ) -> list[int]:
         died: list[int] = []
         if race_data.empty:
@@ -327,7 +327,7 @@ class RaceModel:
             pre = self.standings[
                 (self.standings["seriesID"] == race_row["seriesID"])
                 & (self.standings["year"] == race_row["season"])
-                ]
+            ]
             round_no = 1 if pre.empty else int(pre["round"].max()) + 1
 
         for pos, (fin_idx, _) in enumerate(ranking, start=1):
@@ -398,20 +398,20 @@ class RaceModel:
         return "Good"
 
     def _update_standings(
-            self,
-            race_row: pd.Series,
-            race_data: pd.DataFrame,
-            ranking: list,
-            finish: pd.DataFrame,
-            crash: pd.DataFrame,
-            death: pd.DataFrame,
-            current_point_rules: pd.DataFrame,
-            ps: pd.DataFrame,
+        self,
+        race_row: pd.Series,
+        race_data: pd.DataFrame,
+        ranking: list,
+        finish: pd.DataFrame,
+        crash: pd.DataFrame,
+        death: pd.DataFrame,
+        current_point_rules: pd.DataFrame,
+        ps: pd.DataFrame,
     ) -> None:
         pre = self.standings[
             (self.standings["seriesID"] == race_row["seriesID"])
             & (self.standings["year"] == race_row["season"])
-            ]
+        ]
         final_blocks = []
         not_finish = pd.concat([crash, death], ignore_index=True)
 
@@ -508,7 +508,7 @@ class RaceModel:
                     active_series = series_model.series[
                         (series_model.series["startYear"] <= date.year)
                         & (series_model.series["endYear"] >= date.year)
-                        ]
+                    ]
                     for si, srow in active_series.iterrows():
                         new_race_id = 0 if self.races.empty else int(self.races["raceID"].max()) + 1
                         championship = not (si == active_series.index[-1] and week_counter % 6 == 0)
@@ -518,7 +518,7 @@ class RaceModel:
                         track_id = int(rd.choice(self.circuits["circuitID"].tolist()))
                         matching = self.circuit_layouts[
                             self.circuit_layouts["circuitID"] == track_id
-                            ]
+                        ]
                         if matching.empty:
                             continue
                         layout_id = int(rd.choice(matching["layoutID"].tolist()))
