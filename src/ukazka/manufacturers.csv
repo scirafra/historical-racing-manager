@@ -1,7 +1,0 @@
-manufacturerId,owner,name,found,folded,money,e,c,p,emp,ai
-0,,Ferrari,1800,9999,10000000,True,True,False,0,True
-1,,Ford,1800,9999,10000000,True,False,False,0,True
-2,,Dallara,1800,9999,10000000,False,True,False,0,True
-3,,Lola,1800,9999,10000000,False,True,False,0,True
-4,,Dunlop,1800,9999,10000000,False,False,True,0,True
-5,,Michelin,1800,9999,10000000,False,False,True,0,True
