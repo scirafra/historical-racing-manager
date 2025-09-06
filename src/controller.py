@@ -26,14 +26,16 @@ class Controller:
         self.new_game = True
         self.ss = time.time()
 
+        self._initialize_models()
+        self.view = Graphics(self)
+
+    def _initialize_models(self):
         self.drivers_model = DriversModel()
         self.teams_model = TeamsModel()
         self.series_model = SeriesModel()
         self.manufacturer_model = ManufacturerModel()
         self.contracts_model = ContractsModel()
         self.race_model = RaceModel()
-
-        self.view = Graphics(self)
 
     def start_new_season(self):
         self.load_game("my_data")
@@ -43,9 +45,11 @@ class Controller:
         if not os.path.isdir(name):
             os.makedirs(name, exist_ok=True)
 
-        meta = pd.DataFrame(
-            {"date": [self.current_date], "begin": [self.begin_date], "new_game": [self.new_game]}
-        )
+        meta = pd.DataFrame({
+            "date": [self.current_date],
+            "begin": [self.begin_date],
+            "new_game": [self.new_game]
+        })
         meta.to_csv(f"{name}/data.csv", index=False)
 
         ld.save(
@@ -102,74 +106,12 @@ class Controller:
     def simulate_days(self, days: int):
         self.current_date = self.sim_day(self.current_date, days)
 
-    def get_results(self, series_name: str, season_str: str) -> pd.DataFrame:
-        sid = self.series_model.get_series_id(series_name)
-        season = int(season_str)
-        df = self.race_model.pivot_results_by_race(sid, season)
-
-        mf_map = self.manufacturer_model.manufacturers.set_index("manufacturerID")["name"].to_dict()
-        for col_key, col_name in [("engine", "Engine"), ("chassi", "Chassi"), ("pneu", "Tyres")]:
-            if col_key in df.columns:
-                df[col_name] = (
-                    df[col_key].fillna(0).astype(int).map(mf_map).fillna(df[col_key].astype(str))
-                )
-                df.drop(columns=[col_key], inplace=True)
-
-        df = df.merge(
-            self.drivers_model.drivers[["driverID", "forename", "surname", "year"]],
-            on="driverID",
-            how="left",
-        )
-        df["Age"] = season - df["year"]
-        df.drop(columns=["year", "driverID"], inplace=True)
-
-        df = df.merge(self.teams_model.teams[["teamID", "teamName"]], on="teamID", how="left")
-        df.drop(columns=["teamID"], inplace=True)
-
-        df.rename(
-            columns={
-                "forename": "Forename",
-                "surname": "Surname",
-                "teamName": "Team Name",
-                "final_position": "Position",
-                "final_points": "Points",
-            },
-            inplace=True,
-        )
-
-        if "Position" in df.columns:
-            df.sort_values("Position", inplace=True)
-
-        base_cols = ["Forename", "Surname", "Age", "Team Name"]
-        for extra in ("Engine", "Chassi", "Tyres", "Position", "Points"):
-            if extra in df.columns:
-                base_cols.append(extra)
-        others = [c for c in df.columns if c not in base_cols]
-        df = df[base_cols + others]
-
-        def fmt(x):
-            if x in ("Crash", "Death"):
-                return x
-            try:
-                return str(int(float(x)))
-            except:
-                return ""
-
-        for col in df.columns:
-            if col not in base_cols:
-                df[col] = df[col].apply(fmt)
-
-        return df
-
     def sim_day(self, date: datetime, days: int) -> datetime:
         for _ in range(days):
             date += timedelta(days=1)
-
             if self._is_season_start(date):
                 self._handle_season_start(date)
-
-            self._handle_races(date)
-
+            self._simulate_race_day(date)
         return date
 
     def sim_year(self, start_date: datetime, years: int) -> datetime:
@@ -187,6 +129,14 @@ class Controller:
         if date.year > 1896:
             self.race_model.plan_races(self.series_model, date)
 
+        self._update_entities_for_new_season(date)
+
+        if date.year >= 1894:
+            self._handle_contracts(date)
+
+        self._handle_investments(date)
+
+    def _update_entities_for_new_season(self, date: datetime):
         self.contracts_model.disable_driver_contracts(self.drivers_model.get_retiring_drivers())
         self.drivers_model.update_drivers(date)
         self.drivers_model.update_reputations()
@@ -194,40 +144,46 @@ class Controller:
         self.drivers_model.choose_active_drivers(date)
         self.race_model.all_time_best(self.drivers_model, 1)
 
-        if date.year >= 1894:
-            self.manufacturer_model.develop_part(date, self.contracts_model.get_MScontract())
+    def _handle_contracts(self, date: datetime):
+        self.manufacturer_model.develop_part(date, self.contracts_model.get_MScontract())
 
-            car_part_inputs = self.view.ask_car_part_contracts(
-                self.teams_model.get_human_teams(date), self.manufacturer_model.car_parts, date.year
-            )
+        car_part_inputs = self.view.ask_car_part_contracts(
+            self.teams_model.get_human_teams(date),
+            self.manufacturer_model.car_parts,
+            date.year
+        )
 
-            self.contracts_model.sign_car_part_contracts(
-                active_series=self.series_model.get_active_series(date.year),
-                current_date=date,
-                car_parts=self.manufacturer_model.car_parts,
-                teams_model=self.teams_model,
-                manufacturers=self.manufacturer_model.manufacturers,
-                team_inputs=car_part_inputs,
-            )
+        self.contracts_model.sign_car_part_contracts(
+            active_series=self.series_model.get_active_series(date.year),
+            current_date=date,
+            car_parts=self.manufacturer_model.car_parts,
+            teams_model=self.teams_model,
+            manufacturers=self.manufacturer_model.manufacturers,
+            team_inputs=car_part_inputs,
+        )
 
-            driver_inputs = self.view.ask_driver_contracts(
-                self.teams_model.get_human_teams(date), self.drivers_model.active_drivers, date.year
-            )
-            self.contracts_model.sign_driver_contracts(
-                active_series=self.series_model.get_active_series(date.year),
-                teams_model=self.teams_model,
-                current_date=date,
-                active_drivers=self.drivers_model.active_drivers,
-                rules=self.series_model.point_rules,
-                temp=False,
-                teams=self.teams_model.teams,
-                team_inputs=driver_inputs,
-            )
+        driver_inputs = self.view.ask_driver_contracts(
+            self.teams_model.get_human_teams(date),
+            self.drivers_model.active_drivers,
+            date.year
+        )
 
+        self.contracts_model.sign_driver_contracts(
+            active_series=self.series_model.get_active_series(date.year),
+            teams_model=self.teams_model,
+            current_date=date,
+            active_drivers=self.drivers_model.active_drivers,
+            rules=self.series_model.point_rules,
+            temp=False,
+            teams=self.teams_model.teams,
+            team_inputs=driver_inputs,
+        )
+
+    def _handle_investments(self, date: datetime):
         investments = self.view.ask_finance_investments(self.teams_model.get_human_teams(date))
         self.teams_model.invest_finance(date.year, investments)
 
-    def _handle_races(self, date: datetime):
+    def _simulate_race_day(self, date: datetime):
         races_today = self.race_model.races[self.race_model.races["race_date"] == date].copy()
         if races_today.empty:
             return
@@ -259,3 +215,61 @@ class Controller:
                     teams=self.teams_model.teams,
                     team_inputs={},  # AI fallback only
                 )
+
+    def get_results(self, series_name: str, season_str: str) -> pd.DataFrame:
+        sid = self.series_model.get_series_id(series_name)
+        season = int(season_str)
+        df = self.race_model.pivot_results_by_race(sid, season)
+        return self._format_results(df, season)
+
+    def _format_results(self, df: pd.DataFrame, season: int) -> pd.DataFrame:
+        mf_map = self.manufacturer_model.manufacturers.set_index("manufacturerID")["name"].to_dict()
+        for col_key, col_name in [("engine", "Engine"), ("chassi", "Chassi"), ("pneu", "Tyres")]:
+            if col_key in df.columns:
+                df[col_name] = (
+                    df[col_key].fillna(0).astype(int).map(mf_map).fillna(df[col_key].astype(str))
+                )
+                df.drop(columns=[col_key], inplace=True)
+
+        df = df.merge(
+            self.drivers_model.drivers[["driverID", "forename", "surname", "year"]],
+            on="driverID", how="left"
+        )
+        df["Age"] = season - df["year"]
+        df.drop(columns=["year", "driverID"], inplace=True)
+
+        df = df.merge(self.teams_model.teams[["teamID", "teamName"]], on="teamID", how="left")
+        df.drop(columns=["teamID"], inplace=True)
+
+        df.rename(columns={
+            "forename": "Forename",
+            "surname": "Surname",
+            "teamName": "Team Name",
+            "final_position": "Position",
+            "final_points": "Points",
+        }, inplace=True)
+
+        if "Position" in df.columns:
+            df.sort_values("Position", inplace=True)
+
+        base_cols = ["Forename", "Surname", "Age", "Team Name"]
+        for extra in ("Engine", "Chassi", "Tyres", "Position", "Points"):
+            if extra in df.columns:
+                base_cols.append(extra)
+
+        others = [c for c in df.columns if c not in base_cols]
+        df = df[base_cols + others]
+
+        def fmt(x):
+            if x in ("Crash", "Death"):
+                return x
+            try:
+                return str(int(float(x)))
+            except:
+                return ""
+
+        for col in df.columns:
+            if col not in base_cols:
+                df[col] = df[col].apply(fmt)
+
+        return df
