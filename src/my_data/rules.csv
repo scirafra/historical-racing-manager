@@ -1,10 +1,10 @@
 rulesID,seriesID,name,startSeason,endSeason,partType,minA,maxA
-0,1,F1 Engine,1894,3000,e,80,300
-1,1,F1 Chassi,1894,3000,c,70,300
-2,1,F1 Pneu,1894,3000,p,60,200
-3,5,F2 Engine,1894,3000,e,50,200
-4,5,F2 Chassi,1894,3000,c,40,200
-5,5,F2 Pneu,1894,3000,p,30,200
-6,6,F3 Engine,1894,3000,e,20,100
-7,6,F3 Chassi,1894,3000,c,10,100
-8,6,F3 Pneu,1894,3000,p,1,200
+0,1,F1 Engine,1894,3000,engine,80,300
+1,1,F1 Chassi,1894,3000,chassi,70,300
+2,1,F1 Pneu,1894,3000,pneu,60,200
+3,5,F2 Engine,1894,3000,engine,50,200
+4,5,F2 Chassi,1894,3000,chassi,40,200
+5,5,F2 Pneu,1894,3000,pneu,30,200
+6,6,F3 Engine,1894,3000,engine,20,100
+7,6,F3 Chassi,1894,3000,chassi,10,100
+8,6,F3 Pneu,1894,3000,pneu,1,200

@@ -214,6 +214,11 @@ class ContractsModel:
             manufacturers: DataFrame of manufacturers.
             team_inputs: Dict of user inputs per teamID and partType or None for AI selection.
         """
+        with pd.option_context("display.max_columns", None, "display.max_rows", None):
+
+            print("cp", car_parts)
+        car_parts["seriesID"] = car_parts["seriesID"].astype(int)
+        car_parts["year"] = car_parts["year"].astype(int)
         self._ensure_columns(
             self.MTcontract,
             {
@@ -247,16 +252,23 @@ class ContractsModel:
         new_contracts = []
 
         for si in active_series["seriesID"]:
+            print(si, date.year)
+            print(car_parts.dtypes)
             series_parts = car_parts[
                 (car_parts["seriesID"] == si) & (car_parts["year"] == date.year)
             ]
+            print("sp", series_parts)
             teams_in_series = self.STcontract[self.STcontract["seriesID"] == si]["teamID"]
+            print(manufacturers.dtypes)
 
-            for part_type in ["e", "c", "p"]:
+            manufacturers["manufacturerID"] = manufacturers["manufacturerID"].astype(int)
+
+            for part_type in ["engine", "chassi", "pneu"]:
                 parts_of_type = series_parts[series_parts["partType"] == part_type].copy()
+                parts_of_type["manufacturerID"] = parts_of_type["manufacturerID"].astype(int)
                 parts_of_type = parts_of_type.merge(manufacturers, on="manufacturerID", how="left")
                 parts_of_type["cost"] = parts_of_type["cost"].astype(int)
-
+                print(part_type, parts_of_type)
                 for team_id in teams_in_series:
                     current_contract = active_contracts[
                         (active_contracts["seriesID"] == si)
@@ -273,6 +285,7 @@ class ContractsModel:
                             parts_of_type["manufacturerID"] == manufacturerID, "cost"
                         ].iloc[0]
                     else:
+                        print(parts_of_type)
                         sampled = parts_of_type.sample(1).iloc[0]
                         manufacturerID = sampled["manufacturerID"]
                         cost = sampled["cost"]

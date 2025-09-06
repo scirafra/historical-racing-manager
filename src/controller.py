@@ -200,6 +200,7 @@ class Controller:
             car_part_inputs = self.view.ask_car_part_contracts(
                 self.teams_model.get_human_teams(date), self.manufacturer_model.car_parts, date.year
             )
+            print("uuuuj", self.manufacturer_model.car_parts)
             self.contracts_model.sign_car_part_contracts(
                 active_series=self.series_model.get_active_series(date.year),
                 date=date,

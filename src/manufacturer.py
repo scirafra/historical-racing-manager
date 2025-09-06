@@ -49,13 +49,24 @@ class ManufacturerModel:
 
     # --- Business logic ---
     def develop_part(self, date, contracts: pd.DataFrame):
+
         merged = self._merge_contracts_with_rules(contracts, date.year)
-        last_year_parts = self.car_parts[self.car_parts["year"] == date.year - 1]
+
+        last_year_parts = self.car_parts[self.car_parts["year"] == date.year - 1].copy()
+
+        # Zjednotenie typov kľúčov pred merge
+        merge_keys = ["rulesID", "manufacturerID", "partType", "seriesID"]
+        for key in merge_keys:
+            if key in merged.columns:
+                merged[key] = merged[key].astype(str)
+            if key in last_year_parts.columns:
+                last_year_parts[key] = last_year_parts[key].astype(str)
+
         final = pd.merge(
             merged,
             last_year_parts,
             how="left",
-            on=["rulesID", "manufacturerID", "partType", "seriesID"],
+            on=merge_keys,
         )
 
         final = self._fill_missing_values(final)
@@ -76,12 +87,13 @@ class ManufacturerModel:
                 "year",
                 "cost",
             ]
-        ]
+        ].copy()
         new_parts.loc[:, "partID"] = self._generate_new_part_ids(len(new_parts))
 
         self.car_parts = pd.concat([self.car_parts, new_parts], ignore_index=True)
 
     def _merge_contracts_with_rules(self, contracts: pd.DataFrame, year: int) -> pd.DataFrame:
+
         merged = pd.merge(contracts, self.rules, on=["seriesID", "partType"], how="left")
         mask = (
             (merged["startYear"] <= year)
@@ -116,6 +128,12 @@ class ManufacturerModel:
         return df
 
     def _generate_new_part_ids(self, count: int) -> range:
-        max_id = self.car_parts["partID"].max()
-        start = max(0, max_id) + 1
+        if self.car_parts.empty or self.car_parts["partID"].isnull().all():
+            start = 0
+        else:
+            try:
+                max_id = pd.to_numeric(self.car_parts["partID"], errors="coerce").max()
+                start = int(max_id) + 1 if pd.notna(max_id) else 0
+            except Exception:
+                start = 0
         return range(start, start + count)
