@@ -186,7 +186,7 @@ class Controller:
     def _handle_season_start(self, date: datetime):
         if date.year > 1896:
             self.race_model.plan_races(self.series_model, date)
-        print(date, self.drivers_model.get_retiring_drivers())
+
         self.contracts_model.disable_driver_contracts(self.drivers_model.get_retiring_drivers())
         self.drivers_model.update_drivers(date)
         self.drivers_model.update_reputations()
@@ -200,10 +200,10 @@ class Controller:
             car_part_inputs = self.view.ask_car_part_contracts(
                 self.teams_model.get_human_teams(date), self.manufacturer_model.car_parts, date.year
             )
-            print("uuuuj", self.manufacturer_model.car_parts)
+
             self.contracts_model.sign_car_part_contracts(
                 active_series=self.series_model.get_active_series(date.year),
-                date=date,
+                current_date=date,
                 car_parts=self.manufacturer_model.car_parts,
                 teams_model=self.teams_model,
                 manufacturers=self.manufacturer_model.manufacturers,
@@ -216,7 +216,7 @@ class Controller:
             self.contracts_model.sign_driver_contracts(
                 active_series=self.series_model.get_active_series(date.year),
                 teams_model=self.teams_model,
-                date=date,
+                current_date=date,
                 active_drivers=self.drivers_model.active_drivers,
                 rules=self.series_model.point_rules,
                 temp=False,
@@ -252,7 +252,7 @@ class Controller:
                 self.contracts_model.sign_driver_contracts(
                     active_series=self.series_model.get_active_series(date.year),
                     teams_model=self.teams_model,
-                    date=date,
+                    current_date=date,
                     active_drivers=self.drivers_model.active_drivers,
                     rules=self.series_model.point_rules,
                     temp=True,
