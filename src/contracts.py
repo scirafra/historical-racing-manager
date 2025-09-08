@@ -1,7 +1,7 @@
 import os
 import random
+from datetime import datetime
 
-import numpy as np
 import pandas as pd
 
 
@@ -12,6 +12,7 @@ class ContractsModel:
         self.CScontract = pd.DataFrame()
         self.MScontract = pd.DataFrame()
         self.MTcontract = pd.DataFrame()
+        self.reserved_slots = {}  # teamID → True
 
     # === Persistence ===
     def load(self, folder: str) -> bool:
@@ -21,7 +22,6 @@ class ContractsModel:
             self.CScontract = pd.read_csv(os.path.join(folder, "CScontract.csv"))
             self.MScontract = pd.read_csv(os.path.join(folder, "MScontract.csv"))
             self.MTcontract = pd.read_csv(os.path.join(folder, "MTcontract.csv"))
-
             self._ensure_columns(self.DTcontract, {
                 "driverID": None, "teamID": None, "salary": 0,
                 "wanted_reputation": 0, "startYear": 0, "endYear": 0, "active": True
@@ -55,83 +55,94 @@ class ContractsModel:
             self, active_series, teams_model, current_date,
             active_drivers, rules, temp, teams, team_inputs
     ):
+        # print("tu")
         self._ensure_columns(self.DTcontract, {
             "driverID": None, "teamID": None, "salary": 0,
             "wanted_reputation": 0, "startYear": 0, "endYear": 0, "active": True
         })
 
-        active_series = active_series.sort_values(by="reputation")
-        teams = teams.sort_values(by="reputation")
+        if not self._should_sign_today(current_date):
+            return
+        print("tu 2")
+        available = active_drivers.copy()
+        available["reputation"] = available["reputation"].fillna(0)
+        available = available[~available["driverID"].isin(self.DTcontract["driverID"])]
 
-        for _, series in active_series.iterrows():
-            rule = rules[rules["seriesID"] == series["seriesID"]]
-            if rule.empty:
-                continue
+        team_id = self._choose_team_by_reputation(teams)
+        is_human = not teams_model.teams.loc[teams_model.teams["teamID"] == team_id, "ai"].iloc[0]
 
-            max_age, min_age, max_cars = rule.iloc[0][["maxAge", "minAge", "maxCars"]]
-            available = self._get_available_drivers(active_drivers, current_date.year, max_age, min_age, temp)
-            contracted = self._get_contracted_driver_ids(series["reputation"], current_date.year)
-            pool = available[~available["driverID"].isin(contracted)].reset_index(drop=True)
-
-            team_df = self._get_eligible_teams(series["seriesID"], teams, current_date.year)
-            for i in range(max_cars):
-                for _, team in team_df.iterrows():
-                    if team["activeContracts"] == i and not pool.empty:
-                        self._assign_driver_to_team(
-                            team, pool, team_inputs, series["reputation"], current_date.year, temp
-                        )
-                        pool = pool[pool["driverID"] != team["assigned_driver"]].reset_index(drop=True)
-                        team_df.loc[team_df["teamID"] == team["teamID"], "activeContracts"] += 1
-
-    def _get_available_drivers(self, drivers, year, max_age, min_age, temp):
-        df = drivers[(drivers["year"] >= year - max_age) & (drivers["year"] <= year - min_age)].copy()
-        df["age"] = year - df["year"]
-        df["maxLen"] = 1 if temp else np.minimum(4, max_age - df["age"])
-        return df
-
-    def _get_contracted_driver_ids(self, reputation, year):
-        return self.DTcontract[
-            (self.DTcontract["active"]) &
-            (self.DTcontract["startYear"] <= year) &
-            (self.DTcontract["endYear"] >= year) &
-            (self.DTcontract["wanted_reputation"] <= reputation)
-            ]["driverID"]
-
-    def _get_eligible_teams(self, seriesID, teams, year):
-        team_ids = self.STcontract[self.STcontract["seriesID"] == seriesID]["teamID"]
-        active = self.DTcontract[
-            (self.DTcontract["active"]) &
-            (self.DTcontract["startYear"] <= year) &
-            (self.DTcontract["endYear"] >= year) &
-            (self.DTcontract["teamID"].isin(team_ids))
-            ]
-        counts = active.groupby("teamID").size().reset_index(name="activeContracts")
-        df = pd.DataFrame(team_ids).rename(columns={0: "teamID"}).merge(counts, on="teamID", how="left").fillna(0)
-        df["activeContracts"] = df["activeContracts"].astype(int)
-        return df.merge(teams, on="teamID")
-
-    def _assign_driver_to_team(self, team_row, pool, team_inputs, reputation, year, temp):
-        team_id = team_row["teamID"]
-        is_human = not team_row["ai"]
-        driver_row = pool.iloc[0]
-
-        if is_human and team_inputs.get(team_id):
-            driverID, salary, length = team_inputs[team_id]
+        if is_human:
+            self._reserve_slot_for_human_team(team_id)
+            if team_id in team_inputs:
+                driver_id, salary, length = team_inputs[team_id]
+                self._create_driver_contract(driver_id, team_id, salary, current_date.year, length)
         else:
-            driverID = driver_row["driverID"]
-            salary = 25000
-            length = random.randint(0, min(4, driver_row["maxLen"]))
+            driver_id = self._choose_driver_by_reputation(available)
+            salary = self._estimate_salary(available, driver_id)
+            length = random.randint(1, 4)
+            self._create_driver_contract(driver_id, team_id, salary, current_date.year, length)
 
-        self.DTcontract.loc[self.DTcontract["driverID"] == driverID, "active"] = False
-        self.DTcontract.loc[len(self.DTcontract)] = [
-            driverID, team_id, salary, reputation, year, year + length, True
+    def _should_sign_today(self, date: datetime) -> bool:
+        day_of_year = date.timetuple().tm_yday
+        total_days = 366 if date.year % 4 == 0 else 365
+        probability = day_of_year / total_days
+        return random.random() < probability
+
+    def _choose_team_by_reputation(self, teams_df: pd.DataFrame) -> int:
+        sorted_teams = teams_df.sort_values("reputation", ascending=False).reset_index(drop=True)
+        weights = [0.5, 0.25, 0.125, 0.0625] + [0.01] * max(0, len(sorted_teams) - 4)
+        chosen_index = random.choices(range(len(sorted_teams)), weights[:len(sorted_teams)])[0]
+        return sorted_teams.iloc[chosen_index]["teamID"]
+
+    def _choose_driver_by_reputation(self, drivers_df: pd.DataFrame) -> int:
+        sorted_drivers = drivers_df.sort_values("reputation", ascending=False).reset_index(drop=True)
+        weights = [0.5, 0.25, 0.125, 0.0625] + [0.01] * max(0, len(sorted_drivers) - 4)
+        chosen_index = random.choices(range(len(sorted_drivers)), weights[:len(sorted_drivers)])[0]
+        return sorted_drivers.iloc[chosen_index]["driverID"]
+
+    def _reserve_slot_for_human_team(self, team_id: int):
+        self.reserved_slots[team_id] = True
+
+    def _estimate_salary(self, drivers_df: pd.DataFrame, driver_id: int) -> int:
+        base = 25000
+        rep = drivers_df.loc[drivers_df["driverID"] == driver_id, "reputation"].iloc[0]
+        return int(base + rep * 100)
+
+    def _create_driver_contract(self, driver_id: int, team_id: int, salary: int, start_year: int, length: int):
+        self.DTcontract.loc[len(self.DTcontract)] = {
+            "driverID": driver_id,
+            "teamID": team_id,
+            "salary": salary,
+            "wanted_reputation": 0,
+            "startYear": start_year,
+            "endYear": start_year + length,
+            "active": True
+        }
+        print(self.DTcontract)
+
+    def terminate_driver_contract(self, team_id: int, driver_id: int, current_year: int):
+        contract = self.DTcontract[
+            (self.DTcontract["teamID"] == team_id) &
+            (self.DTcontract["driverID"] == driver_id) &
+            (self.DTcontract["active"])
+            ]
+        if contract.empty:
+            return
+
+        end_year = contract.iloc[0]["endYear"]
+        salary = contract.iloc[0]["salary"]
+        remaining_years = max(0, end_year - current_year)
+        payout = remaining_years * salary
+
+        self.DTcontract = self.DTcontract[
+            ~((self.DTcontract["teamID"] == team_id) & (self.DTcontract["driverID"] == driver_id))
         ]
-        team_row["assigned_driver"] = driverID
 
     # === Car Part Contracts ===
     def sign_car_part_contracts(
             self, active_series, current_date, car_parts, teams_model, manufacturers, team_inputs
     ):
+        # print("here")
         self._ensure_columns(self.MTcontract, {
             "seriesID": None, "teamID": None, "manufacturerID": None,
             "partType": "", "startYear": 0, "endYear": 0, "cost": 0
@@ -166,8 +177,8 @@ class ContractsModel:
                 )
                 new_contracts.extend(contracts)
 
-                if new_contracts:
-                    self.MTcontract = pd.concat([self.MTcontract, pd.DataFrame(new_contracts)], ignore_index=True)
+            if new_contracts:
+                self.MTcontract = pd.concat([self.MTcontract, pd.DataFrame(new_contracts)], ignore_index=True)
 
     def _deduct_existing_contract_costs(self, human_teams, active_contracts, teams):
         pay_by_team = (
@@ -210,7 +221,7 @@ class ContractsModel:
                 sampled = parts_of_type.sample(1).iloc[0]
                 manufacturerID = sampled["manufacturerID"]
                 cost = sampled["cost"]
-                contract_len = random.randint(0, 4)
+                contract_len = random.randint(1, 4)
 
             contracts.append({
                 "seriesID": int(series_parts["seriesID"].iloc[0]),

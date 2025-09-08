@@ -49,6 +49,8 @@ class Graphics:
         self._create_button(controls, "Show Results", self.show_results, 2)
         self._create_button(controls, "Next Day", lambda: self.sim_step(360), 3)
         self._create_button(controls, "Next Week", lambda: self.sim_step(45000), 4)
+        self._create_button(controls, "Show Contracts", self.show_contracts, 5)
+        self._create_button(controls, "Terminate Driver", self.terminate_driver_dialog, 6)
 
     def _setup_table(self):
         self.result_frame = ttk.Frame(self.root)
@@ -131,6 +133,27 @@ class Graphics:
         for row in df.itertuples(index=False):
             self.tree.insert("", "end", values=row)
 
+    def show_contracts(self):
+        df = self.controller.get_active_driver_contracts()
+        self.show_dataframe(self.tree, df)
+
+    def terminate_driver_dialog(self):
+        df = self.controller.get_active_driver_contracts()
+        if df.empty:
+            messagebox.showinfo("No Contracts", "No active contracts to terminate.")
+            return
+
+        labels = ["Enter team ID:", "Enter driver ID to terminate:"]
+        entry = self._open_selection_dialog(pd.DataFrame(), [], labels)
+        if len(entry) == 2:
+            try:
+                team_id = int(entry[0])
+                driver_id = int(entry[1])
+                self.controller.kick_driver(team_id, driver_id)
+                messagebox.showinfo("Contract Terminated", f"Driver {driver_id} removed from team {team_id}.")
+            except Exception:
+                messagebox.showerror("Error", "Invalid input. Please enter valid numeric IDs.")
+
     def ask_finance_investments(self, human_teams_df):
         investments = {}
         for _, row in human_teams_df.iterrows():
@@ -169,35 +192,35 @@ class Graphics:
                     result[team["teamID"]] = (driver_id, m, l)
                 except Exception:
                     result[team["teamID"]] = None
-            else:
-                result[team["teamID"]] = None
-        return result
-
-    def ask_car_part_contracts(self, human_teams_df, car_parts_df, year) -> dict:
-        result = {}
-        for _, team in human_teams_df.iterrows():
-            result[team["teamID"]] = {}
-            for part_type, label in [("e", "Engine"), ("c", "Chassi"), ("p", "Tyre")]:
-                parts = car_parts_df[
-                    (car_parts_df["partType"] == part_type) & (car_parts_df["year"] == year)
-                    ].copy()
-                parts = parts.rename(columns={"cost": "Cost"})
-                keep = ["manufacturerID", "Cost"]
-                labels = [
-                    f"Team: {team['teamName']} | Component: {label} | Budget: {team['money']}\nEnter index (0–{len(parts) - 1}):",
-                    "Contract length (0–4):",
-                ]
-                entry = self._open_selection_dialog(parts, keep, labels)
-                if len(entry) == 2:
-                    try:
-                        d, l = map(int, entry)
-                        manufacturer_id = parts.iloc[d]["manufacturerID"]
-                        result[team["teamID"]][part_type] = (manufacturer_id, l)
-                    except Exception:
-                        result[team["teamID"]][part_type] = None
                 else:
-                    result[team["teamID"]][part_type] = None
-        return result
+                    result[team["teamID"]] = None
+                return result
+
+                def ask_car_part_contracts(self, human_teams_df, car_parts_df, year) -> dict:
+                    result = {}
+                    for _, team in human_teams_df.iterrows():
+                        result[team["teamID"]] = {}
+                        for part_type, label in [("e", "Engine"), ("c", "Chassi"), ("p", "Tyre")]:
+                            parts = car_parts_df[
+                                (car_parts_df["partType"] == part_type) & (car_parts_df["year"] == year)
+                                ].copy()
+                            parts = parts.rename(columns={"cost": "Cost"})
+                            keep = ["manufacturerID", "Cost"]
+                            labels = [
+                                f"Team: {team['teamName']} | Component: {label} | Budget: {team['money']}\nEnter index (0–{len(parts) - 1}):",
+                                "Contract length (0–4):",
+                            ]
+                            entry = self._open_selection_dialog(parts, keep, labels)
+                            if len(entry) == 2:
+                                try:
+                                    d, l = map(int, entry)
+                                    manufacturer_id = parts.iloc[d]["manufacturerID"]
+                                    result[team["teamID"]][part_type] = (manufacturer_id, l)
+                                except Exception:
+                                    result[team["teamID"]][part_type] = None
+                            else:
+                                result[team["teamID"]][part_type] = None
+                    return result
 
     def _open_selection_dialog(self, df, keep, labels, max_fin=None) -> list:
         top = tk.Toplevel(self.root)
@@ -262,3 +285,29 @@ class Graphics:
 
         for _, row in dataframe.iterrows():
             tree.insert("", "end", values=list(row))
+
+    def ask_car_part_contracts(self, human_teams_df, car_parts_df, year) -> dict:
+        result = {}
+        for _, team in human_teams_df.iterrows():
+            result[team["teamID"]] = {}
+            for part_type, label in [("e", "Engine"), ("c", "Chassi"), ("p", "Tyre")]:
+                parts = car_parts_df[
+                    (car_parts_df["partType"] == part_type) & (car_parts_df["year"] == year)
+                    ].copy()
+                parts = parts.rename(columns={"cost": "Cost"})
+                keep = ["manufacturerID", "Cost"]
+                labels = [
+                    f"Team: {team['teamName']} | Component: {label} | Budget: {team['money']}\nEnter index (0–{len(parts) - 1}):",
+                    "Contract length (0–4):",
+                ]
+                entry = self._open_selection_dialog(parts, keep, labels)
+                if len(entry) == 2:
+                    try:
+                        d, l = map(int, entry)
+                        manufacturer_id = parts.iloc[d]["manufacturerID"]
+                        result[team["teamID"]][part_type] = (manufacturer_id, l)
+                    except Exception:
+                        result[team["teamID"]][part_type] = None
+                else:
+                    result[team["teamID"]][part_type] = None
+        return result

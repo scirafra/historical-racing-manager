@@ -37,6 +37,38 @@ class Controller:
         self.contracts_model = ContractsModel()
         self.race_model = RaceModel()
 
+    def run(self):
+        self.view.run()
+
+    def get_date(self) -> str:
+        return self.current_date.strftime("%Y-%m-%d %A")
+
+    def get_series_names(self):
+        return self.series_model.get_series()["name"].tolist()
+
+    def update_seasons(self, series_name: str):
+        sid = self.series_model.get_series_id(series_name)
+        self.seasons = self.race_model.get_seasons_for_series(sid)
+
+    def get_season_list(self):
+        return [str(y) for y in self.seasons]
+
+    def simulate_days(self, days: int):
+        self.current_date = self.sim_day(self.current_date, days)
+
+    def sim_day(self, date: datetime, days: int) -> datetime:
+        for _ in range(days):
+            date += timedelta(days=1)
+            if self._is_season_start(date):
+                self._handle_season_start(date)
+            self._simulate_race_day(date)
+        return date
+
+    def sim_year(self, start_date: datetime, years: int) -> datetime:
+        for _ in range(years * 365):
+            start_date = self.sim_day(start_date, 1)
+        return start_date
+
     def start_new_season(self):
         self.load_game("my_data")
         self.current_date = self.sim_year(self.current_date, self.sim_years_step)
@@ -90,37 +122,11 @@ class Controller:
         self.new_game = False
         return True
 
-    def get_date(self) -> str:
-        return self.current_date.strftime("%Y-%m-%d %A")
+    def kick_driver(self, team_id: int, driver_id: int):
+        self.contracts_model.terminate_driver_contract(team_id, driver_id, self.current_date.year)
 
-    def get_series_names(self):
-        return self.series_model.get_series()["name"].tolist()
-
-    def update_seasons(self, series_name: str):
-        sid = self.series_model.get_series_id(series_name)
-        self.seasons = self.race_model.get_seasons_for_series(sid)
-
-    def get_season_list(self):
-        return [str(y) for y in self.seasons]
-
-    def simulate_days(self, days: int):
-        self.current_date = self.sim_day(self.current_date, days)
-
-    def sim_day(self, date: datetime, days: int) -> datetime:
-        for _ in range(days):
-            date += timedelta(days=1)
-            if self._is_season_start(date):
-                self._handle_season_start(date)
-            self._simulate_race_day(date)
-        return date
-
-    def sim_year(self, start_date: datetime, years: int) -> datetime:
-        for _ in range(years * 365):
-            start_date = self.sim_day(start_date, 1)
-        return start_date
-
-    def run(self):
-        self.view.run()
+    def get_active_driver_contracts(self):
+        return self.contracts_model.DTcontract[self.contracts_model.DTcontract["active"]]
 
     def _is_season_start(self, date: datetime) -> bool:
         return 2999 > date.year and date.day == 1 and date.month == 1
@@ -237,7 +243,6 @@ class Controller:
         )
         df["Age"] = season - df["year"]
         df.drop(columns=["year", "driverID"], inplace=True)
-
         df = df.merge(self.teams_model.teams[["teamID", "teamName"]], on="teamID", how="left")
         df.drop(columns=["teamID"], inplace=True)
 
