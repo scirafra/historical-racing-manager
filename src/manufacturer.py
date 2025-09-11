@@ -96,15 +96,15 @@ class ManufacturerModel:
 
         merged = pd.merge(contracts, self.rules, on=["seriesID", "partType"], how="left")
         mask = (
-            (merged["startYear"] <= year)
-            & (merged["startSeason"] <= year)
-            & (merged["endYear"] >= year)
-            & (merged["endSeason"] >= year)
+                (merged["startYear"] <= year)
+                & (merged["startSeason"] <= year)
+                & (merged["endYear"] >= year)
+                & (merged["endSeason"] >= year)
         )
         return merged.loc[mask].copy()
 
     def _fill_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
-        df["power"] = df["power"].fillna(df["minA"])
+        df["power"] = df["power"].fillna(df["min_ability"])
         df["reliability"] = df["reliability"].fillna(1)
         df["safety"] = df["safety"].fillna(1)
         return df
@@ -121,8 +121,8 @@ class ManufacturerModel:
         return df
 
     def _clamp_values(self, df: pd.DataFrame) -> pd.DataFrame:
-        df["power"] = df[["power", "minA"]].max(axis=1)
-        df["power"] = df[["power", "maxA"]].min(axis=1)
+        df["power"] = df[["power", "min_ability"]].max(axis=1)
+        df["power"] = df[["power", "max_ability"]].min(axis=1)
         df["reliability"] = df["reliability"].apply(lambda x: max(1, x))
         df["safety"] = df["safety"].apply(lambda x: max(1, x))
         return df

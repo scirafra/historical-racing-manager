@@ -61,6 +61,23 @@ class Controller:
             date += timedelta(days=1)
             if self._is_season_start(date):
                 self._handle_season_start(date)
+            if date.year >= 1894:
+                driver_inputs = self.view.ask_driver_contracts(
+                    self.teams_model.get_human_teams(date),
+                    self.drivers_model.active_drivers,
+                    date.year
+                )
+
+                self.contracts_model.sign_driver_contracts(
+                    active_series=self.series_model.get_active_series(date.year),
+                    teams_model=self.teams_model,
+                    current_date=date,
+                    active_drivers=self.drivers_model.active_drivers,
+                    rules=self.series_model.point_rules,
+                    temp=False,
+                    teams=self.teams_model.teams,
+                    team_inputs=driver_inputs,
+                )
             self._simulate_race_day(date)
         return date
 
@@ -116,6 +133,14 @@ class Controller:
 
         self.drivers_model.choose_active_drivers(self.current_date)
 
+        # 🔧 Inicializácia slotov
+        self.contracts_model.driver_slots_current = self.contracts_model.init_driver_slots_for_year(
+            self.current_date.year, self.series_model.point_rules
+        )
+        self.contracts_model.driver_slots_next = self.contracts_model.init_driver_slots_for_year(
+            self.current_date.year + 1, self.series_model.point_rules
+        )
+
         while self.current_date.year < 1894:
             self.current_date = self.sim_day(self.current_date, 1)
 
@@ -136,6 +161,9 @@ class Controller:
             self.race_model.plan_races(self.series_model, date)
 
         self._update_entities_for_new_season(date)
+
+        # 🔧 Prekopírovanie slotov
+        self.contracts_model.rollover_driver_slots()
 
         if date.year >= 1894:
             self._handle_contracts(date)
@@ -168,28 +196,12 @@ class Controller:
             team_inputs=car_part_inputs,
         )
 
-        driver_inputs = self.view.ask_driver_contracts(
-            self.teams_model.get_human_teams(date),
-            self.drivers_model.active_drivers,
-            date.year
-        )
-
-        self.contracts_model.sign_driver_contracts(
-            active_series=self.series_model.get_active_series(date.year),
-            teams_model=self.teams_model,
-            current_date=date,
-            active_drivers=self.drivers_model.active_drivers,
-            rules=self.series_model.point_rules,
-            temp=False,
-            teams=self.teams_model.teams,
-            team_inputs=driver_inputs,
-        )
-
     def _handle_investments(self, date: datetime):
         investments = self.view.ask_finance_investments(self.teams_model.get_human_teams(date))
         self.teams_model.invest_finance(date.year, investments)
 
     def _simulate_race_day(self, date: datetime):
+
         races_today = self.race_model.races[self.race_model.races["race_date"] == date].copy()
         if races_today.empty:
             return
@@ -224,7 +236,11 @@ class Controller:
 
     def get_results(self, series_name: str, season_str: str) -> pd.DataFrame:
         sid = self.series_model.get_series_id(series_name)
+        if not season_str.strip().isdigit():
+            return pd.DataFrame()
+
         season = int(season_str)
+
         df = self.race_model.pivot_results_by_race(sid, season)
         return self._format_results(df, season)
 

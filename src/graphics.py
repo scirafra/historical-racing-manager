@@ -47,8 +47,8 @@ class Graphics:
         self.cmb_season.grid(row=0, column=1, padx=5)
 
         self._create_button(controls, "Show Results", self.show_results, 2)
-        self._create_button(controls, "Next Day", lambda: self.sim_step(360), 3)
-        self._create_button(controls, "Next Week", lambda: self.sim_step(45000), 4)
+        self._create_button(controls, "Next Day", lambda: self.sim_step(40000), 3)
+        self._create_button(controls, "Next Week", lambda: self.sim_step(360), 4)
         self._create_button(controls, "Show Contracts", self.show_contracts, 5)
         self._create_button(controls, "Terminate Driver", self.terminate_driver_dialog, 6)
 
