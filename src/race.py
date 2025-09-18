@@ -63,6 +63,62 @@ class RaceModel:
         ].copy()
         return df.reset_index(drop=True)
 
+    def get_subject_season_stands(self, subject_id: int, subject_type: str) -> pd.DataFrame:
+        """Returns the seasonal statistics of a driver/team based on standings and results."""
+        # Filter standings for the given subject
+        subject_stands = self.standings[
+            (self.standings["subjectID"] == subject_id) &
+            (self.standings["typ"] == subject_type)
+            ].copy()
+
+        if subject_stands.empty:
+            return pd.DataFrame()
+
+        # Group by season and series
+        grouped = subject_stands.groupby(["year", "seriesID"])
+
+        records = []
+        for (year, series_id), group in grouped:
+            # Select the row with the highest "round" = final standings state
+            group = group.copy()
+            group["round"] = pd.to_numeric(group["round"], errors="coerce")
+
+            max_round_idx = group["round"].idxmax()
+            max_round_row = group.loc[max_round_idx]
+
+            total_points = max_round_row["points"]
+            championship_position = max_round_row["position"]  # position after the last round
+
+            races = group["raceID"].nunique()
+
+            # Filter results for the given subject in this season and series
+            race_results = self.results[
+                (self.results[subject_type + "ID"] == subject_id) &
+                (self.results["season"] == year) &
+                (self.results["seriesID"] == series_id)
+                ]
+
+            wins = (race_results["position"] == 1).sum()
+            podiums = (race_results["position"] <= 3).sum()
+            best_position = race_results["position"].min()
+
+            # team_ids = race_results["teamID"].unique()
+            # team = team_ids[0] if len(team_ids) > 0 else None
+
+            records.append({
+                "season": year,
+                "series": series_id,
+                # "team": team,
+                "races": races,
+                "wins": wins,
+                "podiums": podiums,
+                "points": total_points,
+                "championship": championship_position,
+                "best_result": best_position
+            })
+
+        return pd.DataFrame(records)
+
     def get_seasons_for_series(self, series_id: int) -> list[int]:
         if self.results.empty:
             return []

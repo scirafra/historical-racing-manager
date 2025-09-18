@@ -158,6 +158,14 @@ class Controller:
 
     def _handle_season_start(self, date: datetime):
         if date.year > 1896:
+            with pd.option_context('display.max_columns', None,  # zobraz všetky stĺpce
+                                   'display.width', 0,  # neobmedzuj šírku (0 = auto podľa terminálu)
+                                   'display.max_colwidth', None):
+                print(self.race_model.get_subject_season_stands(10009, "driver"))
+
+                print(self.race_model.get_subject_season_stands(1, "team"))
+
+                print(self.race_model.get_subject_season_stands(1, "engine"))
             self.race_model.plan_races(self.series_model, date)
 
         self._update_entities_for_new_season(date)
