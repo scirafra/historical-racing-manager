@@ -88,6 +88,17 @@ class DriversModel:
         self.old_active_drivers = self.active_drivers.copy()
         self.active_drivers.drop(self.active_drivers.index, inplace=True)
 
+    def get_driver_id(self, driver_forename: str, driver_surname: str) -> int | None:
+        result = self.drivers.query("forename == @driver_forename and surname == @driver_surname")
+        return result["driverID"].iat[0] if not result.empty else None
+
+    def get_drivers(self) -> pd.DataFrame:
+        return (
+            self.drivers[["driverID", "forename", "surname"]].copy()
+            if not self.drivers.empty
+            else pd.DataFrame(columns=["driverID", "forename", "surname"])
+        )
+
     def _sync_active_to_main(self) -> None:
         self.drivers.set_index("driverID", inplace=True)
         self.active_drivers.set_index("driverID", inplace=True)
@@ -113,7 +124,7 @@ class DriversModel:
             (self.drivers["age"] >= 15)
             & (self.drivers["age"] <= self.drivers["retire"])
             & (self.drivers["alive"])
-        ].copy()
+            ].copy()
 
     def _update_active_driver_list(self, current_date: date) -> pd.DataFrame:
         self._update_ages(self.drivers, current_date.year)
@@ -129,7 +140,7 @@ class DriversModel:
         self.retiring_drivers = self.active_drivers[
             (self.active_drivers["age"] > self.active_drivers["retire"])
             | (self.active_drivers["age"] < 15)
-        ]
+            ]
 
         if not new_drivers.empty:
             self.active_drivers = pd.concat([self.active_drivers, new_drivers], ignore_index=True)
@@ -205,7 +216,7 @@ class DriversModel:
                 (age > (15 + 3 * offset))
                 & (age < (19 + 3 * offset))
                 & (self.active_drivers["ability"] > 35)
-            ]
+                ]
             .sort_values(by="reputation_race", ascending=False)
             .reset_index(drop=True)
         )
@@ -249,7 +260,7 @@ class DriversModel:
 
     @classmethod
     def generate_new_drivers(
-        cls, year: int, count: int, df: pd.DataFrame, nationality_weights: pd.Series, id_offset: int
+            cls, year: int, count: int, df: pd.DataFrame, nationality_weights: pd.Series, id_offset: int
     ) -> pd.DataFrame:
         """Generate new drivers using weighted ability distribution."""
         new_drivers = []
@@ -283,7 +294,7 @@ class DriversModel:
 
     @staticmethod
     def _build_driver_dict(
-        driver_id: int, forename: str, surname: str, nationality: str, year: int, ability: int
+            driver_id: int, forename: str, surname: str, nationality: str, year: int, ability: int
     ) -> dict:
         return {
             "driverID": driver_id,

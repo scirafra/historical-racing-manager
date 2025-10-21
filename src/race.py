@@ -55,6 +55,55 @@ class RaceModel:
         self.circuit_layouts.to_csv(base_path + "circuit_layouts.csv", index=False)
 
     # ===== Queries =====
+    def extract_champions(self, series_id: str) -> pd.DataFrame:
+        # Filtrovanie podľa seriesID a pozície 1
+        filtered = self.standings[(self.standings['seriesID'] == series_id) & (self.standings['position'] == 1)]
+
+        # Pivotovanie dát: každý typ bude vlastný stĺpec
+        pivot = filtered.pivot_table(
+            index='year',
+            columns='typ',
+            values='subjectID',
+            aggfunc='first'  # predpokladáme, že je len jeden víťaz pre typ a rok
+        ).reset_index()
+
+        # Pridáme späť seriesID ako stĺpec
+        pivot.insert(0, 'seriesID', series_id)
+
+        # Zoradenie stĺpcov: year, driver, team, ostatné
+        desired_order = ['year', 'driver', 'team']
+        other_columns = sorted([col for col in pivot.columns if col not in desired_order and col != 'seriesID'])
+        final_order = ['seriesID'] + desired_order + other_columns
+        pivot = pivot[[col for col in final_order if col in pivot.columns]]
+
+        return pivot
+
+    def get_upcoming_races_for_series(self, series_ids: list[int], current_date: str) -> pd.DataFrame:
+        """
+        Vráti najbližších 5 pretekov pre dané série po aktuálnom dátume.
+        """
+        try:
+            if not series_ids or self.races.empty:
+                return pd.DataFrame(columns=["Date", "Race Name", "Series", "Country"])
+
+            races = self.races[
+                (self.races["seriesID"].isin(series_ids)) &
+                (self.races["race_date"] >= current_date)
+                ].copy()
+
+            races = races[["race_date", "name", "seriesID"]]
+            races.rename(columns={
+                "race_date": "Date",
+                "name": "Race Name",
+                "seriesID": "Series",
+            }, inplace=True)
+
+            races.sort_values("Date", inplace=True)
+            return races.head(5).reset_index(drop=True)
+        except Exception as e:
+            print(f" get_upcoming_races_for_series error: {e}")
+            return pd.DataFrame(columns=["Date", "Race Name", "Series", "Country"])
+
     def get_results_for_series_and_season(self, series_id: int, season: int) -> pd.DataFrame:
         df = self.results[
             (self.results["seriesID"] == series_id) & (self.results["season"] == season)

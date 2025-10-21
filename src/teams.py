@@ -9,11 +9,30 @@ class TeamsModel:
 
     # --- Persistence ---
     def load(self, folder: str) -> bool:
+        """
+        Načíta tímy z CSV súboru do DataFrame.
+        Ak chýbajú povinné stĺpce, doplní ich.
+        """
         path = os.path.join(folder, "teams.csv")
         if not os.path.exists(path):
             self.teams = pd.DataFrame()
             return False
+
         self.teams = pd.read_csv(path)
+
+        # ✅ doplnenie chýbajúcich stĺpcov, aby GUI aj logika fungovali
+        required_cols = ["teamID", "team_name", "owner_id", "money", "finance_employees", "reputation", "found",
+                         "folded"]
+        for col in required_cols:
+            if col not in self.teams.columns:
+                # podľa typu dáme default hodnotu
+                if col in ("money", "finance_employees", "reputation", "owner_id"):
+                    self.teams[col] = 0
+                elif col in ("found",):
+                    self.teams[col] = 1800
+                elif col in ("folded",):
+                    self.teams[col] = 3000
+
         return True
 
     def save(self, base_name: str):
@@ -26,19 +45,43 @@ class TeamsModel:
         return money // 250
 
     def mark_all_as_ai(self):
-        self.teams["ai"] = True
+        self.teams["owner_id"] = 0
+
+    def get_teams(self) -> pd.DataFrame:
+        """
+        Vracia DataFrame s ID, menom a vlastníkom tímu.
+        """
+        if self.teams.empty:
+            return pd.DataFrame(columns=["teamID", "team_name", "owner_id"])
+
+        if "owner_id" not in self.teams.columns:
+            self.teams["owner_id"] = 0
+
+        return self.teams[["teamID", "team_name", "owner_id"]].copy()
+
+    def get_teams_id(self, search_team_name: str) -> int | None:
+        result = self.teams.query("team_name == @search_team_name")
+        return result["teamID"].iat[0] if not result.empty else None
 
     def get_human_team_mask(self, year: int) -> pd.Series:
         return (
-                (self.teams["ai"] == False)
+                (self.teams["owner_id"] != 0)
                 & (self.teams["found"] <= year)
                 & (self.teams["folded"] >= year)
         )
 
     def get_human_teams(self, date) -> pd.DataFrame:
         if self.teams.empty:
-            return self.teams.copy()
+            return pd.DataFrame(columns=self.teams.columns)
         return self.teams.loc[self.get_human_team_mask(date.year)].copy()
+
+    def get_team_staff_counts(self, team_id: int) -> pd.DataFrame:
+        """
+        Vráti DataFrame s počtom finančných a dizajnérskych zamestnancov pre daný team_id.
+        Obsahuje stĺpce: teamID, finance_employees, design_employees.
+        """
+        result = self.teams.loc[self.teams['teamID'] == team_id, ['teamID', 'finance_employees', 'design_employees']]
+        return result.reset_index(drop=True)
 
     def invest_finance(self, year: int, investments: dict):
         human_mask = self.get_human_team_mask(year)

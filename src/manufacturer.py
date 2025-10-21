@@ -92,6 +92,17 @@ class ManufacturerModel:
 
         self.car_parts = pd.concat([self.car_parts, new_parts], ignore_index=True)
 
+    def get_manufacturers(self) -> pd.DataFrame:
+        return (
+            self.manufacturers[["manufacturerID", "name"]].copy()
+            if not self.manufacturers.empty
+            else pd.DataFrame(columns=["manufacturerID", "name"])
+        )
+
+    def get_manufacturers_id(self, manufacturer_name: str) -> int | None:
+        result = self.manufacturers.query("name == @manufacturer_name")
+        return result["manufacturerID"].iat[0] if not result.empty else None
+
     def _merge_contracts_with_rules(self, contracts: pd.DataFrame, year: int) -> pd.DataFrame:
 
         merged = pd.merge(contracts, self.rules, on=["seriesID", "partType"], how="left")

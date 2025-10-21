@@ -117,6 +117,253 @@ class ContractsModel:
         next_year = int(self.driver_slots_current["year"].max()) + 1
         self.driver_slots_next = self.init_driver_slots_for_year(next_year, self.rules)
 
+    def find_active_driver_contracts(self, team_id: int, start_range: int, driver_model=None,
+                                     race_model=None) -> pd.DataFrame:
+        years = (start_range, start_range - 1, start_range - 2)
+        """
+        Nájde všetky zmluvy, ktoré platili pre daný team_id počas zadaného rozsahu rokov.
+
+        Args:
+            df (pd.DataFrame): DataFrame so zmluvami.
+            team_id (int): ID tímu.
+            start_range (int): Začiatok sledovaného obdobia.
+            end_range (int): Koniec sledovaného obdobia.
+
+        Returns:
+            pd.DataFrame: Podmnožina zmlúv, ktoré v daných rokoch platili.
+        """
+        mask = (
+                (self.DTcontract["teamID"] == team_id) &
+                (((self.DTcontract["active"]) &  # voliteľné – ak chceš iba aktívne zmluvy
+
+                  (self.DTcontract["endYear"] >= start_range)) |
+
+                 (self.DTcontract["startYear"] >= start_range))
+        )
+        contracts = self.DTcontract[mask].copy()
+
+        if driver_model is not None:
+            custom_drivers = driver_model.drivers[["driverID", "forename", "surname", "nationality", "age"]]
+            contracts = custom_drivers.merge(contracts, on="driverID", how="right")
+
+            """
+            Pridá k zmluvám jazdcov ich výsledky (pozíciu, body, sériu) za zadané roky.
+            """
+            merged = contracts.copy()
+
+            for yr in years:
+                # Vyfiltruj výsledky pre daný rok
+                year_standings = race_model.standings[race_model.standings["year"] == yr]
+
+                # Zredukuj na posledný známy výsledok (napr. posledné kolo)
+                # alebo môžeš agregovať podľa priemeru či súčtu bodov
+                last_round = year_standings.sort_values("round").groupby("subjectID").last().reset_index()
+
+                # Premenuj stĺpce, aby mali názvy s rokom
+                year_standings = last_round.rename(
+                    columns={
+                        "seriesID": f"{yr}",
+                        "position": f"Position_{yr}",
+                        "points": f"Points_{yr}",
+                    }
+                )[
+                    ["subjectID", f"{yr}", f"Position_{yr}", f"Points_{yr}"]
+                ]
+
+                # Spoj s hlavnou tabuľkou
+                merged = merged.merge(year_standings, left_on="driverID", right_on="subjectID", how="left")
+                merged = merged.drop(columns=["subjectID"], errors="ignore")
+
+            # Voliteľne — zoradiť stĺpce podľa vzoru
+            base_cols = ["forename", "surname", "nationality", "age", "salary", "startYear", "endYear"]
+            other_cols = [c for c in merged.columns if c not in base_cols and c != "driverID"]
+            merged = merged[base_cols + other_cols]
+            merged = merged.drop(columns=["teamID", "wanted_reputation", "active", "driverID"], errors="ignore")
+            return merged
+
+        contracts = contracts.drop(columns=["teamID", "wanted_reputation", "active", "driverID"], errors="ignore")
+        return contracts
+
+    def find_active_driver_contracts(self, team_id: int, start_range: int, driver_model=None,
+                                     race_model=None) -> pd.DataFrame:
+        years = (start_range, start_range - 1, start_range - 2)
+        """
+        Nájde všetky zmluvy, ktoré platili pre daný team_id počas zadaného rozsahu rokov.
+
+        Args:
+            df (pd.DataFrame): DataFrame so zmluvami.
+            team_id (int): ID tímu.
+            start_range (int): Začiatok sledovaného obdobia.
+            end_range (int): Koniec sledovaného obdobia.
+
+        Returns:
+            pd.DataFrame: Podmnožina zmlúv, ktoré v daných rokoch platili.
+        """
+        mask = (
+                (self.DTcontract["teamID"] == team_id) &
+                (((self.DTcontract["active"]) &  # voliteľné – ak chceš iba aktívne zmluvy
+
+                  (self.DTcontract["endYear"] >= start_range)) |
+
+                 (self.DTcontract["startYear"] >= start_range))
+        )
+        contracts = self.DTcontract[mask].copy()
+
+        if driver_model is not None:
+            custom_drivers = driver_model.drivers[["driverID", "forename", "surname", "nationality", "age"]]
+            contracts = custom_drivers.merge(contracts, on="driverID", how="right")
+
+            """
+            Pridá k zmluvám jazdcov ich výsledky (pozíciu, body, sériu) za zadané roky.
+            """
+            merged = contracts.copy()
+
+            for yr in years:
+                # Vyfiltruj výsledky pre daný rok
+                year_standings = race_model.standings[race_model.standings["year"] == yr]
+
+                # Zredukuj na posledný známy výsledok (napr. posledné kolo)
+                # alebo môžeš agregovať podľa priemeru či súčtu bodov
+                last_round = year_standings.sort_values("round").groupby("subjectID").last().reset_index()
+
+                # Premenuj stĺpce, aby mali názvy s rokom
+                year_standings = last_round.rename(
+                    columns={
+                        "seriesID": f"{yr}",
+                        "position": f"Position_{yr}",
+                        "points": f"Points_{yr}",
+                    }
+                )[
+                    ["subjectID", f"{yr}", f"Position_{yr}", f"Points_{yr}"]
+                ]
+
+                # Spoj s hlavnou tabuľkou
+                merged = merged.merge(year_standings, left_on="driverID", right_on="subjectID", how="left")
+                merged = merged.drop(columns=["subjectID"], errors="ignore")
+
+            # Voliteľne — zoradiť stĺpce podľa vzoru
+            base_cols = ["forename", "surname", "nationality", "age", "salary", "startYear", "endYear"]
+            other_cols = [c for c in merged.columns if c not in base_cols and c != "driverID"]
+            merged = merged[base_cols + other_cols]
+            merged = merged.drop(columns=["teamID", "wanted_reputation", "active", "driverID"], errors="ignore")
+            return merged
+
+        contracts = contracts.drop(columns=["teamID", "wanted_reputation", "active", "driverID"], errors="ignore")
+        return contracts
+
+    def get_team_series(self, team_id: int) -> list[int]:
+        """
+        Vráti zoznam ID sérií, v ktorých má tím kontrakt.
+        """
+        try:
+            team_contracts = self.STcontract[self.STcontract["teamID"] == team_id]
+            if team_contracts.empty:
+                return []
+            return team_contracts["seriesID"].astype(int).unique().tolist()
+        except Exception as e:
+            print(f" get_team_series error: {e}")
+            return []
+
+    def find_active_manufacturer_contracts(
+            self,
+            team_id: int,
+            start_range: int,
+            manufacturer_model=None,
+            race_model=None
+    ) -> pd.DataFrame:
+        """
+        Nájde všetky zmluvy výrobcov (MTcontract), ktoré sú aktívne pre daný team_id
+        počas daného obdobia. Doplní informácie o výrobcoch a ich výsledkoch
+        (pozícia, body, séria) z posledných 3 rokov podľa typu partu (engine, chassi, pneu),
+        pričom sa berú len výsledky z tej istej série, v ktorej platí kontrakt.
+        """
+
+        years = (start_range, start_range - 1, start_range - 2)
+
+        # 🔍 Vyber všetky kontrakty pre daný tím
+        mask = (
+                (self.MTcontract["teamID"] == team_id)
+                & (
+                        (self.MTcontract["endYear"] >= start_range)
+                        | (self.MTcontract["startYear"] >= start_range)
+                )
+        )
+        contracts = self.MTcontract[mask].copy()
+
+        if contracts.empty:
+            return pd.DataFrame(columns=[
+                "name", "partType", "cost", "startYear", "endYear",
+                "seriesID", "Position", "Points"
+            ])
+
+        # 🔧 Spoj s tabuľkou výrobcov (ak existuje)
+        if manufacturer_model is not None and hasattr(manufacturer_model, "manufacturers"):
+            manu_df = manufacturer_model.manufacturers[
+                ["manufacturerID", "name", "owner", "money", "engine", "chassi", "pneu", "emp"]
+            ]
+            contracts = contracts.merge(manu_df, on="manufacturerID", how="left")
+
+        merged = contracts.copy()
+
+        # 📈 Pridaj dáta zo standings (výsledky podľa partType a seriesID)
+        if race_model is not None and hasattr(race_model, "standings"):
+            for yr in years:
+                year_standings = race_model.standings[
+                    race_model.standings["year"] == yr
+                    ].copy()
+
+                year_data = []
+
+                for _, row in contracts.iterrows():
+                    part_type = row["partType"]
+                    series_id = row["seriesID"]
+                    manu_id = row["manufacturerID"]
+
+                    filt = (
+                            (year_standings["typ"] == part_type)
+                            & (year_standings["seriesID"] == series_id)
+                            & (year_standings["subjectID"] == manu_id)
+                    )
+                    tmp = year_standings[filt]
+
+                    if not tmp.empty:
+                        last = tmp.sort_values("round").iloc[-1]
+                        year_data.append({
+                            "manufacturerID": manu_id,
+                            "partType": part_type,
+                            f"{yr}": last["seriesID"],
+                            f"Position_{yr}": last["position"],
+                            f"Points_{yr}": last["points"]
+                        })
+
+                if year_data:
+                    df_year = pd.DataFrame(year_data)
+                    merged = merged.merge(df_year, on=["manufacturerID", "partType"], how="left")
+
+        # 🧾 Zoradenie stĺpcov: základné + roky v poradí rok → pozícia → body
+        base_cols = ["name", "partType", "cost", "startYear", "endYear"]
+        year_blocks = {}
+
+        for col in merged.columns:
+            if col.isdigit():
+                year_blocks.setdefault(col, []).append(col)
+            elif col.startswith("Position_") or col.startswith("Points_"):
+                year = col.split("_")[1]
+                year_blocks.setdefault(year, []).append(col)
+
+        sorted_years = sorted(year_blocks.keys(), reverse=True)
+
+        ordered_year_cols = []
+        for y in sorted_years:
+            cols = year_blocks[y]
+            # zoradi: rok, pozícia, body
+            cols_sorted = sorted(cols, key=lambda x: (0 if x == y else 1 if "Position" in x else 2))
+            ordered_year_cols.extend(cols_sorted)
+
+        final_cols = [c for c in base_cols if c in merged.columns] + ordered_year_cols
+        final = merged[final_cols].copy()
+        return final
+
     def update_driver_slot(self, team_id: int, year: int) -> None:
         """Zvyší signed_slots a zmení free_slots pre zodpovedajúci rok.
 
@@ -357,9 +604,8 @@ class ContractsModel:
                 missing_slots = max_cars - signed_count
 
                 for _ in range(missing_slots):
-                    is_human = not bool(
-                        teams_model.teams.loc[teams_model.teams["teamID"] == team_id, "ai"].iloc[0]
-                    )
+                    is_human = teams_model.teams.loc[teams_model.teams["teamID"] == team_id, "owner_id"].iloc[0] > 0
+
                     if is_human and team_inputs.get(team_id):
                         driver_id, salary, length = team_inputs[team_id]
                         # enforce age constraint for provided length
@@ -392,9 +638,7 @@ class ContractsModel:
         team_id = self._choose_team_by_reputation(teams)
         if team_id is None:
             return
-        is_human = not bool(
-            teams_model.teams.loc[teams_model.teams["teamID"] == team_id, "ai"].iloc[0]
-        )
+        is_human = teams_model.teams.loc[teams_model.teams["teamID"] == team_id, "owner_id"].iloc[0] > 0
 
         # zistime seriu timu a kontrolujeme miesta pre buduci rok
         team_series = self.STcontract[self.STcontract["teamID"] == team_id]
@@ -532,7 +776,7 @@ class ContractsModel:
 
         teams = teams_model.teams.sort_values(by="reputation")
         human_teams = teams[
-            (~teams["ai"]) & (teams["found"] <= current_date.year) & (teams["folded"] >= current_date.year)]
+            (teams["owner_id"] > 0) & (teams["found"] <= current_date.year) & (teams["folded"] >= current_date.year)]
 
         active_contracts = self.MTcontract[
             (self.MTcontract["startYear"] <= current_date.year) & (self.MTcontract["endYear"] >= current_date.year)]
