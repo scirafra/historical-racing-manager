@@ -99,6 +99,13 @@ class DriversModel:
             else pd.DataFrame(columns=["driverID", "forename", "surname"])
         )
 
+    def get_active_drivers(self) -> pd.DataFrame:
+        return (
+            self.active_drivers[["driverID", "forename", "surname", "nationality", "age"]].copy()
+            if not self.active_drivers.empty
+            else pd.DataFrame(columns=["driverID", "forename", "surname", "nationality", "age"])
+        )
+
     def _sync_active_to_main(self) -> None:
         self.drivers.set_index("driverID", inplace=True)
         self.active_drivers.set_index("driverID", inplace=True)

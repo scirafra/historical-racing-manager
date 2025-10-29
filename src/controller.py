@@ -110,7 +110,10 @@ class Controller:
 
     def get_owners_team_driver_data(self):
         return self.contracts_model.find_active_driver_contracts(self.active_team_id, self.get_year(),
-                                                                 self.drivers_model, self.race_model)
+                                                                 self.series_model.get_series(),
+                                                                 self.drivers_model.get_active_drivers(),
+                                                                 self.race_model
+                                                                 )
 
     def get_active_team_info(self) -> dict:
         """Vracia všetky dáta o aktívnom tíme."""
@@ -135,8 +138,9 @@ class Controller:
         values = []
         for _, row in teams_df.iterrows():
             owner = row["owner_id"]
-            owner_text = f"Owner {owner}" if owner > 0 else "Unowned"
-            values.append(f"{row['team_name']} ({owner_text})")
+            if owner > 0:
+                owner_text = f"Owner {owner}"
+                values.append(f"{row['team_name']} ({owner_text})")
         return values
 
     def get_myteam_tab_data(self) -> dict:
@@ -209,7 +213,8 @@ class Controller:
                 return pd.DataFrame(columns=["Date", "Race Name", "Series"])
 
             # Získaj nadchádzajúcich 5 pretekov pre tieto série
-            upcoming = self.race_model.get_upcoming_races_for_series(series_ids, self.current_date)
+            upcoming = self.race_model.get_upcoming_races_for_series(series_ids, self.series_model.get_series(),
+                                                                     self.current_date)
             return upcoming
 
         except Exception as e:
@@ -221,6 +226,7 @@ class Controller:
         Znovu načíta My Team tab z aktuálnych dát.
         Volá sa po zmene tímu, po simulácii, alebo po zmene tabu.
         """
+
         try:
             if hasattr(self, "view") and hasattr(self.view, "refresh_myteam_tab"):
                 self.view.refresh_myteam_tab()
@@ -232,6 +238,7 @@ class Controller:
 
     def get_owners_team_parts_data(self):
         return self.contracts_model.find_active_manufacturer_contracts(self.active_team_id, self.get_year(),
+                                                                       self.series_model.get_series(),
                                                                        self.manufacturer_model, self.race_model)
 
     def get_owners_team_future_data(self, team_id):
@@ -509,7 +516,7 @@ class Controller:
 
         season = int(season_str)
 
-        df = self.race_model.pivot_results_by_race(sid, season)
+        df = self.race_model.pivot_results_by_race(sid, season, self.manufacturer_model.get_manufacturers())
         return self._format_results(df, season)
 
     def get_stats(self, subject_name: str, stats_type: str, manufacturer_type: str) -> pd.DataFrame:
@@ -521,14 +528,14 @@ class Controller:
 
             sid = self.drivers_model.get_driver_id(name[0], name[-1])
 
-            df = self.race_model.get_subject_season_stands(sid, "driver")
+            df = self.race_model.get_subject_season_stands(sid, "driver", self.series_model.get_series())
             return df  # self._format_results(df, season)
         elif stats_type == "Manufacturers":
             if not subject_name or not stats_type or not manufacturer_type:
                 return pd.DataFrame()
 
             mid = self.manufacturer_model.get_manufacturers_id(subject_name)
-            df = self.race_model.get_subject_season_stands(mid, manufacturer_type)
+            df = self.race_model.get_subject_season_stands(mid, manufacturer_type, self.series_model.get_series())
             return df  # self._format_results(df, season)
         elif stats_type == "Teams":
             if not subject_name or not stats_type:
@@ -536,7 +543,7 @@ class Controller:
 
             tid = self.teams_model.get_teams_id(subject_name)
 
-            df = self.race_model.get_subject_season_stands(tid, "team")
+            df = self.race_model.get_subject_season_stands(tid, "team", self.series_model.get_series())
             return df  # self._format_results(df, season)
         elif stats_type == "Series":
             if not subject_name or not stats_type:
@@ -544,7 +551,9 @@ class Controller:
 
             sid = self.series_model.get_series_id(subject_name)
 
-            df = self.race_model.extract_champions(sid)
+            df = self.race_model.extract_champions(sid, self.series_model.get_series(),
+                                                   self.manufacturer_model.get_manufacturers(),
+                                                   self.teams_model.get_teams(), self.drivers_model.get_drivers())
             return df  # self._format_results(df, season)
         return None
 
@@ -552,23 +561,45 @@ class Controller:
         if df is None or df.empty:
             return pd.DataFrame()
 
+        # Mapovanie manufacturerID → názov
         mf_map = self.manufacturer_model.manufacturers.set_index("manufacturerID")["name"].to_dict()
-        for col_key, col_name in [("engine", "Engine"), ("chassi", "Chassi"), ("pneu", "Tyres")]:
-            if col_key in df.columns:
-                df[col_name] = (
-                    df[col_key].fillna(0).astype(int).map(mf_map).fillna(df[col_key].astype(str))
-                )
-                df.drop(columns=[col_key], inplace=True)
 
+        # Spracovanie stĺpcov engine/chassi/pneu alebo engineID/chassiID/pneuID
+        part_columns = {
+            "engine": "Engine",
+            "engineID": "Engine",
+            "chassi": "Chassi",
+            "chassiID": "Chassi",
+            "pneu": "Tyres",
+            "pneuID": "Tyres"
+        }
+
+        for raw_col, final_col in part_columns.items():
+            if raw_col in df.columns:
+                if df[raw_col].dtype in ("int64", "float64"):
+                    df[final_col] = (
+                        df[raw_col].fillna(0).astype(int).map(mf_map).fillna(df[raw_col].astype(str))
+                    )
+                else:
+                    df[final_col] = df[raw_col]
+                df.drop(columns=[raw_col], inplace=True)
+
+        # Pridaj meno a vek jazdca
         df = df.merge(
             self.drivers_model.drivers[["driverID", "forename", "surname", "year"]],
             on="driverID", how="left"
         )
         df["Age"] = season - df["year"]
         df.drop(columns=["year", "driverID"], inplace=True)
-        df = df.merge(self.teams_model.teams[["teamID", "team_name"]], on="teamID", how="left")
+
+        # Pridaj názov tímu
+        df = df.merge(
+            self.teams_model.teams[["teamID", "team_name"]],
+            on="teamID", how="left"
+        )
         df.drop(columns=["teamID"], inplace=True)
 
+        # Premenuj stĺpce
         df.rename(columns={
             "forename": "Forename",
             "surname": "Surname",
@@ -577,9 +608,11 @@ class Controller:
             "final_points": "Points",
         }, inplace=True)
 
+        # Zoradenie podľa pozície
         if "Position" in df.columns:
             df.sort_values("Position", inplace=True)
 
+        # Zoradenie stĺpcov: základné + ostatné
         base_cols = ["Forename", "Surname", "Age", "Team Name"]
         for extra in ("Engine", "Chassi", "Tyres", "Position", "Points"):
             if extra in df.columns:
@@ -588,6 +621,7 @@ class Controller:
         others = [c for c in df.columns if c not in base_cols]
         df = df[base_cols + others]
 
+        # Formátovanie pozícií v jednotlivých kolách
         def fmt(x):
             if x in ("Crash", "Death"):
                 return x
@@ -596,8 +630,7 @@ class Controller:
             except Exception:
                 return ""
 
-        for col in df.columns:
-            if col not in base_cols:
-                df[col] = df[col].apply(fmt)
+        for col in others:
+            df[col] = df[col].apply(fmt)
 
         return df

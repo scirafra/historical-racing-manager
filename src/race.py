@@ -55,9 +55,13 @@ class RaceModel:
         self.circuit_layouts.to_csv(base_path + "circuit_layouts.csv", index=False)
 
     # ===== Queries =====
-    def extract_champions(self, series_id: str) -> pd.DataFrame:
+    def extract_champions(self, series_id: str, series: pd.DataFrame, manufacturers: pd.DataFrame,
+                          teams: pd.DataFrame, drivers: pd.DataFrame) -> pd.DataFrame:
         # Filtrovanie podľa seriesID a pozície 1
-        filtered = self.standings[(self.standings['seriesID'] == series_id) & (self.standings['position'] == 1)]
+        filtered = self.standings[
+            (self.standings['seriesID'] == series_id) &
+            (self.standings['position'] == 1)
+            ]
 
         # Pivotovanie dát: každý typ bude vlastný stĺpec
         pivot = filtered.pivot_table(
@@ -70,15 +74,54 @@ class RaceModel:
         # Pridáme späť seriesID ako stĺpec
         pivot.insert(0, 'seriesID', series_id)
 
-        # Zoradenie stĺpcov: year, driver, team, ostatné
-        desired_order = ['year', 'driver', 'team']
-        other_columns = sorted([col for col in pivot.columns if col not in desired_order and col != 'seriesID'])
-        final_order = ['seriesID'] + desired_order + other_columns
+        # Získaj názov série
+        series_name = series.loc[series["seriesID"] == series_id, "name"].values
+        series_label = series_name[0] if len(series_name) > 0 else None
+        pivot.insert(1, 'series', series_label)
+
+        # Doplníme meno jazdca, ak existuje stĺpec 'driver'
+        if 'driver' in pivot.columns:
+            pivot = pivot.merge(
+                drivers[["driverID", "forename", "surname"]],
+                left_on="driver",
+                right_on="driverID",
+                how="left"
+            )
+            pivot["driver_name"] = pivot["forename"] + " " + pivot["surname"]
+            pivot.drop(columns=["driverID", "forename", "surname", "driver"], inplace=True)
+
+        # Doplníme názov tímu, ak existuje stĺpec 'team'
+        if 'team' in pivot.columns:
+            pivot = pivot.merge(
+                teams[["teamID", "team_name"]],
+                left_on="team",
+                right_on="teamID",
+                how="left"
+            )
+            pivot.drop(columns=["teamID", "team"], inplace=True)
+
+        # Doplníme názvy výrobcov pre engine, chassi, pneu
+        mf_map = manufacturers.set_index("manufacturerID")["name"].to_dict()
+        for part in ["engine", "chassi", "pneu"]:
+            if part in pivot.columns:
+                pivot[part] = pivot[part].map(mf_map)
+
+        # Zoradenie stĺpcov: year, forename, surname, team_name, engine, chassi, pneu, ostatné
+        desired_order = ['year', 'driver_name', 'team_name', 'engine', 'chassi', 'pneu']
+        other_columns = sorted([
+            col for col in pivot.columns
+            if col not in desired_order and col not in ('series')
+        ])
+        final_order = ['series'] + desired_order + other_columns
         pivot = pivot[[col for col in final_order if col in pivot.columns]]
+
+        # Odstráň seriesID
+        pivot.drop(columns=["seriesID"], inplace=True)
 
         return pivot
 
-    def get_upcoming_races_for_series(self, series_ids: list[int], current_date: str) -> pd.DataFrame:
+    def get_upcoming_races_for_series(self, series_ids: list[int], series: pd.DataFrame,
+                                      current_date: str) -> pd.DataFrame:
         """
         Vráti najbližších 5 pretekov pre dané série po aktuálnom dátume.
         """
@@ -86,22 +129,35 @@ class RaceModel:
             if not series_ids or self.races.empty:
                 return pd.DataFrame(columns=["Date", "Race Name", "Series", "Country"])
 
+            # Vyfiltruj relevantné preteky
             races = self.races[
                 (self.races["seriesID"].isin(series_ids)) &
                 (self.races["race_date"] >= current_date)
                 ].copy()
 
-            races = races[["race_date", "name", "seriesID"]]
-            races.rename(columns={
-                "race_date": "Date",
-                "name": "Race Name",
-                "seriesID": "Series",
-            }, inplace=True)
+            # Premenuj názov pretekov, aby sa nebil s názvom série
+            races.rename(columns={"name": "Race Name"}, inplace=True)
+
+            # Spoj s názvami sérií
+            races = races.merge(series[["seriesID", "name"]], on="seriesID", how="left")
+
+            # Premenuj názov série
+            races.rename(columns={"name": "Series", "race_date": "Date"}, inplace=True)
+
+            # Voliteľne: ak máš stĺpec "country" v self.races, pridaj ho
+            if "country" in races.columns:
+                races.rename(columns={"country": "Country"}, inplace=True)
+                races = races[["Date", "Race Name", "Series", "Country"]]
+            else:
+                races = races[["Date", "Race Name", "Series"]]
+            # Preveď dátum na formát yyyy-mm-dd bez času
+            races["Date"] = pd.to_datetime(races["Date"]).dt.strftime("%Y-%m-%d")
 
             races.sort_values("Date", inplace=True)
             return races.head(5).reset_index(drop=True)
+
         except Exception as e:
-            print(f" get_upcoming_races_for_series error: {e}")
+            print(f"get_upcoming_races_for_series error: {e}")
             return pd.DataFrame(columns=["Date", "Race Name", "Series", "Country"])
 
     def get_results_for_series_and_season(self, series_id: int, season: int) -> pd.DataFrame:
@@ -112,9 +168,10 @@ class RaceModel:
         ].copy()
         return df.reset_index(drop=True)
 
-    def get_subject_season_stands(self, subject_id: int, subject_type: str) -> pd.DataFrame:
-        """Returns the seasonal statistics of a driver/team based on standings and results."""
-        # Filter standings for the given subject
+    def get_subject_season_stands(self, subject_id: int, subject_type: str, series: pd.DataFrame) -> pd.DataFrame:
+        """
+        Returns the seasonal statistics of a driver/team based on standings and results.
+        """
         subject_stands = self.standings[
             (self.standings["subjectID"] == subject_id) &
             (self.standings["typ"] == subject_type)
@@ -123,24 +180,19 @@ class RaceModel:
         if subject_stands.empty:
             return pd.DataFrame()
 
-        # Group by season and series
         grouped = subject_stands.groupby(["year", "seriesID"])
-
         records = []
+
         for (year, series_id), group in grouped:
-            # Select the row with the highest "round" = final standings state
             group = group.copy()
             group["round"] = pd.to_numeric(group["round"], errors="coerce")
-
             max_round_idx = group["round"].idxmax()
             max_round_row = group.loc[max_round_idx]
 
             total_points = max_round_row["points"]
-            championship_position = max_round_row["position"]  # position after the last round
-
+            championship_position = max_round_row["position"]
             races = group["raceID"].nunique()
 
-            # Filter results for the given subject in this season and series
             race_results = self.results[
                 (self.results[subject_type + "ID"] == subject_id) &
                 (self.results["season"] == year) &
@@ -151,13 +203,13 @@ class RaceModel:
             podiums = (race_results["position"] <= 3).sum()
             best_position = race_results["position"].min()
 
-            # team_ids = race_results["teamID"].unique()
-            # team = team_ids[0] if len(team_ids) > 0 else None
+            # Získaj názov série
+            series_name = series.loc[series["seriesID"] == series_id, "name"].values
+            series_label = series_name[0] if len(series_name) > 0 else None
 
             records.append({
                 "season": year,
-                "series": series_id,
-                # "team": team,
+                "series": series_label,
                 "races": races,
                 "wins": wins,
                 "podiums": podiums,
@@ -195,8 +247,12 @@ class RaceModel:
         names = drivers_model.drivers[["driverID", "forename", "surname"]]
         return pd.merge(sorted_df, names, on="driverID", how="left")
 
-    def pivot_results_by_race(self, series_id: int, season: int, fill_value=None) -> pd.DataFrame:
+    def pivot_results_by_race(self, series_id: int, season: int, manufacturers: pd.DataFrame,
+                              fill_value=None) -> pd.DataFrame:
         df = self.get_results_for_series_and_season(series_id, season)
+        # Vytvor mapovanie ID → názov výrobcu
+        manu_map = manufacturers.set_index("manufacturerID")["name"].to_dict()
+
         if df.empty:
             return pd.DataFrame()
 
@@ -208,6 +264,10 @@ class RaceModel:
         df["col_label"] = df.apply(
             lambda r: zero_map[r["raceID"]] if r["round"] == 0 else str(r["round"]), axis=1
         )
+        # Nahraď ID za názvy
+        df["engineID"] = df["engineID"].map(manu_map)
+        df["chassiID"] = df["chassiID"].map(manu_map)
+        df["pneuID"] = df["pneuID"].map(manu_map)
 
         pivot = df.pivot(
             index=["driverID", "teamID", "engineID", "chassiID", "pneuID"],

@@ -117,7 +117,8 @@ class ContractsModel:
         next_year = int(self.driver_slots_current["year"].max()) + 1
         self.driver_slots_next = self.init_driver_slots_for_year(next_year, self.rules)
 
-    def find_active_driver_contracts(self, team_id: int, start_range: int, driver_model=None,
+    def find_active_driver_contracts(self, team_id: int, start_range: int, series: pd.DataFrame,
+                                     active_drivers: pd.DataFrame,
                                      race_model=None) -> pd.DataFrame:
         years = (start_range, start_range - 1, start_range - 2)
         """
@@ -142,13 +143,84 @@ class ContractsModel:
         )
         contracts = self.DTcontract[mask].copy()
 
-        if driver_model is not None:
-            custom_drivers = driver_model.drivers[["driverID", "forename", "surname", "nationality", "age"]]
+        if not active_drivers.empty:
+            custom_drivers = active_drivers[["driverID", "forename", "surname", "nationality", "age"]]
             contracts = custom_drivers.merge(contracts, on="driverID", how="right")
 
             """
             Pridá k zmluvám jazdcov ich výsledky (pozíciu, body, sériu) za zadané roky.
             """
+            merged = contracts.copy()
+
+            for yr in years:
+                # Vyfiltruj výsledky pre daný rok
+                year_standings = race_model.standings[race_model.standings["year"] == yr]
+
+                # Zredukuj na posledný známy výsledok (napr. posledné kolo)
+                # alebo môžeš agregovať podľa priemeru či súčtu bodov
+                last_round = year_standings.sort_values("round").groupby("subjectID").last().reset_index()
+
+                # Spoj s názvami sérií
+                last_round = last_round.merge(series[["seriesID", "name"]], on="seriesID", how="left")
+
+                # Premenuj stĺpce, aby mali názvy s rokom
+                year_standings = last_round.rename(
+                    columns={
+                        "name": f"{yr}",
+                        "position": f"Position_{yr}",
+                        "points": f"Points_{yr}",
+                    }
+                )[
+                    ["subjectID", f"{yr}", f"Position_{yr}", f"Points_{yr}"]
+                ]
+
+                # Spoj s hlavnou tabuľkou
+                merged = merged.merge(year_standings, left_on="driverID", right_on="subjectID", how="left")
+                merged = merged.drop(columns=["subjectID"], errors="ignore")
+
+            # Voliteľne — zoradiť stĺpce podľa vzoru
+            base_cols = ["forename", "surname", "nationality", "age", "salary", "startYear", "endYear"]
+            other_cols = [c for c in merged.columns if c not in base_cols and c != "driverID"]
+            merged = merged[base_cols + other_cols]
+            merged = merged.drop(columns=["teamID", "wanted_reputation", "active", "driverID"], errors="ignore")
+            return merged
+
+        contracts = contracts.drop(columns=["teamID", "wanted_reputation", "active", "driverID"], errors="ignore")
+        return contracts
+
+    """
+    def find_active_driver_contracts(self, team_id: int, start_range: int, driver_model=None,
+                                     race_model=None) -> pd.DataFrame:
+        years = (start_range, start_range - 1, start_range - 2)
+        """"""
+        Nájde všetky zmluvy, ktoré platili pre daný team_id počas zadaného rozsahu rokov.
+
+        Args:
+            df (pd.DataFrame): DataFrame so zmluvami.
+            team_id (int): ID tímu.
+            start_range (int): Začiatok sledovaného obdobia.
+            end_range (int): Koniec sledovaného obdobia.
+
+        Returns:
+            pd.DataFrame: Podmnožina zmlúv, ktoré v daných rokoch platili.
+        """"""
+        mask = (
+                (self.DTcontract["teamID"] == team_id) &
+                (((self.DTcontract["active"]) &  # voliteľné – ak chceš iba aktívne zmluvy
+
+                  (self.DTcontract["endYear"] >= start_range)) |
+
+                 (self.DTcontract["startYear"] >= start_range))
+        )
+        contracts = self.DTcontract[mask].copy()
+
+        if driver_model is not None:
+            custom_drivers = driver_model.drivers[["driverID", "forename", "surname", "nationality", "age"]]
+            contracts = custom_drivers.merge(contracts, on="driverID", how="right")
+
+            
+            #Pridá k zmluvám jazdcov ich výsledky (pozíciu, body, sériu) za zadané roky.
+            
             merged = contracts.copy()
 
             for yr in years:
@@ -183,73 +255,7 @@ class ContractsModel:
 
         contracts = contracts.drop(columns=["teamID", "wanted_reputation", "active", "driverID"], errors="ignore")
         return contracts
-
-    def find_active_driver_contracts(self, team_id: int, start_range: int, driver_model=None,
-                                     race_model=None) -> pd.DataFrame:
-        years = (start_range, start_range - 1, start_range - 2)
-        """
-        Nájde všetky zmluvy, ktoré platili pre daný team_id počas zadaného rozsahu rokov.
-
-        Args:
-            df (pd.DataFrame): DataFrame so zmluvami.
-            team_id (int): ID tímu.
-            start_range (int): Začiatok sledovaného obdobia.
-            end_range (int): Koniec sledovaného obdobia.
-
-        Returns:
-            pd.DataFrame: Podmnožina zmlúv, ktoré v daných rokoch platili.
-        """
-        mask = (
-                (self.DTcontract["teamID"] == team_id) &
-                (((self.DTcontract["active"]) &  # voliteľné – ak chceš iba aktívne zmluvy
-
-                  (self.DTcontract["endYear"] >= start_range)) |
-
-                 (self.DTcontract["startYear"] >= start_range))
-        )
-        contracts = self.DTcontract[mask].copy()
-
-        if driver_model is not None:
-            custom_drivers = driver_model.drivers[["driverID", "forename", "surname", "nationality", "age"]]
-            contracts = custom_drivers.merge(contracts, on="driverID", how="right")
-
-            """
-            Pridá k zmluvám jazdcov ich výsledky (pozíciu, body, sériu) za zadané roky.
-            """
-            merged = contracts.copy()
-
-            for yr in years:
-                # Vyfiltruj výsledky pre daný rok
-                year_standings = race_model.standings[race_model.standings["year"] == yr]
-
-                # Zredukuj na posledný známy výsledok (napr. posledné kolo)
-                # alebo môžeš agregovať podľa priemeru či súčtu bodov
-                last_round = year_standings.sort_values("round").groupby("subjectID").last().reset_index()
-
-                # Premenuj stĺpce, aby mali názvy s rokom
-                year_standings = last_round.rename(
-                    columns={
-                        "seriesID": f"{yr}",
-                        "position": f"Position_{yr}",
-                        "points": f"Points_{yr}",
-                    }
-                )[
-                    ["subjectID", f"{yr}", f"Position_{yr}", f"Points_{yr}"]
-                ]
-
-                # Spoj s hlavnou tabuľkou
-                merged = merged.merge(year_standings, left_on="driverID", right_on="subjectID", how="left")
-                merged = merged.drop(columns=["subjectID"], errors="ignore")
-
-            # Voliteľne — zoradiť stĺpce podľa vzoru
-            base_cols = ["forename", "surname", "nationality", "age", "salary", "startYear", "endYear"]
-            other_cols = [c for c in merged.columns if c not in base_cols and c != "driverID"]
-            merged = merged[base_cols + other_cols]
-            merged = merged.drop(columns=["teamID", "wanted_reputation", "active", "driverID"], errors="ignore")
-            return merged
-
-        contracts = contracts.drop(columns=["teamID", "wanted_reputation", "active", "driverID"], errors="ignore")
-        return contracts
+    """
 
     def get_team_series(self, team_id: int) -> list[int]:
         """
@@ -268,6 +274,7 @@ class ContractsModel:
             self,
             team_id: int,
             start_range: int,
+            series: pd.DataFrame,
             manufacturer_model=None,
             race_model=None
     ) -> pd.DataFrame:
@@ -328,10 +335,14 @@ class ContractsModel:
 
                     if not tmp.empty:
                         last = tmp.sort_values("round").iloc[-1]
+                        # Získaj názov série
+                        series_name = series.loc[series["seriesID"] == last["seriesID"], "name"].values
+                        series_label = series_name[0] if len(series_name) > 0 else None
+
                         year_data.append({
                             "manufacturerID": manu_id,
                             "partType": part_type,
-                            f"{yr}": last["seriesID"],
+                            f"{yr}": series_label,
                             f"Position_{yr}": last["position"],
                             f"Points_{yr}": last["points"]
                         })

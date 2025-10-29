@@ -7,6 +7,25 @@ import pandas as pd
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
 
+COLUMN_LABELS = {
+    "forename": "First Name",
+    "surname": "Last Name",
+    "nationality": "Nationality",
+    "age": "Age",
+    "salary": "Salary",
+    "staffYear": "Start Year",
+    "endYear": "End Year",
+    "partType": "Part Type",
+    "cost": "Cost",
+    "name": "Component Name",
+    "staff": "Staff",
+    "date": "Race Date",
+    "race": "Race Name",
+    "department": "Department",
+    "employees": "Employees",
+    # doplň podľa potreby
+}
+
 
 class Graphics:
     def __init__(self, controller):
@@ -517,7 +536,34 @@ class Graphics:
     # --- Utility ---
     def _populate_treeview(self, tree: ttk.Treeview, dataframe: Optional[pd.DataFrame]):
         try:
+            # Preklady technických názvov na čitateľné
+            COLUMN_LABELS = {
+                "forename": "First Name",
+                "surname": "Last Name",
+                "nationality": "Nationality",
+                "age": "Age",
+                "salary": "Salary",
+                "startYear": "Start Year",
+                "endYear": "End Year",
+                "partType": "Part Type",
+                "cost": "Cost",
+                "name": "Name",
+                "staff": "Staff",
+                "car": "Car",
+                "date": "Race Date",
+                "race": "Race Name",
+                "department": "Department",
+                "employees": "Employees",
+                "team": "Team"
+                # doplň podľa potreby
+            }
+
+            def format_column_label(col: str) -> str:
+                # Použije preklad, alebo nahradí podčiarkovníky medzerami
+                return COLUMN_LABELS.get(col, col.replace("_", " ").title())
+
             tree.delete(*tree.get_children())
+
             if dataframe is None or dataframe.empty:
                 tree["columns"] = ["info"]
                 tree.heading("info", text="Info")
@@ -528,17 +574,26 @@ class Graphics:
             df = dataframe.copy()
             cols = [str(c) for c in df.columns]
             tree["columns"] = cols
+
+            # Zabezpečí unikátne zobrazované názvy (ak by sa opakovali)
+            display_labels = {}
+            used_labels = {}
             for col in cols:
-                tree.heading(col, text=col)
+                label = format_column_label(col)
+                if label in used_labels:
+                    used_labels[label] += 1
+                    label = f"{label} {used_labels[label]}"
+                else:
+                    used_labels[label] = 1
+                display_labels[col] = label
+
+            for col in cols:
+                tree.heading(col, text=display_labels[col])
                 tree.column(col, width=120, anchor="center")
 
             for row in df.itertuples(index=False):
-                vals = []
-                for v in row:
-                    if pd.isna(v):
-                        vals.append("")
-                    else:
-                        vals.append(v)
+                vals = ["" if pd.isna(v) else v for v in row]
                 tree.insert("", "end", values=vals)
+
         except Exception as e:
             messagebox.showerror("Error", f"Could not populate view: {e}")
