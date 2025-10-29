@@ -5,3 +5,4 @@ manufacturerID,owner,name,found,folded,money,engine,chassi,pneu,emp,ai
 3,,Lola,1800,9999,10000000,False,True,False,0,True
 4,,Dunlop,1800,9999,10000000,False,False,True,0,True
 5,,Michelin,1800,9999,10000000,False,False,True,0,True
+6,,Mercedes,1800,9999,10000000,True,False,False,0,True
