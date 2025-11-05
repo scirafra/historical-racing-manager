@@ -284,7 +284,11 @@ class Controller:
         for _ in range(days):
             date += timedelta(days=1)
             if self._is_season_start(date):
+                print("start of season", self.get_year())
                 self._handle_season_start(date)
+                with pd.option_context('display.max_columns', None, 'display.expand_frame_repr', False):
+                    print(self.teams_model.teams.sort_values(by="reputation", ascending=False))
+                #  print(self.drivers_model.active_drivers.sort_values(by="reputation_race", ascending=False).head(50))
             if date.year >= 1894:
                 """
                 driver_inputs = self.view.ask_driver_contracts(
@@ -300,11 +304,13 @@ class Controller:
                     current_date=date,
                     active_drivers=self.drivers_model.active_drivers,
                     rules=self.series_model.point_rules,
+                    series=self.series_model.series,
                     temp=False,
                     teams=self.teams_model.teams,
                     team_inputs=driver_inputs,
                 )
             self._simulate_race_day(date)
+            self.process_driver_offers()
         return date
 
     def sim_year(self, start_date: datetime, years: int) -> datetime:
@@ -394,7 +400,14 @@ class Controller:
     def _is_season_start(self, date: datetime) -> bool:
         return 2999 > date.year and date.day == 1 and date.month == 1
 
+    def _deduct_all_contracts_for_year(self, year: int):
+        contracts = self.contracts_model.get_contracts_for_year(year)
+        for _, row in contracts.iterrows():
+            self.teams_model.deduct_money(row["teamID"], row["salary"])
+            print(f"💸 Tím {row['teamID']} zaplatil {row['salary']} za jazdca {row['driverID']} v roku {year}.")
+
     def _handle_season_start(self, date: datetime):
+
         if date.year > 1896:
             self.race_model.plan_races(self.series_model, date)
 
@@ -402,9 +415,11 @@ class Controller:
 
         # Prekopírovanie slotov
         self.contracts_model.rollover_driver_slots()
+        self.contracts_model.reset_reserved_slot()
 
         if date.year >= 1894:
             self._handle_contracts(date)
+            self._deduct_all_contracts_for_year(date.year)
 
         # Poznámka: investície sa už nespúšťajú automaticky pri štarte sezóny.
         # Používateľ spúšťa investície cez tlačidlo v GUI.
@@ -475,6 +490,72 @@ class Controller:
             if conv:
                 self.teams_model.invest_finance(year, conv)
 
+    def get_available_drivers_for_offer(self, next_year: bool = False) -> pd.DataFrame:
+        """
+        Vráti DataFrame s jazdcami, ktorých môže aktívny tím podpísať
+        (pre aktuálny alebo budúci rok podľa parametra next_year).
+        """
+        try:
+            team_id = self.get_active_team_id()
+            if not team_id:
+                print("Žiadny aktívny tím nie je nastavený.")
+                return pd.DataFrame()
+
+            year = self.get_year() + (1 if next_year else 0)
+            active_drivers = self.drivers_model.get_active_drivers()
+            rules = self.series_model.point_rules
+
+            df = self.contracts_model.get_available_drivers_for_offer(
+                team_id=team_id,
+                year=year,
+                active_drivers=active_drivers,
+                series=self.series_model.series,
+                rules=rules
+            )
+            print(f"[Controller]  Našiel som {len(df)} dostupných jazdcov pre rok {year}.")
+            return df
+        except Exception as e:
+            print(f"[Controller]  Chyba pri načítaní dostupných jazdcov: {e}")
+            return pd.DataFrame()
+
+    def offer_driver_contract(self, driver_id: int, salary: int, length: int, next_year: bool = False):
+        """
+        Ponúkne zmluvu jazdcovi pre aktuálny alebo budúci rok.
+        Jazdec sa rozhodne pri nasledujúcom posune dňa.
+        """
+        try:
+            team_id = self.get_active_team_id()
+            if not team_id:
+                print("Najprv musíš mať vybraný tím.")
+                return False
+
+            year = self.get_year() + (1 if next_year else 0)
+            self.contracts_model.offer_driver_contract(driver_id, team_id, salary, length, year)
+            print(f"[Controller]  Ponuka zmluvy pre jazdca {driver_id} (rok {year}) vytvorená.")
+            return True
+        except Exception as e:
+            print(f"[Controller]  Chyba pri vytváraní ponuky: {e}")
+            return False
+
+    def process_driver_offers(self):
+        """
+        Spracuje všetky čakajúce ponuky jazdcov (hráčove aj AI),
+        či boli prijaté alebo odmietnuté.
+        """
+        try:
+            signed = self.contracts_model.process_driver_offers(
+                self.current_date,
+                self.drivers_model.get_active_drivers_with_reputation()
+            )
+            for contract in signed:
+                if contract["year"] == self.get_year():
+                    self.teams_model.deduct_money(contract["team_id"], contract["salary"])
+
+            # self.refresh_myteam()
+            # print("[Controller]  Spracované všetky ponuky jazdcov.")
+        except Exception as e:
+            print(f"[Controller]  Chyba pri spracovaní ponúk: {e}")
+
     def _simulate_race_day(self, date: datetime):
         races_today = self.race_model.races[self.race_model.races["race_date"] == date].copy()
         if races_today.empty:
@@ -484,6 +565,7 @@ class Controller:
         for i in range(len(races_today)):
             died += self.race_model.prepare_race(
                 self.drivers_model,
+                self.teams_model,
                 self.series_model,
                 self.manufacturer_model,
                 self.contracts_model,
@@ -503,6 +585,7 @@ class Controller:
                     current_date=date,
                     active_drivers=self.drivers_model.active_drivers,
                     rules=self.series_model.point_rules,
+                    series=self.series_model.series,
                     temp=True,
                     teams=self.teams_model.teams,
                     team_inputs={},  # AI fallback only

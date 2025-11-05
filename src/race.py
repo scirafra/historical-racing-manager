@@ -308,6 +308,7 @@ class RaceModel:
     def prepare_race(
             self,
             drivers_model,
+            teams_model,
             series_model,
             manufacturer_model,
             contracts_model,
@@ -428,11 +429,12 @@ class RaceModel:
             drop=True
         )
 
-        return self.simulate_race(drivers_model, races_today.iloc[idx], race_data, rules, ps)
+        return self.simulate_race(drivers_model, teams_model, races_today.iloc[idx], race_data, rules, ps)
 
     def simulate_race(
             self,
             drivers_model,
+            teams_model,
             race_row: pd.Series,
             race_data: pd.DataFrame,
             current_point_rules: pd.DataFrame,
@@ -476,6 +478,14 @@ class RaceModel:
 
         if hasattr(drivers_model, "race_reputations"):
             drivers_model.race_reputations(int(race_row.get("reputation", 0) or 0), rep_drivers)
+
+        if hasattr(teams_model, "add_race_reputation"):
+            team_results = []
+            for driver_id in rep_drivers:
+                team_id = finish.loc[finish["driverID"] == driver_id, "teamID"].iloc[0]
+                team_results.append(int(team_id))
+
+            teams_model.add_race_reputation(int(race_row.get("reputation", 0) or 0), team_results)
 
         round_no = 0
         if bool(race_row.get("championship", False)):

@@ -134,9 +134,9 @@ class Graphics:
         self.cmb_2.grid(row=0, column=1, padx=5)
 
         self._create_button(controls, "Show Results", self.show_results, 2)
-        self._create_button(controls, "Next Day", lambda: self.sim_step(40000), 3)
+        self._create_button(controls, "Next Day", lambda: self.sim_step(1), 3)
         self._create_button(controls, "Next Week", lambda: self.sim_step(7), 4)
-        self._create_button(controls, "Next Year", lambda: self.sim_step(1500), 5)
+        self._create_button(controls, "Next Year", lambda: self.sim_step(4000), 5)
 
         self.date_label = ctk.CTkLabel(controls, text="", font=("Arial", 14))
         self.date_label.grid(row=0, column=9, padx=10, sticky="e")
@@ -168,19 +168,6 @@ class Graphics:
         self.tab_manufacturers = self.trees["Manufacturers"]
         self.tab_series = self.trees["Series"]
         self.tab_results = self.trees["Seasons"]
-
-        # Ovládacie tlačidlá pre My Team – presunuté úplne dole
-        team_controls = ctk.CTkFrame(self.tab_myteam)
-        team_controls.pack(pady=(5, 10), fill="x")
-
-        ctk.CTkButton(team_controls, text="Offer Contract", command=self.offer_contract).pack(side="left", padx=5,
-                                                                                              pady=5)
-        ctk.CTkButton(team_controls, text="Terminate Contract", command=self.terminate_contract).pack(side="left",
-                                                                                                      padx=5, pady=5)
-        ctk.CTkButton(team_controls, text="Build Own Part", command=self.create_own_part).pack(side="left", padx=5,
-                                                                                               pady=5)
-        ctk.CTkButton(team_controls, text="Invest in Marketing", command=self.invest_in_marketing).pack(side="left",
-                                                                                                        padx=5, pady=5)
 
     def _create_myteam(self, parent):
         try:
@@ -244,6 +231,28 @@ class Graphics:
             tree_races = ttk.Treeview(right_info, show="headings", height=4)
             tree_races.pack(fill="x", padx=5, pady=5)
             self._populate_treeview(tree_races, data["races"])
+
+            # Ovládacie tlačidlá pre My Team – presunuté úplne dole
+            team_controls = ctk.CTkFrame(self.tab_myteam)
+            team_controls.pack(pady=(5, 10), fill="x")
+
+            ctk.CTkButton(team_controls, text="Offer Driver Contract For This Year",
+                          command=lambda: self.offer_contract(next_year=False)).pack(side="left", padx=5, pady=5)
+
+            ctk.CTkButton(team_controls, text="Offer Driver Contract For Next Year",
+                          command=lambda: self.offer_contract(next_year=True)).pack(side="left", padx=5, pady=5)
+
+            ctk.CTkButton(team_controls, text="Offer Car Part Contract", command=self.offer_contract).pack(
+                side="left", padx=5,
+                pady=5)
+            ctk.CTkButton(team_controls, text="Terminate Contract", command=self.terminate_contract).pack(side="left",
+                                                                                                          padx=5,
+                                                                                                          pady=5)
+            ctk.CTkButton(team_controls, text="Build Own Part", command=self.create_own_part).pack(side="left", padx=5,
+                                                                                                   pady=5)
+            ctk.CTkButton(team_controls, text="Invest in Marketing", command=self.invest_in_marketing).pack(side="left",
+                                                                                                            padx=5,
+                                                                                                            pady=5)
 
         except Exception as e:
             print(f"️ Failed to build My Team tab: {e}")
@@ -448,18 +457,75 @@ class Graphics:
             messagebox.showerror("Error", f"Could not get results: {e}")
 
     # --- My Team actions ---
-    def offer_contract(self):
+    def offer_contract(self, next_year: bool):
+
         try:
             team = self.controller.get_active_team()
             if not team:
                 messagebox.showwarning("No Team Selected", "Please select a team first.")
                 return
 
-            confirm = messagebox.askyesno("Offer Contract", f"Do you want to offer a new contract for team {team}?")
-            if confirm:
-                result = self.controller.offer_contract_to_driver()  # Controller rieši všetko
-                messagebox.showinfo("Contract Offered", result)
-                self.refresh_myteam_tab()
+            #  Získaj dostupných jazdcov z controlleru
+            df = self.controller.get_available_drivers_for_offer(next_year=next_year)
+
+            if df.empty:
+                messagebox.showinfo("No Available Drivers", "No drivers are currently available for contracts.")
+                return
+
+            # 🪟 Vyskakovacie okno
+            dialog = ctk.CTkToplevel(self.root)
+            dialog.title("Offer Contract to Driver")
+            dialog.geometry("500x400")
+
+            ctk.CTkLabel(dialog, text="Select Driver:", font=("Arial", 13, "bold")).pack(pady=5)
+            driver_names = [f"{row.forename} {row.surname} ({row.nationality})" for _, row in df.iterrows()]
+            driver_ids = list(df["driverID"])
+            driver_var = ctk.StringVar()
+            driver_box = ctk.CTkComboBox(dialog, variable=driver_var, values=driver_names, state="readonly", width=300)
+            driver_box.pack(pady=5)
+            if driver_names:
+                driver_box.set(driver_names[0])
+
+            ctk.CTkLabel(dialog, text="Salary Offer (€):").pack(pady=5)
+            salary_var = ctk.StringVar(value="10000")
+            ctk.CTkEntry(dialog, textvariable=salary_var).pack(pady=5)
+
+            ctk.CTkLabel(dialog, text="Contract Length (years):").pack(pady=5)
+            length_var = ctk.IntVar(value=2)
+
+            frame = ctk.CTkFrame(dialog)
+            frame.pack(pady=5)
+
+            def increase_length():
+                if length_var.get() < 4:
+                    length_var.set(length_var.get() + 1)
+
+            def decrease_length():
+                if length_var.get() > 1:
+                    length_var.set(length_var.get() - 1)
+
+            ctk.CTkButton(frame, text="-", command=decrease_length, width=30).pack(side="left", padx=5)
+            ctk.CTkLabel(frame, textvariable=length_var, width=50).pack(side="left")
+            ctk.CTkButton(frame, text="+", command=increase_length, width=30).pack(side="left", padx=5)
+
+            def confirm_offer():
+                try:
+                    idx = driver_names.index(driver_var.get())
+                    driver_id = driver_ids[idx]
+                    salary = int(salary_var.get())
+                    length = int(length_var.get())
+
+                    success = self.controller.offer_driver_contract(driver_id, salary, length, next_year)
+                    if success:
+                        messagebox.showinfo("Success", "Contract offer created successfully.")
+                        dialog.destroy()
+                        self.refresh_myteam_tab()
+                    else:
+                        messagebox.showwarning("Failed", "Could not create contract offer.")
+                except Exception as e:
+                    messagebox.showerror("Error", f"Offer failed: {e}")
+
+            ctk.CTkButton(dialog, text="Confirm Offer", command=confirm_offer).pack(pady=15)
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to offer contract: {e}")

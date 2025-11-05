@@ -21,7 +21,7 @@ class ContractsModel:
         self.CScontract: pd.DataFrame = pd.DataFrame()
         self.MScontract: pd.DataFrame = pd.DataFrame()
         self.MTcontract: pd.DataFrame = pd.DataFrame()
-        self.reserved_slots: Dict[int, bool] = {}  # teamID → True
+        self.reserved_slots: Dict[int, int] = {}  # teamID → Avaiable seats
         self.driver_slots_current: pd.DataFrame = pd.DataFrame()
         self.driver_slots_next: pd.DataFrame = pd.DataFrame()
         self.rules: pd.DataFrame = pd.DataFrame()
@@ -187,6 +187,14 @@ class ContractsModel:
 
         contracts = contracts.drop(columns=["teamID", "wanted_reputation", "active", "driverID"], errors="ignore")
         return contracts
+
+    def get_contracts_for_year(self, year: int) -> pd.DataFrame:
+        """Vráti všetky zmluvy aktívne v danom roku."""
+        return self.DTcontract[
+            (self.DTcontract["startYear"] <= year) &
+            (self.DTcontract["endYear"] >= year) &
+            (self.DTcontract["active"] == True)
+            ].copy()
 
     """
     def find_active_driver_contracts(self, team_id: int, start_range: int, driver_model=None,
@@ -430,35 +438,69 @@ class ContractsModel:
         probability = day_of_year / total_days
         return random.random() < probability
 
+    def _generate_index(self, n: int):
+        if n < 10:
+            weights = [2 ** (n - i - 1) for i in range(n)]
+            return random.choices(range(n), weights=weights, k=1)[0]
+        while True:
+            for i in range(n):
+                if random.random() < 0.5:
+                    return i
+
+    def _drop_until_free_slot(self, df: pd.DataFrame) -> pd.DataFrame:
+        for i, row in df.iterrows():
+            if row["free_slots"] != 0:
+                return df.iloc[i:]
+        return df.iloc[0:0]  # ak žiadny riadok nemá voľné miesto
+
     def _choose_team_by_reputation(self, teams_df: pd.DataFrame) -> Optional[int]:
         if teams_df.empty:
             return None
+
         sorted_teams = teams_df.sort_values("reputation", ascending=False).reset_index(drop=True)
-        n = len(sorted_teams)
-        # dynamicky vygenerujeme exponencialne klesajuce vahy s fallback pre zostavajuce
-        base_weights = [0.5, 0.25, 0.125, 0.0625]
-        if n > len(base_weights):
-            weights = base_weights + [0.01] * (n - len(base_weights))
-        else:
-            weights = base_weights[:n]
-        chosen_index = random.choices(range(n), weights=weights)[0]
-        return int(sorted_teams.iloc[chosen_index]["teamID"])
+        filtered_teams = self._drop_until_free_slot(sorted_teams)
+        n = len(filtered_teams)
+
+        if n == 0:
+            return None
+
+        chosen_index = self._generate_index(n)
+        # print("filtered count:", n, chosen_index)
+        # Posúvaj sa smerom nahor, kým nenájdeš tím s voľným miestom
+        while chosen_index >= 0 and filtered_teams.iloc[chosen_index]["free_slots"] == 0:
+            chosen_index -= 1
+
+        if chosen_index < 0:
+            return None  # žiadny tím s voľným miestom
+
+        team_id = int(filtered_teams.iloc[chosen_index]["teamID"])
+        # print("team chosen_index", chosen_index, team_id)
+
+        # with pd.option_context('display.max_columns', None, 'display.expand_frame_repr', False):
+        # print(filtered_teams.head(5))
+
+        return team_id
 
     def _choose_driver_by_reputation(self, drivers_df: pd.DataFrame) -> Optional[int]:
         if drivers_df.empty:
             return None
         sorted_drivers = drivers_df.sort_values("reputation_race", ascending=False).reset_index(drop=True)
         n = len(sorted_drivers)
-        base_weights = [0.5, 0.25, 0.125, 0.0625]
-        if n > len(base_weights):
-            weights = base_weights + [0.01] * (n - len(base_weights))
-        else:
-            weights = base_weights[:n]
-        chosen_index = random.choices(range(n), weights=weights)[0]
+
+        chosen_index = self._generate_index(n)
+
+        # print("driver chosen_index", chosen_index, int(sorted_drivers.iloc[chosen_index]["driverID"]))
+        # with pd.option_context('display.max_columns', None, 'display.expand_frame_repr', False):
+        # print(sorted_drivers.head(5))
+
         return int(sorted_drivers.iloc[chosen_index]["driverID"])
 
-    def _reserve_slot_for_human_team(self, team_id: int) -> None:
-        self.reserved_slots[team_id] = True
+    def _reserve_slot_for_human_team(self, team_id: int, max_cars: int) -> None:
+        """Zvýši počet rezervovaných miest pre daný tím, ak ešte nedosiahol maximum."""
+        current = self.reserved_slots.get(team_id, 0)
+        if current < max_cars:
+            self.reserved_slots[team_id] = current + 1
+        print(f"Rezervované sloty: {self.reserved_slots}")
 
     def _estimate_salary(self, drivers_df: pd.DataFrame, driver_id: int) -> int:
         base = 25000
@@ -481,27 +523,27 @@ class ContractsModel:
             self.DTcontract.at[idx, "endYear"] = year - 1
             self.DTcontract.at[idx, "active"] = False
 
-    def _create_driver_contract(self, driver_id: int, team_id: int, salary: int, start_year: int, length: int) -> None:
+    def _create_driver_contract(
+            self, driver_id: int, team_id: int, series_reputation: int, salary: int, start_year: int, length: int
+    ) -> None:
+        """Vytvorí novú jazdeckú zmluvu a aktualizuje stav systému."""
         self.DTcontract.loc[len(self.DTcontract)] = {
             "driverID": int(driver_id),
             "teamID": int(team_id),
             "salary": int(salary),
-            "wanted_reputation": 0,
+            "wanted_reputation": series_reputation,
             "startYear": int(start_year),
             "endYear": int(start_year + length),
             "active": True,
         }
 
-        # aktualizujeme slots pre prislusny rok
         self.update_driver_slot(team_id, start_year)
-        # upravime stare kontrakty ak treba
         self._deactivate_lower_series_contract(driver_id, start_year, team_id)
-        # ak bola rezervacia pre team, vyradime ju
-        if team_id in self.reserved_slots:
-            del self.reserved_slots[team_id]
+        self._decrement_reserved_slot(team_id)
 
     def _get_available_drivers(
-            self, active_drivers: pd.DataFrame, year: int, series_id: int, team_id: int, rules: pd.DataFrame
+            self, active_drivers: pd.DataFrame, series: pd.DataFrame, year: int, series_id: int, team_id: int,
+            rules: pd.DataFrame
     ) -> pd.DataFrame:
         """Vracia DataFrame jazdcov, ktorí spľaňajú podmienky veku pre dánu sériu a nemajú zmluvu v rovnakej/vyššej sérii.
 
@@ -513,9 +555,10 @@ class ContractsModel:
             able["reputation_race"] = 0
         able["reputation_race"] = able["reputation_race"].fillna(0)
         # predpoklad: stlpec "year" v active_drivers je rok narodenia
-        if "year" not in able.columns:
-            able["year"] = 0
-        able["age"] = year - able["year"]
+        if "age" not in able.columns:
+            if "year" not in able.columns:
+                able["year"] = 0
+            able["age"] = year - able["year"]
 
         min_age = int(rules.loc[rules["seriesID"] == series_id, "min_age"].iloc[0])
         max_age = int(rules.loc[rules["seriesID"] == series_id, "max_age"].iloc[0])
@@ -523,26 +566,33 @@ class ContractsModel:
         team_series_row = self.STcontract[self.STcontract["teamID"] == team_id]
         team_series_id = int(team_series_row.iloc[0]["seriesID"]) if not team_series_row.empty else None
 
+        # Získaj reputáciu série tímu
+        series_row = series[series["seriesID"] == team_series_id]
+        series_reputation = int(series_row.iloc[0]["reputation"]) if not series_row.empty else None
+
+        # Získaj aktívne zmluvy
         active_contracts = self.DTcontract[
-            (self.DTcontract["startYear"] <= year) & (self.DTcontract["endYear"] >= year) & (self.DTcontract["active"])
+            (self.DTcontract["startYear"] <= year) &
+            (self.DTcontract["endYear"] >= year) &
+            (self.DTcontract["active"])
             ]
 
         unavailable_ids: List[int] = []
         for _, row in active_contracts.iterrows():
             driver_id = int(row["driverID"])
-            team_id_contract = int(row["teamID"])
-            series_row = self.STcontract[self.STcontract["teamID"] == team_id_contract]
-            if series_row.empty:
-                continue
-            series_id_contract = int(series_row.iloc[0]["seriesID"])
-            # ak ma jazdec zmluvu v serii, ktora je rovnaká alebo "vyššia" (podľa porovávania id),
-            # zväčša to znamena, že nie je dostupný pre nižšiu seriu
-            if team_series_id is not None and series_id_contract <= team_series_id:
-                unavailable_ids.append(driver_id)
+            wanted_rep = int(row.get("wanted_reputation", 0))
 
+            # Jazdec je nedostupný, ak jeho wanted_reputation je ≤ reputácia série
+            if series_reputation is not None and wanted_rep <= series_reputation:
+                unavailable_ids.append(driver_id)
+        # print()
+        # print(able)
+        # print(len(able), len(unavailable_ids))
         # teraz odfiltrujeme jednorazovo
         able = able[~able["driverID"].isin(unavailable_ids)]
+        # print(len(able), len(unavailable_ids))
         able = able[(able["age"] >= min_age) & (able["age"] <= max_age)]
+        # print(len(able), len(unavailable_ids), min_age, max_age, year)
 
         # vypocitaj maximum rokoch kontraktu, aby jazdec neprekrocil max_age
         able["max_contract_len"] = able["age"].apply(lambda a: max_age - a)
@@ -575,132 +625,202 @@ class ContractsModel:
             current_date: datetime,
             active_drivers: pd.DataFrame,
             rules: pd.DataFrame,
+            series: pd.DataFrame,
             temp,
             teams: pd.DataFrame,
             team_inputs: Dict[int, tuple],
     ) -> None:
-        """Hlavná metóda na podpisovanie jazdeckých zmlúv.
+        """Hlavná metóda na podpisovanie jazdeckých zmlúv."""
+        self._ensure_columns(self.DTcontract, {
+            "driverID": None,
+            "teamID": None,
+            "salary": 0,
+            "wanted_reputation": 0,
+            "startYear": 0,
+            "endYear": 0,
+            "active": True,
+        })
 
-        - Najprv doplníme zmluvy pre sučasny rok (ak su volne miesta).
-        - Potom pravdepodobnostne generujeme podpisy pre buduci rok (podla _should_sign_today).
-        """
-        self._ensure_columns(
-            self.DTcontract,
-            {
-                "driverID": None,
-                "teamID": None,
-                "salary": 0,
-                "wanted_reputation": 0,
-                "startYear": 0,
-                "endYear": 0,
-                "active": True,
-            },
-        )
+        self._prepare_series_reputation(active_series)
 
-        # naplnime mapping seriesID -> reputation (podla specifikacie: active_series obsahuje reputation)
-        self.series_reputation = {}
-        if "seriesID" in active_series.columns and "reputation" in active_series.columns:
-            for _, r in active_series.iterrows():
-                self.series_reputation[int(r["seriesID"])] = float(r["reputation"])
-
-        # 1) Doplnime pre aktualny rok
         for series_id in active_series["seriesID"]:
+            self._sign_current_year_contracts(series_id, teams_model, current_date, active_drivers, series, rules,
+                                              team_inputs)
+
+        if self._should_sign_today(current_date):
+            self._sign_next_year_contract_if_needed(teams_model, current_date, active_drivers, series, rules, teams,
+                                                    team_inputs)
+
+    def _prepare_series_reputation(self, active_series: pd.DataFrame) -> None:
+        self.series_reputation = {
+            int(row["seriesID"]): float(row["reputation"])
+            for _, row in active_series.iterrows()
+            if "seriesID" in row and "reputation" in row
+        }
+
+    def _sign_current_year_contracts(
+            self, series_id: int, teams_model, current_date: datetime,
+            active_drivers: pd.DataFrame, series: pd.DataFrame, rules: pd.DataFrame, team_inputs: Dict[int, tuple]
+    ) -> None:
+        max_cars = int(rules.loc[rules["seriesID"] == series_id, "max_cars"].iloc[0])
+        team_ids = self.STcontract[self.STcontract["seriesID"] == series_id]["teamID"].astype(int)
+
+        for team_id in team_ids:
+            signed = len(self._get_active_team_contracts(team_id, current_date.year))
+            missing = max_cars - signed
+            is_human = teams_model.teams.loc[teams_model.teams["teamID"] == team_id, "owner_id"].iloc[0] > 0
+
+            for _ in range(missing):
+                if is_human and team_inputs.get(team_id):
+                    print("R")
+                    self._handle_human_contract(team_id, series_id, current_date.year, active_drivers, series, rules,
+                                                team_inputs)
+                else:
+                    if not is_human:
+                        # print("M")
+                        self._handle_ai_contract(team_id, series_id, current_date.year, active_drivers, series, rules)
+
+    def _annotate_teams_with_free_slots(
+            self,
+            series: pd.DataFrame,
+            teams: pd.DataFrame,
+            rules: pd.DataFrame,
+            current_year: int
+    ) -> pd.DataFrame:
+        teams = teams.copy()
+        free_slots = []
+
+        for _, row in teams.iterrows():
+            team_id = row["teamID"]
+
+            # Získaj seriesID z STcontract
+            team_series = self.STcontract[self.STcontract["teamID"] == team_id]
+            if team_series.empty:
+                free_slots.append(0)
+                continue
+
+            series_id = int(team_series.iloc[0]["seriesID"])
             max_cars = int(rules.loc[rules["seriesID"] == series_id, "max_cars"].iloc[0])
-            teams_in_series = self.STcontract[self.STcontract["seriesID"] == series_id]["teamID"]
+            reserved = self.reserved_slots.get(team_id, 0)
+            active = len(self._get_active_team_contracts(team_id, current_year + 1))
 
-            for team_id in teams_in_series:
-                team_id = int(team_id)
-                current_contracts = self._get_active_team_contracts(team_id, current_date.year)
-                signed_count = len(current_contracts)
-                missing_slots = max_cars - signed_count
+            free = max(0, max_cars - reserved - active)
+            free_slots.append(free)
 
-                for _ in range(missing_slots):
-                    is_human = teams_model.teams.loc[teams_model.teams["teamID"] == team_id, "owner_id"].iloc[0] > 0
+        teams["free_slots"] = free_slots
+        return teams
 
-                    if is_human and team_inputs.get(team_id):
-                        driver_id, salary, length = team_inputs[team_id]
-                        # enforce age constraint for provided length
-                        available = self._get_available_drivers(active_drivers, current_date.year, int(series_id),
-                                                                team_id, rules)
-                        if driver_id not in available["driverID"].values:
-                            continue
-                        max_len = int(available.loc[available["driverID"] == driver_id, "max_contract_len"].iloc[0])
-                        length = min(int(length), max_len)
-                    else:
-                        available = self._get_available_drivers(
-                            active_drivers, current_date.year, int(series_id), team_id, rules
-                        )
-                        if len(available) == 0:
-                            continue
-                        driver_id = self._choose_driver_by_reputation(available)
-                        if driver_id is None:
-                            continue
-                        salary = self._estimate_salary(available, driver_id)
-                        max_len = int(available.loc[available["driverID"] == driver_id, "max_contract_len"].iloc[0])
-
-                        length = random.randint(1, min(4, max_len))
-                    self._create_driver_contract(driver_id, team_id, salary, current_date.year, length)
-
-        # 2) Probabilistic signing for next year
-        if not self._should_sign_today(current_date):
-            return
-
-        # vyberieme tim podla reputacie
-        team_id = self._choose_team_by_reputation(teams)
+    def _sign_next_year_contract_if_needed(
+            self, teams_model, current_date: datetime,
+            active_drivers: pd.DataFrame, series: pd.DataFrame, rules: pd.DataFrame,
+            teams: pd.DataFrame, team_inputs: Dict[int, tuple]
+    ) -> None:
+        teams_updated = self._annotate_teams_with_free_slots(series, teams, rules, current_date.year)
+        team_id = self._choose_team_by_reputation(teams_updated)
         if team_id is None:
             return
-        is_human = teams_model.teams.loc[teams_model.teams["teamID"] == team_id, "owner_id"].iloc[0] > 0
 
-        # zistime seriu timu a kontrolujeme miesta pre buduci rok
+        is_human = teams_model.teams.loc[teams_model.teams["teamID"] == team_id, "owner_id"].iloc[0] > 0
         team_series = self.STcontract[self.STcontract["teamID"] == team_id]
         if team_series.empty:
             return
-        series_id = int(team_series.iloc[0]["seriesID"])
 
+        series_id = int(team_series.iloc[0]["seriesID"])
         max_cars = int(rules.loc[rules["seriesID"] == series_id, "max_cars"].iloc[0])
         future_contracts = self._get_active_team_contracts(team_id, current_date.year + 1)
         if len(future_contracts) >= max_cars:
             return
 
-        # ak clovek rezervoval slot predtym, nechceme rezervovat znova
         if is_human:
-            if self.reserved_slots.get(team_id):
-                # slot uz rezervovany, skoncime
+            if self.reserved_slots.get(team_id, 0) >= max_cars:
                 return
-            self._reserve_slot_for_human_team(team_id)
+            self._increment_reserved_slot(team_id, max_cars)
 
-        # Ziskame dostupnych jazdcov pre buduci rok v danej serii
-        available = self._get_available_drivers(active_drivers, current_date.year + 1, series_id, team_id, rules)
+        available = self._get_available_drivers(active_drivers, series, current_date.year + 1, series_id, team_id,
+                                                rules)
         if available.empty:
-            # ak nie su dostupni jazdci, zrusime rezervaciu (ak bola)
-            if team_id in self.reserved_slots:
-                del self.reserved_slots[team_id]
+            self._decrement_reserved_slot(team_id)
             return
 
         if is_human:
             if team_id in team_inputs:
-                driver_id, salary, length = team_inputs[team_id]
-                if driver_id not in available["driverID"].values:
-                    # invalid selection, zrusime rezervaciu
-                    if team_id in self.reserved_slots:
-                        del self.reserved_slots[team_id]
-                    return
-                max_len = int(available.loc[available["driverID"] == driver_id, "max_contract_len"].iloc[0])
-                length = min(int(length), max_len)
-                self._create_driver_contract(driver_id, team_id, salary, current_date.year + 1, length)
-            else:
-                # nebol zadany input z UI, nechame rezervaciu pre neskor
-                return
+                print("T")
+                self._handle_human_contract(team_id, series_id, current_date.year + 1, active_drivers, series, rules,
+                                            team_inputs)
+            return
         else:
-            driver_id = self._choose_driver_by_reputation(available)
-            if driver_id is None:
-                if team_id in self.reserved_slots:
-                    del self.reserved_slots[team_id]
-                return
-            salary = self._estimate_salary(available, driver_id)
-            max_len = int(available.loc[available["driverID"] == driver_id, "max_contract_len"].iloc[0])
-            length = random.randint(1, min(4, max_len))
-            self._create_driver_contract(driver_id, team_id, salary, current_date.year + 1, length)
+
+            self._handle_ai_contract(team_id, series_id, current_date.year + 1, active_drivers, series, rules)
+
+    def _get_reputation_by_series_id(self, df: pd.DataFrame, series_id: int) -> int | None:
+        row = df.loc[df['seriesID'] == series_id]
+        if not row.empty:
+            return int(row.iloc[0]['reputation'])
+        return None
+
+    def _handle_human_contract(
+            self, team_id: int, series_id: int, year: int,
+            active_drivers: pd.DataFrame, series: pd.DataFrame, rules: pd.DataFrame,
+            team_inputs: Dict[int, tuple]
+    ) -> None:
+        print("Human team:", team_id)
+        driver_id, salary, length = team_inputs[team_id]
+        available = self._get_available_drivers(active_drivers, series, year, series_id, team_id, rules)
+
+        if driver_id not in available["driverID"].values:
+            self._decrement_reserved_slot(team_id)
+            return
+
+        max_len = int(available.loc[available["driverID"] == driver_id, "max_contract_len"].iloc[0])
+        length = min(length, max_len)
+        series_reputation = self._get_reputation_by_series_id(series, series_id)
+        self._create_driver_contract(driver_id, team_id, series_reputation, salary, year, length)
+
+    def _handle_ai_contract(
+            self, team_id: int, series_id: int, year: int,
+            active_drivers: pd.DataFrame, series: pd.DataFrame, rules: pd.DataFrame
+    ) -> None:
+        # print("AI team:", team_id)
+        available = self._get_available_drivers(active_drivers, series, year, series_id, team_id, rules)
+        if available.empty:
+            return
+
+        driver_id = self._choose_driver_by_reputation(available)
+        if driver_id is None:
+            self._decrement_reserved_slot(team_id)
+            return
+
+        salary = self._estimate_salary(available, driver_id)
+        max_len = int(available.loc[available["driverID"] == driver_id, "max_contract_len"].iloc[0])
+        # Realistické rozdelenie dĺžok zmlúv v F1
+        lengths = [1, 2, 3, 4]
+        weights = [40, 30, 20, 10]
+
+        # Ak je max_len menší ako 4, obmedz zoznamy
+        max_len = max_len if max_len >= 1 else 1  # istota, že nebude 0 alebo menej
+        lengths = lengths[:max_len]
+        weights = weights[:max_len]
+
+        # Normalizuj váhy, aby sedeli percentuálne
+        total = sum(weights)
+        weights = [w / total for w in weights]
+
+        # Vyber dĺžku podľa rozdelenia
+        length = random.choices(lengths, weights, k=1)[0]
+        series_reputation = self._get_reputation_by_series_id(series, series_id)
+        self._create_driver_contract(driver_id, team_id, series_reputation, salary, year, length)
+
+    def _increment_reserved_slot(self, team_id: int, max_cars: int) -> None:
+        """Zvýši počet rezervovaných miest pre tím, ak ešte nedosiahol maximum."""
+        current = self.reserved_slots.get(team_id, 0)
+        if current < max_cars:
+            self.reserved_slots[team_id] = current + 1
+        # print(self.reserved_slots)
+
+    def _decrement_reserved_slot(self, team_id: int) -> None:
+        """Zníži počet rezervovaných miest pre tím, ak existuje."""
+        if team_id in self.reserved_slots:
+            self.reserved_slots[team_id] = max(0, self.reserved_slots[team_id] - 1)
 
     # === Car Part Contracts ===
     def _deduct_existing_contract_costs(self, human_teams: pd.DataFrame, active_contracts: pd.DataFrame,
@@ -718,7 +838,6 @@ class ContractsModel:
             manufacturers: pd.DataFrame,
             teams_in_series: pd.Series,
             active_contracts: pd.DataFrame,
-            human_teams: pd.DataFrame,
             team_inputs: Dict[int, Dict[str, tuple]],
             year: int,
             teams: pd.DataFrame,
@@ -740,15 +859,10 @@ class ContractsModel:
             if not current_contract.empty:
                 continue
 
-            is_human = team_id in human_teams["teamID"].values
-            if is_human and team_inputs.get(team_id, {}).get(part_type):
-                manufacturerID, contract_len = team_inputs[team_id][part_type]
-                cost = parts_of_type.loc[parts_of_type["manufacturerID"] == manufacturerID, "cost"].iloc[0]
-            else:
-                sampled = parts_of_type.sample(1).iloc[0]
-                manufacturerID = int(sampled["manufacturerID"])
-                cost = int(sampled["cost"])
-                contract_len = random.randint(1, 4)
+            sampled = parts_of_type.sample(1).iloc[0]
+            manufacturerID = int(sampled["manufacturerID"])
+            cost = int(sampled["cost"])
+            contract_len = random.randint(1, 4)
 
             contracts.append(
                 {
@@ -795,17 +909,22 @@ class ContractsModel:
 
         new_contracts: List[Dict[str, object]] = []
         for si in active_series["seriesID"]:
-            series_parts = car_parts[(car_parts["seriesID"] == si) & (car_parts["year"] == current_date.year)]
-            teams_in_series = self.STcontract[self.STcontract["seriesID"] == si]["teamID"]
+            series_parts = car_parts[
+                (car_parts["seriesID"] == si) & (car_parts["year"] == current_date.year)
+                ]
+            all_teams_in_series = self.STcontract[self.STcontract["seriesID"] == si]["teamID"].astype(int)
+
+            # Odstráň ľudské tímy
+            human_ids = set(teams_model.get_human_teams(current_date)["teamID"].astype(int).values)
+            ai_teams_in_series = all_teams_in_series[~all_teams_in_series.isin(human_ids)]
 
             for part_type in ["engine", "chassi", "pneu"]:
                 contracts = self._generate_part_contracts(
                     part_type,
                     series_parts,
                     manufacturers,
-                    teams_in_series,
+                    ai_teams_in_series,
                     active_contracts,
-                    human_teams,
                     team_inputs,
                     current_date.year,
                     teams,
@@ -814,3 +933,132 @@ class ContractsModel:
 
         if new_contracts:
             self.MTcontract = pd.concat([self.MTcontract, pd.DataFrame(new_contracts)], ignore_index=True)
+
+    def get_available_drivers_for_offer(
+            self, team_id: int, year: int, active_drivers: pd.DataFrame, series: pd.DataFrame, rules: pd.DataFrame
+    ) -> pd.DataFrame:
+        """
+        Vráti zoznam jazdcov, ktorých môže tím (hráč) podpísať pre daný rok.
+        """
+        team_row = self.STcontract[self.STcontract["teamID"] == team_id]
+        if team_row.empty:
+            print("teamrow empty")
+            return pd.DataFrame()
+        series_id = int(team_row.iloc[0]["seriesID"])
+        print(len(active_drivers), year, series_id, team_id,
+              len(self._get_available_drivers(active_drivers, series, year, series_id, team_id, rules)))
+        return self._get_available_drivers(active_drivers, series, year, series_id, team_id, rules)
+
+    def offer_driver_contract(
+            self, driver_id: int, team_id: int, salary: int, length: int, year: int
+    ) -> None:
+        """
+        Vytvorí ponuku zmluvy (pending) – jazdec sa rozhodne nasledujúci deň.
+        """
+        if not hasattr(self, "pending_offers"):
+            self.pending_offers: List[Dict[str, int]] = []
+        team_series = self.STcontract[self.STcontract["teamID"] == team_id]
+        if team_series.empty:
+            print(f"⚠️ Tím {team_id} nemá sériu – nie je možné ponúknuť kontrakt.")
+            return
+
+        offer = {
+            "driver_id": int(driver_id),
+            "team_id": int(team_id),
+            "salary": int(salary),
+            "length": int(length),
+            "year": int(year),
+            "days_pending": 1,  # jazdec sa rozhodne do jedného dňa
+        }
+        self.pending_offers.append(offer)
+        print(f"[ContractsModel] 📨 Ponuka pre jazdca {driver_id} vytvorená (rok {year}).")
+
+    def process_driver_offers(self, current_date: datetime, active_drivers: pd.DataFrame) -> List[Dict]:
+
+        """
+        Spracuje čakajúce ponuky – jazdec sa rozhodne, či prijme kontrakt.
+        Volá sa typicky pri posune dňa.
+        """
+
+        if not hasattr(self, "pending_offers") or not self.pending_offers:
+            return []
+        signed_contracts = []
+
+        remaining_offers = []
+        print("pocet zmluv v pending", self.pending_offers)
+
+        for offer in self.pending_offers:
+            driver_id = offer["driver_id"]
+            team_id = offer["team_id"]
+            salary = offer["salary"]
+            length = offer["length"]
+            year = offer["year"]
+
+            # Získaj pozíciu jazdca podľa reputácie
+            drivers_sorted = active_drivers.sort_values("reputation_race", ascending=False).reset_index(drop=True)
+            driver_pos = drivers_sorted[drivers_sorted["driverID"] == driver_id].index
+            if driver_pos.empty:
+                print(f"❌ Jazdec {driver_id} nie je medzi aktívnymi.")
+                continue
+
+            position = driver_pos[0] + 1
+            min_salary = 4000000 // position
+
+            # Získaj info o tíme a sérii
+            team_series = self.STcontract[self.STcontract["teamID"] == team_id]
+            if team_series.empty:
+                print(f"❌ Tím {team_id} nemá sériu.")
+                continue
+
+            series_id = int(team_series.iloc[0]["seriesID"])
+            max_cars = int(self.rules.loc[self.rules["seriesID"] == series_id, "max_cars"].iloc[0])
+            reserved = self.reserved_slots.get(team_id, 0)
+            active_contracts = self._get_active_team_contracts(team_id, year)
+            active = len(active_contracts)
+
+            # === Rozhodovanie podľa roku ===
+            if year == current_date.year:
+                # Zmluva na tento rok → kontroluj aktívne miesta
+                if salary >= min_salary and active < max_cars:
+                    print(f"✅ Jazdec {driver_id} prijal ponuku s tímom {team_id} (tento rok).")
+                    self._create_driver_contract(driver_id, team_id, 0, salary, year, length - 1)
+                    signed_contracts.append({
+                        "driver_id": driver_id,
+                        "team_id": team_id,
+                        "salary": salary,
+                        "year": year
+                    })
+
+                else:
+                    print(
+                        f"❌ Jazdec {driver_id} odmietol ponuku (tento rok) – plat {salary} < {min_salary} alebo tím plný.")
+            elif year == current_date.year + 1:
+                # Zmluva na budúci rok → kontroluj rezervácie
+                if reserved > 0 and salary >= min_salary and (reserved + active) <= max_cars:
+                    print(f"✅ Jazdec {driver_id} prijal ponuku s tímom {team_id} (budúci rok).")
+                    self._create_driver_contract(driver_id, team_id, 0, salary, year, length - 1)
+                    self._decrement_reserved_slot(team_id)
+                else:
+                    print(
+                        f"❌ Jazdec {driver_id} odmietol ponuku (budúci rok) – plat {salary} < {min_salary} alebo tím nemá rezerváciu.")
+            else:
+                print(f"❌ Neznámy rok {year} – ponuka ignorovaná.")
+
+        self.pending_offers = remaining_offers
+        print("premazavam pending", self.pending_offers, current_date, "reserved", self.reserved_slots)
+        return signed_contracts
+
+    def reset_reserved_slot(self) -> None:
+        """Resetuje hodnoty rezervovaných slotov na 0, ponechá existujúce teamID."""
+        for team_id in self.reserved_slots:
+            self.reserved_slots[team_id] = 0
+
+    def cancel_driver_offer(self, driver_id: int, team_id: int) -> None:
+        """Zruší čakajúcu ponuku na zmluvu (ak existuje)."""
+        if not hasattr(self, "pending_offers"):
+            return
+        self.pending_offers = [
+            o for o in self.pending_offers if not (o["driver_id"] == driver_id and o["team_id"] == team_id)
+        ]
+        self._decrement_reserved_slot(team_id)
+        print(f"[ContractsModel] 🚫 Ponuka pre jazdca {driver_id} zrušená.")

@@ -129,6 +129,14 @@ class TeamsModel:
         row["finance_employees"] = int(finance_employees)
         return row
 
+    def deduct_money(self, team_id: int, amount: int) -> None:
+        """Odpočíta peniaze tímu za kontrakt."""
+        if team_id in self.teams["teamID"].values:
+            self.teams.loc[self.teams["teamID"] == team_id, "money"] -= amount
+            print(f"💸 Tím {team_id} zaplatil {amount}.")
+        else:
+            print(f"⚠️ Tím {team_id} neexistuje – nemôžem odpočítať peniaze.")
+
     def halve_reputations(self):
         self.teams["reputation"] = self.teams["reputation"] // 2
 

@@ -1,7 +1,7 @@
 teamID,team_name,teamBase,found,folded,money,reputation,owner_id,finance_employees,design_employees
 0,Panhard,Praha,1894,9999,5000000,0,0,0,0
 1,De Dion,Praha,1894,9999,6000000,0,1,0,0
-2,Bouton,Brno,1894,9999,4000000,0,2,0,0
+2,Bouton,Brno,1894,9999,4000000,0,0,0,0
 3,Peugeot,Praha,1894,9999,5000000,0,0,0,0
 4,Panhard,Praha,1894,9999,5000000,0,0,0,0
 5,Levassor,Praha,1894,9999,5000000,0,0,0,0
@@ -18,4 +18,4 @@ teamID,team_name,teamBase,found,folded,money,reputation,owner_id,finance_employe
 16,Le Maitre,Praha,1894,9999,5000000,0,0,0,0
 17,Hidien,Praha,1894,9999,5000000,0,0,0,0
 18,Tenting,Praha,1894,9999,5000000,0,0,0,0
-19,Quantio,Praha,1894,9999,5000000,0,0,0,0
+19,Quantio,Praha,1894,9999,5000000,0,2,0,0
