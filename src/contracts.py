@@ -135,14 +135,14 @@ class ContractsModel:
         """
         mask = (
                 (self.DTcontract["teamID"] == team_id) &
-                (((self.DTcontract["active"]) &  # voliteľné – ak chceš iba aktívne zmluvy
+                (self.DTcontract["active"]) &  # voliteľné – ak chceš iba aktívne zmluvy
 
-                  (self.DTcontract["endYear"] >= start_range)) |
+                ((self.DTcontract["endYear"] >= start_range) |
 
                  (self.DTcontract["startYear"] >= start_range))
         )
         contracts = self.DTcontract[mask].copy()
-
+        print("find active contracts", contracts)
         if not active_drivers.empty:
             custom_drivers = active_drivers[["driverID", "forename", "surname", "nationality", "age"]]
             contracts = custom_drivers.merge(contracts, on="driverID", how="right")
@@ -424,6 +424,33 @@ class ContractsModel:
     def disable_driver_contracts(self, driver_ids: List[int]) -> None:
         self._ensure_columns(self.DTcontract, {"active": True})
         self.DTcontract.loc[self.DTcontract["driverID"].isin(driver_ids), "active"] = False
+        # self.DTcontract.loc[self.DTcontract["driverID"].isin(driver_ids), "en"] = False
+
+    def disable_driver_contract(self, driver_id: int, current: bool, current_year: int) -> None:
+        """
+        Deaktivuje zmluvu jazdca podľa toho, či je aktuálna alebo budúca.
+        """
+        self._ensure_columns(self.DTcontract, {"active": True})
+
+        if current:
+            mask = (
+                    (self.DTcontract["driverID"] == driver_id) &
+                    (self.DTcontract["startYear"] <= current_year) &
+                    (self.DTcontract["endYear"] >= current_year) &
+                    (self.DTcontract["active"] == True)
+            )
+        else:
+            mask = (
+                    (self.DTcontract["driverID"] == driver_id) &
+                    (self.DTcontract["startYear"] > current_year) &
+                    (self.DTcontract["active"] == True)
+            )
+
+        affected = self.DTcontract.loc[mask]
+        self.DTcontract.loc[mask, "active"] = False
+
+        print(f"[ContractsModel] ❌ Deaktivovaná {'aktuálna' if current else 'budúca'} zmluva pre jazdca {driver_id}.")
+        print(affected)
 
     def get_MScontract(self) -> pd.DataFrame:
         return self.MScontract
@@ -1062,3 +1089,49 @@ class ContractsModel:
         ]
         self._decrement_reserved_slot(team_id)
         print(f"[ContractsModel] 🚫 Ponuka pre jazdca {driver_id} zrušená.")
+
+    def get_terminable_contracts(self, team_id: int, current_year: int) -> pd.DataFrame:
+        """
+        Vráti zmluvy, ktoré sú aktívne od aktuálneho roku ďalej, spolu s nákladmi na ukončenie
+        a indikátorom, či sú aktuálne platné.
+        """
+        contracts = self.DTcontract[
+            (self.DTcontract["teamID"] == team_id) &
+            (self.DTcontract["active"] == True) &
+            (self.DTcontract["endYear"] >= current_year)
+            ].copy()
+
+        if contracts.empty:
+            return contracts
+
+        contracts["termination_cost"] = contracts.apply(
+            lambda row: max(0, row["endYear"] - current_year) * row["salary"],
+            axis=1
+        )
+
+        contracts["current"] = contracts["startYear"] <= current_year
+
+        return contracts
+
+    def terminate_driver_contract(self, driver_id: int, team_id: int, current_year: int) -> int:
+        """
+        Ukončí zmluvu jazdca a vráti náklady na ukončenie.
+        """
+        mask = (
+                (self.DTcontract["driverID"] == driver_id) &
+                (self.DTcontract["teamID"] == team_id) &
+                (self.DTcontract["endYear"] >= current_year)
+        )
+        contract = self.DTcontract[mask]
+
+        if contract.empty:
+            return 0
+
+        salary = int(contract.iloc[0]["salary"])
+        end_year = int(contract.iloc[0]["endYear"])
+        cost = max(0, end_year - current_year) * salary
+
+        # Odstráň zmluvu
+        self.DTcontract = self.DTcontract.drop(contract.index)
+        print(f"[ContractsModel] ❌ Zmluva jazdca {driver_id} ukončená. Náklady: {cost}")
+        return cost

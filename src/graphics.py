@@ -134,7 +134,7 @@ class Graphics:
         self.cmb_2.grid(row=0, column=1, padx=5)
 
         self._create_button(controls, "Show Results", self.show_results, 2)
-        self._create_button(controls, "Next Day", lambda: self.sim_step(1), 3)
+        self._create_button(controls, "Next Day", lambda: self.sim_step(20000), 3)
         self._create_button(controls, "Next Week", lambda: self.sim_step(7), 4)
         self._create_button(controls, "Next Year", lambda: self.sim_step(4000), 5)
 
@@ -537,11 +537,45 @@ class Graphics:
                 messagebox.showwarning("No Team Selected", "Please select a team first.")
                 return
 
-            confirm = messagebox.askyesno("Terminate Contract", f"Do you want to terminate a contract in {team}?")
-            if confirm:
-                result = self.controller.terminate_driver_contract()
-                messagebox.showinfo("Contract Terminated", result)
-                self.refresh_myteam_tab()
+            df = self.controller.get_terminable_contracts_for_team()
+            if df.empty:
+                messagebox.showinfo("No Contracts", "No active contracts available for termination.")
+                return
+
+            # 🪟 Vyskakovacie okno
+            dialog = ctk.CTkToplevel(self.root)
+            dialog.title("Terminate Driver Contract")
+            dialog.geometry("500x400")
+
+            ctk.CTkLabel(dialog, text="Select Driver to Terminate:", font=("Arial", 13, "bold")).pack(pady=5)
+            print("df", df)
+            driver_names = [
+                f"{row.forename} {row.surname} ({row.nationality}) – Cost: €{row.termination_cost:,} – {'Current contract' if row.current else 'Future contract'}"
+                for _, row in df.iterrows()
+            ]
+
+            driver_ids = list(df["driverID"])
+            driver_var = ctk.StringVar()
+            driver_box = ctk.CTkComboBox(dialog, variable=driver_var, values=driver_names, state="readonly", width=400)
+            driver_box.pack(pady=5)
+            if driver_names:
+                driver_box.set(driver_names[0])
+
+            def confirm_termination():
+                try:
+                    idx = driver_names.index(driver_var.get())
+                    driver_id = driver_ids[idx]
+                    row = df.iloc[idx]
+                    result = self.controller.terminate_driver_contract_by_id(driver_id, row.termination_cost,
+                                                                             row.current)
+
+                    messagebox.showinfo("Contract Terminated", result)
+                    dialog.destroy()
+                    self.refresh_myteam_tab()
+                except Exception as e:
+                    messagebox.showerror("Error", f"Termination failed: {e}")
+
+            ctk.CTkButton(dialog, text="Confirm Termination", command=confirm_termination).pack(pady=15)
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to terminate contract: {e}")

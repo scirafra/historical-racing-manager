@@ -717,3 +717,62 @@ class Controller:
             df[col] = df[col].apply(fmt)
 
         return df
+
+    def terminate_driver_contract(self) -> str:
+        team_id = self.get_active_team_id()
+        if not team_id:
+            return "No active team selected."
+
+        current_year = self.get_year()
+        contracts = self.contracts_model.get_terminable_contracts(team_id, current_year)
+
+        if contracts.empty:
+            return "No terminable contracts found."
+
+        # Tu by si mal zobraziť výber jazdca (napr. cez GUI)
+        # Pre testovanie vyberme prvého:
+        contract = contracts.iloc[0]
+        driver_id = contract["driverID"]
+        cost = self.contracts_model.terminate_driver_contract(driver_id, team_id, current_year)
+        self.teams_model.deduct_money(team_id, cost)
+
+        return f"Contract with driver {driver_id} terminated. Cost: {cost}"
+
+    def get_terminable_contracts_for_team(self) -> pd.DataFrame:
+        team_id = self.get_active_team_id()
+        if not team_id:
+            return pd.DataFrame()
+
+        contracts = self.contracts_model.get_terminable_contracts(team_id, self.get_year())
+        if contracts.empty:
+            return contracts
+
+        drivers = self.drivers_model.get_active_drivers()
+
+        merged = drivers.merge(contracts, on="driverID", how="right")
+        return merged
+
+    def terminate_driver_contract_by_id(self, driver_id: int, cost: int, is_current: bool) -> str:
+        team_id = self.get_active_team_id()
+        if not team_id:
+            return "No active team selected."
+
+        # Overenie existencie zmluvy (voliteľné, ak už UI filtruje správne)
+        contract = self.contracts_model.DTcontract[
+            (self.contracts_model.DTcontract["driverID"] == driver_id) &
+            (self.contracts_model.DTcontract["teamID"] == team_id) &
+            (self.contracts_model.DTcontract["active"] == True)
+            ]
+
+        if contract.empty:
+            return f"No active contract found for driver {driver_id}."
+
+        # Deaktivácia zmluvy
+        self.contracts_model.disable_driver_contract(driver_id, is_current, self.get_year())
+
+        # Odpočítanie peňazí
+        self.teams_model.deduct_money(team_id, cost)
+
+        # Typ zmluvy
+        contract_type = "current" if is_current else "future"
+        return f"Contract with driver {driver_id} terminated. Type: {contract_type}. Cost: €{cost:,}"
