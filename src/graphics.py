@@ -242,14 +242,14 @@ class Graphics:
             ctk.CTkButton(team_controls, text="Offer Driver Contract For Next Year",
                           command=lambda: self.offer_contract(next_year=True)).pack(side="left", padx=5, pady=5)
 
-            ctk.CTkButton(team_controls, text="Offer Car Part Contract", command=self.offer_contract).pack(
+            ctk.CTkButton(team_controls, text="Offer Car Part Contract", command=self.offer_car_part_contract).pack(
                 side="left", padx=5,
                 pady=5)
             ctk.CTkButton(team_controls, text="Terminate Contract", command=self.terminate_contract).pack(side="left",
                                                                                                           padx=5,
                                                                                                           pady=5)
-            ctk.CTkButton(team_controls, text="Build Own Part", command=self.create_own_part).pack(side="left", padx=5,
-                                                                                                   pady=5)
+            # ctk.CTkButton(team_controls, text="Build Own Part", command=self.create_own_part).pack(side="left", padx=5,
+            #                                                                                      pady=5)
             ctk.CTkButton(team_controls, text="Invest in Marketing", command=self.invest_in_marketing).pack(side="left",
                                                                                                             padx=5,
                                                                                                             pady=5)
@@ -580,6 +580,90 @@ class Graphics:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to terminate contract: {e}")
 
+    def offer_car_part_contract(self):
+        try:
+            team = self.controller.get_active_team()
+            if not team:
+                messagebox.showwarning("No Team Selected", "Please select a team first.")
+                return
+
+            parts_df = self.controller.get_available_car_parts()
+
+            if parts_df.empty:
+                messagebox.showinfo("No Parts Available", "No car parts available for contract.")
+                return
+
+            dialog = ctk.CTkToplevel(self.root)
+            dialog.title("Offer Car Part Contract")
+            dialog.geometry("500x400")
+
+            ctk.CTkLabel(dialog, text="Select Part:", font=("Arial", 13, "bold")).pack(pady=5)
+
+            part_names = [f"{row.manufacturer_name} ({row.partType}) – Cost: €{row.cost}" for _, row in
+                          parts_df.iterrows()]
+
+            part_ids = list(parts_df["partID"])
+
+            part_var = ctk.StringVar()
+            part_box = ctk.CTkComboBox(dialog, variable=part_var, values=part_names, state="readonly", width=300)
+            part_box.pack(pady=5)
+            if part_names:
+                part_box.set(part_names[0])
+
+            ctk.CTkLabel(dialog, text="Contract Length (years):").pack(pady=5)
+            length_var = ctk.IntVar(value=2)
+            frame = ctk.CTkFrame(dialog)
+            frame.pack(pady=5)
+
+            def increase_length():
+                if length_var.get() < 4:
+                    length_var.set(length_var.get() + 1)
+
+            def decrease_length():
+                if length_var.get() > 1:
+                    length_var.set(length_var.get() - 1)
+
+            ctk.CTkButton(frame, text="-", command=decrease_length, width=30).pack(side="left", padx=5)
+            ctk.CTkLabel(frame, textvariable=length_var, width=50).pack(side="left")
+            ctk.CTkButton(frame, text="+", command=increase_length, width=30).pack(side="left", padx=5)
+
+            ctk.CTkLabel(dialog, text="Start Year:").pack(pady=5)
+            year_var = ctk.StringVar(value="Current Year")
+            year_box = ctk.CTkComboBox(dialog, variable=year_var, values=["Current Year", "Next Year"],
+                                       state="readonly", width=150)
+            year_box.pack(pady=5)
+
+            def confirm_offer():
+                try:
+                    idx = part_names.index(part_var.get())
+                    part_id = part_ids[idx]
+                    length = int(length_var.get())
+
+                    row = parts_df.iloc[idx]
+                    price = int(row.cost)  # alebo round(row.cost) ak chceš zaokrúhliť
+                    manufacturer_id = int(row.manufacturerID)
+                    part_type = row.partType
+                    start_year = self.controller.get_year()
+                    if year_var.get() == "Next Year":
+                        start_year += 1
+
+                    success = self.controller.offer_car_part_contract(manufacturer_id, length, price, start_year,
+                                                                      part_type)
+
+                    if success:
+                        messagebox.showinfo("Success", "Car part contract offer created.")
+                        dialog.destroy()
+                        self.refresh_myteam_tab()
+                    else:
+                        messagebox.showwarning("Failed", "Could not create car part contract.")
+                except Exception as e:
+                    messagebox.showerror("Error", f"Offer failed: {e}")
+
+            ctk.CTkButton(dialog, text="Confirm Offer", command=confirm_offer).pack(pady=15)
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to offer car part contract: {e}")
+
     def create_own_part(self):
         try:
             dialog = ctk.CTkToplevel(self.root)
@@ -611,25 +695,57 @@ class Graphics:
 
     def invest_in_marketing(self):
         try:
-            dialog = ctk.CTkToplevel(self.root)
-            dialog.title("Invest in Marketing")
-            dialog.geometry("350x180")
+            team = self.controller.get_active_team()
+            if not team:
+                messagebox.showwarning("No Team Selected", "Please select a team first.")
+                return
 
-            ctk.CTkLabel(dialog, text="Enter investment amount (€):").pack(pady=5)
-            amount_var = ctk.StringVar()
-            ctk.CTkEntry(dialog, textvariable=amount_var).pack(pady=5)
+            current, max_staff, hire_cost, fire_cost = self.controller.get_team_money_and_finance_employees()
+
+            dialog = ctk.CTkToplevel(self.root)
+            dialog.title("Adjust Marketing Staff")
+            dialog.geometry("400x250")
+
+            ctk.CTkLabel(dialog, text=f"Current staff: {current}", font=("Arial", 13)).pack(pady=5)
+            ctk.CTkLabel(dialog, text=f"Hire cost: €{hire_cost} / Fire cost: €{fire_cost}", font=("Arial", 12)).pack(
+                pady=5)
+
+            staff_var = ctk.IntVar(value=current)
+            cost_var = ctk.StringVar()
+
+            def update_cost(*_):
+                target = staff_var.get()
+                delta = target - current
+                if delta > 0:
+                    cost = delta * hire_cost
+                    cost_var.set(f"Hiring {delta} → Cost: €{cost}")
+                    return target, cost
+                elif delta < 0:
+                    cost = abs(delta) * fire_cost
+                    cost_var.set(f"Firing {abs(delta)} → Cost: €{cost}")
+                    return target, cost
+                else:
+                    cost_var.set("No change")
+                    return current, 0
+
+            ctk.CTkSlider(dialog, from_=0, to=max_staff, number_of_steps=max_staff, variable=staff_var,
+                          command=update_cost).pack(pady=10)
+            ctk.CTkLabel(dialog, textvariable=cost_var, font=("Arial", 12, "bold")).pack(pady=5)
+            update_cost()
 
             def confirm():
                 try:
-                    amount = int(amount_var.get())
-                    msg = self.controller.invest_in_marketing(amount)
-                    messagebox.showinfo("Investment", msg)
+                    new_employees, cost = update_cost()
+                    print("T", new_employees, cost)
+                    msg = self.controller.adjust_marketing_staff(new_employees, cost)
+                    messagebox.showinfo("Marketing Update", msg)
                     dialog.destroy()
                     self.refresh_myteam_tab()
                 except Exception as e:
-                    messagebox.showerror("Error", f"Failed to invest: {e}")
+                    messagebox.showerror("Error", f"Failed to update staff: {e}")
 
-            ctk.CTkButton(dialog, text="Confirm", command=confirm).pack(pady=10)
+            ctk.CTkButton(dialog, text="Confirm", command=confirm).pack(pady=15)
+
         except Exception as e:
             messagebox.showerror("Error", f"Could not open dialog: {e}")
 

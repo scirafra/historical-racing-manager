@@ -4,6 +4,9 @@ import pandas as pd
 
 
 class TeamsModel:
+    finance_employee_salary = 2500
+    kick_employee_price = 1000
+
     def __init__(self):
         self.teams = pd.DataFrame()
 
@@ -39,10 +42,16 @@ class TeamsModel:
         if base_name:
             self.teams.to_csv(f"{base_name}teams.csv", index=False)
 
+    def get_finance_employee_salary(self) -> int:
+        return self.finance_employee_salary
+
+    def get_kick_employee_price(self) -> int:
+        return self.kick_employee_price
+
     # --- Business Logic ---
     @staticmethod
     def max_affordable_finance(money: int) -> int:
-        return money // 250
+        return money // TeamsModel.finance_employee_salary
 
     def mark_all_as_ai(self):
         self.teams["owner_id"] = 0
@@ -84,6 +93,7 @@ class TeamsModel:
         return result.reset_index(drop=True)
 
     def invest_finance(self, year: int, investments: dict):
+
         human_mask = self.get_human_team_mask(year)
         human_teams = self.teams.loc[human_mask].copy()
 
@@ -93,11 +103,11 @@ class TeamsModel:
 
             team_row = human_teams.loc[human_teams["teamID"] == team_id]
             money = team_row["money"].iloc[0]
-            max_fin = money // 2500
+            max_fin = money // self.finance_employee_salary
 
             if 0 <= fin_count <= max_fin:
                 idx = team_row.index[0]
-                human_teams.at[idx, "money"] -= fin_count * 2500
+                human_teams.at[idx, "money"] -= fin_count * self.finance_employee_salary
                 human_teams.at[idx, "finance_employees"] = fin_count
             else:
                 self.mark_all_as_ai()
@@ -129,6 +139,16 @@ class TeamsModel:
         row["finance_employees"] = int(finance_employees)
         return row
 
+    def change_finance_employees(self, team_id: int, amount: int) -> None:
+        """
+        Nastaví počet finančných zamestnancov pre daný tím na hodnotu `amount`.
+        """
+        if team_id in self.teams["teamID"].values:
+            self.teams.loc[self.teams["teamID"] == team_id, "finance_employees"] = amount
+            print(f"👥 Tím {team_id} má teraz {amount} finančných zamestnancov.")
+        else:
+            print(f"⚠️ Tím {team_id} neexistuje – nemôžem upraviť zamestnancov.")
+
     def deduct_money(self, team_id: int, amount: int) -> None:
         """Odpočíta peniaze tímu za kontrakt."""
         if team_id in self.teams["teamID"].values:
@@ -136,6 +156,26 @@ class TeamsModel:
             print(f"💸 Tím {team_id} zaplatil {amount}.")
         else:
             print(f"⚠️ Tím {team_id} neexistuje – nemôžem odpočítať peniaze.")
+
+    def get_team_finance_info(self, team_id: int) -> dict:
+        """
+        Vráti základné finančné údaje tímu: teamID, money, finance_employees.
+        """
+        if not hasattr(self, "teams"):
+            print("[TeamsModel] ⚠️ teams tabuľka nie je inicializovaná.")
+            return {}
+
+        match = self.teams[self.teams["teamID"] == team_id]
+        if match.empty:
+            print(f"[TeamsModel] ⚠️ Tím s ID {team_id} neexistuje.")
+            return {}
+
+        row = match.iloc[0]
+        return {
+            "teamID": int(row["teamID"]),
+            "money": int(row["money"]),
+            "finance_employees": int(row["finance_employees"])
+        }
 
     def halve_reputations(self):
         self.teams["reputation"] = self.teams["reputation"] // 2

@@ -115,6 +115,26 @@ class Controller:
                                                                  self.race_model
                                                                  )
 
+    def get_team_money_and_finance_employees(self) -> tuple[int, int, int, int]:
+        """
+        Vráti (finance_employees, max_possible_employees, employee_salary, kick_price) pre daný tím.
+        """
+        team_id = self.get_active_team_id()
+        team = self.teams_model.teams[self.teams_model.teams["teamID"] == team_id]
+        if team.empty:
+            print(f"[Controller] Tím {team_id} neexistuje.")
+            return 0, 0, 0, 0
+
+        row = team.iloc[0]
+        money = int(row["money"])
+        max_affordable = TeamsModel.max_affordable_finance(money)
+
+        finance_employees = int(row["finance_employees"])
+        employee_salary = self.teams_model.get_finance_employee_salary()
+        kick_price = self.teams_model.get_kick_employee_price()
+
+        return finance_employees, finance_employees + max_affordable, employee_salary, kick_price
+
     def get_active_team_info(self) -> dict:
         """Vracia všetky dáta o aktívnom tíme."""
         team_id = self.get_active_team_id()
@@ -404,7 +424,14 @@ class Controller:
         contracts = self.contracts_model.get_contracts_for_year(year)
         for _, row in contracts.iterrows():
             self.teams_model.deduct_money(row["teamID"], row["salary"])
-            print(f"💸 Tím {row['teamID']} zaplatil {row['salary']} za jazdca {row['driverID']} v roku {year}.")
+            print(f"Tím {row['teamID']} zaplatil {row['salary']} za jazdca {row['driverID']} v roku {year}.")
+
+    def _deduct_all_part_contracts_for_year(self, year: int):
+        contracts = self.contracts_model.get_active_part_contracts_for_year(year)
+        for _, row in contracts.iterrows():
+            self.teams_model.deduct_money(row["teamID"], row["cost"])
+            print(
+                f"Tím {row['teamID']} zaplatil €{row['cost']} za {row['partType']} od výrobcu {row['manufacturerID']} v roku {year}.")
 
     def _handle_season_start(self, date: datetime):
 
@@ -420,6 +447,7 @@ class Controller:
         if date.year >= 1894:
             self._handle_contracts(date)
             self._deduct_all_contracts_for_year(date.year)
+            self._deduct_all_part_contracts_for_year(date.year)
 
         # Poznámka: investície sa už nespúšťajú automaticky pri štarte sezóny.
         # Používateľ spúšťa investície cez tlačidlo v GUI.
@@ -555,6 +583,34 @@ class Controller:
             # print("[Controller]  Spracované všetky ponuky jazdcov.")
         except Exception as e:
             print(f"[Controller]  Chyba pri spracovaní ponúk: {e}")
+
+    def get_max_marketing_staff(self, team_id: int) -> int:
+        return 100
+        return self.teams_model.get_max_marketing_staff(team_id)
+
+    def get_marketing_hire_cost(self) -> int:
+        return 30
+        return self.teams_model.marketing_hire_cost
+
+    def get_marketing_fire_cost(self) -> int:
+        return 20
+        return self.teams_model.marketing_fire_cost
+
+    def adjust_marketing_staff(self, new_employees: int, cost: int) -> str:
+        """
+        Nastaví nový počet marketingových zamestnancov a odpočíta náklady.
+        """
+        team_id = self.get_active_team_id()
+        if not team_id:
+            return "⚠️ No active team selected."
+
+        # Odpočet peňazí
+        self.teams_model.deduct_money(team_id, cost)
+
+        # Nastavenie nového počtu
+        self.teams_model.change_finance_employees(team_id, new_employees)
+
+        return f"Finance employees set on:{new_employees}. Cost: €{cost}"
 
     def _simulate_race_day(self, date: datetime):
         races_today = self.race_model.races[self.race_model.races["race_date"] == date].copy()
@@ -776,3 +832,39 @@ class Controller:
         # Typ zmluvy
         contract_type = "current" if is_current else "future"
         return f"Contract with driver {driver_id} terminated. Type: {contract_type}. Cost: €{cost:,}"
+
+    def get_available_car_parts(self) -> pd.DataFrame:
+        team_id = self.get_active_team_id()
+        if not team_id:
+            return pd.DataFrame()
+
+        parts = self.contracts_model.get_available_series_parts(
+            team_id,
+            self.get_year(),
+            car_parts=self.manufacturer_model.car_parts
+        )
+
+        manufacturers = self.manufacturer_model.get_manufacturers()
+        manufacturers["manufacturerID"] = manufacturers["manufacturerID"].astype(int)
+
+        parts["manufacturerID"] = parts["manufacturerID"].astype(int)
+        parts = parts.merge(manufacturers[["manufacturerID", "name"]], on="manufacturerID", how="left")
+        parts.rename(columns={"name": "manufacturer_name"}, inplace=True)
+
+        return parts
+
+    def offer_car_part_contract(self, manufacturer_id: int, length: int, price: int, year: int, part_type: str) -> bool:
+
+        try:
+            team_id = self.get_active_team_id()
+            if not team_id:
+                return False
+
+            if self.contracts_model.offer_car_part_contract(manufacturer_id, team_id, length, price, year,
+                                                            part_type) and year == self.get_year():
+                self.teams_model.deduct_money(team_id, price)
+
+            return True
+        except Exception as e:
+            print(f"[Controller] Chyba pri ponuke súčiastky: {e}")
+            return False
