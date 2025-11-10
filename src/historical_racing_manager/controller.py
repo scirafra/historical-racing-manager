@@ -6,13 +6,13 @@ from typing import Any
 import pandas as pd
 
 import load as ld
-from contracts import ContractsModel
-from drivers import DriversModel
-from graphics import Graphics
-from manufacturer import ManufacturerModel
-from race import RaceModel
-from series import SeriesModel
-from teams import TeamsModel
+from historical_racing_manager.contracts import ContractsModel
+from historical_racing_manager.drivers import DriversModel
+from historical_racing_manager.graphics import Graphics
+from historical_racing_manager.manufacturer import ManufacturerModel
+from historical_racing_manager.race import RaceModel
+from historical_racing_manager.series import SeriesModel
+from historical_racing_manager.teams import TeamsModel
 
 
 class Controller:

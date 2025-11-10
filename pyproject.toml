@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "historical_racing_manager"
+version = "0.1.0"
+description = "Historical racing manager game"
+authors = [{ name = "František" }]
+dependencies = [
+    "pygame==2.5.2"
+    # ďalšie podľa potreby
+]

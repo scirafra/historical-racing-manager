@@ -1,4 +1,4 @@
-from controller import Controller
+from historical_racing_manager.controller import Controller
 
 
 def main():
