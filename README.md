@@ -55,3 +55,4 @@ pytest
 Contributing
 
 ## Author
+František Sciranka
