@@ -52,7 +52,11 @@ Run unit tests using pytest:
 pytest
 ```
 
-Contributing
+## License
+
+This project is released under the [MIT License](./LICENSE).  
+See the LICENSE file for details.
+
 
 ## Author
 František Sciranka
