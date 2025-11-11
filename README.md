@@ -54,8 +54,8 @@ pytest
 
 ## License
 
-This project is released under the [MIT License](./LICENSE).  
-See the LICENSE file for details.
+This project is released under the [MIT License](./LICENCE).  
+See the LICENCE file for details.
 
 
 ## Author
