@@ -5,6 +5,23 @@ from datetime import timedelta
 import numpy as np
 import pandas as pd
 
+from historical_racing_manager.consts import (
+    RACE_REQUIRED_FILES,
+    DAYS_PER_SEASON,
+    RACE_WEEKDAY,
+    RACE_INTERVAL_WEEKS,
+    CHAMPIONSHIP_INTERVAL_WEEKS,
+    RAIN_TRIGGER_MIN,
+    RAIN_TRIGGER_MAX,
+    RAIN_STRENGTH_MIN,
+    RAIN_STRENGTH_MAX,
+    RNG_PICK_MAX,
+    RNG_PICK_THRESHOLD,
+    SPEED_RANDOM_MULTIPLIER,
+    CRASH_CODE,
+    DEATH_CODE,
+)
+
 
 class RaceModel:
     def __init__(self):
@@ -21,14 +38,8 @@ class RaceModel:
 
     # ===== Persistence =====
     def load(self, base_path: str) -> bool:
-        required = [
-            "stands.csv",
-            "races.csv",
-            "pointSystem.csv",
-            "results.csv",
-            "circuits.csv",
-            "circuit_layouts.csv",
-        ]
+        required = RACE_REQUIRED_FILES
+
         missing = [f for f in required if not os.path.exists(base_path + f)]
         if missing:
             return False
@@ -257,7 +268,7 @@ class RaceModel:
             return pd.DataFrame()
 
         df["round"] = df["round"].fillna(0).astype(int)
-        df["position"] = df["position"].replace({999: "Crash", 998: "Death"})
+        df["position"] = df["position"].replace({CRASH_CODE: "Crash", DEATH_CODE: "Death"})
 
         zero_rids = sorted(df.loc[df["round"] == 0, "raceID"].unique())
         zero_map = {rid: f"NC{i + 1}" for i, rid in enumerate(zero_rids)}
@@ -469,7 +480,7 @@ class RaceModel:
             chosen = dmax
             while chosen == dmax:
                 for j in range(len(idx_pool)):
-                    if rd.randint(0, 9) < 3:
+                    if rd.randint(0, RNG_PICK_MAX) < RNG_PICK_THRESHOLD:
                         chosen = idx_pool[j]
                         break
             ranking.append((chosen, True))
@@ -516,7 +527,7 @@ class RaceModel:
                 int(row["driverID"]),
                 int(row["teamID"]),
                 int(row["carID"]),
-                999,
+                CRASH_CODE,
                 int(race_row["season"]),
                 int(race_row["seriesID"]),
                 int(round_no),
@@ -531,7 +542,7 @@ class RaceModel:
                 int(row["driverID"]),
                 int(row["teamID"]),
                 int(row["carID"]),
-                998,
+                DEATH_CODE,
                 int(race_row["season"]),
                 int(race_row["seriesID"]),
                 int(round_no),
@@ -556,7 +567,8 @@ class RaceModel:
         if speed_limit <= 0:
             return "Crash"
 
-        rnd1 = np.random.randint(0, speed_limit * 1000)
+        rnd1 = np.random.randint(0, speed_limit * SPEED_RANDOM_MULTIPLIER)
+
         if rnd1 < reliability:
             rnd2 = np.random.randint(0, speed_limit + 1)
             return "Death" if rnd2 < safety else "Crash"
@@ -666,17 +678,21 @@ class RaceModel:
         week_counter = 0
         date = pd.Timestamp(current_date)
 
-        for _ in range(364):
-            if date.strftime("%a") == "Sun":
+        for _ in range(DAYS_PER_SEASON):
+
+            if date.strftime("%a") == RACE_WEEKDAY:
+
                 week_counter += 1
-                if week_counter % 5 == 0:
+                if week_counter % RACE_INTERVAL_WEEKS == 0:
+
                     active_series = series_model.series[
                         (series_model.series["startYear"] <= date.year)
                         & (series_model.series["endYear"] >= date.year)
                         ]
                     for si, srow in active_series.iterrows():
                         new_race_id = 0 if self.races.empty else int(self.races["raceID"].max()) + 1
-                        championship = not (si == active_series.index[-1] and week_counter % 6 == 0)
+                        championship = not (
+                                si == active_series.index[-1] and week_counter % CHAMPIONSHIP_INTERVAL_WEEKS == 0)
 
                         if self.circuits.empty or self.circuit_layouts.empty:
                             continue
@@ -693,8 +709,9 @@ class RaceModel:
                             ].iloc[0]
                         )
 
-                        wet_roll = rd.randint(1, 8)
-                        wet = rd.randint(1, 50) / 100 + 1 if wet_roll == 8 else 1
+                        wet_roll = rd.randint(RAIN_TRIGGER_MIN, RAIN_TRIGGER_MAX)
+                        wet = rd.randint(RAIN_STRENGTH_MIN,
+                                         RAIN_STRENGTH_MAX) / 100 + 1 if wet_roll == RAIN_TRIGGER_MAX else 1
 
                         self.races.loc[len(self.races)] = {
                             "raceID": new_race_id,

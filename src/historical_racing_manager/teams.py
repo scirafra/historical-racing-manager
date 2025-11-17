@@ -2,10 +2,18 @@ import os
 
 import pandas as pd
 
+from historical_racing_manager.consts import (
+    TEAMS_FILE,
+    COL_TEAM_ID, COL_FOUND, COL_FOLDED,
+    FINANCE_EMPLOYEE_SALARY, KICK_EMPLOYEE_PRICE,
+    DEFAULT_FOUND_YEAR, DEFAULT_FOLDED_YEAR,
+    FINANCE_EARN_COEF,
+)
+
 
 class TeamsModel:
-    finance_employee_salary = 2500
-    kick_employee_price = 1000
+    finance_employee_salary = FINANCE_EMPLOYEE_SALARY
+    kick_employee_price = KICK_EMPLOYEE_PRICE
 
     def __init__(self):
         self.teams = pd.DataFrame()
@@ -16,14 +24,15 @@ class TeamsModel:
         Načíta tímy z CSV súboru do DataFrame.
         Ak chýbajú povinné stĺpce, doplní ich.
         """
-        path = os.path.join(folder, "teams.csv")
+        path = os.path.join(folder, TEAMS_FILE)
+
         if not os.path.exists(path):
             self.teams = pd.DataFrame()
             return False
 
         self.teams = pd.read_csv(path)
 
-        # ✅ doplnenie chýbajúcich stĺpcov, aby GUI aj logika fungovali
+        # doplnenie chýbajúcich stĺpcov, aby GUI aj logika fungovali
         required_cols = ["teamID", "team_name", "owner_id", "money", "finance_employees", "reputation", "found",
                          "folded"]
         for col in required_cols:
@@ -31,16 +40,16 @@ class TeamsModel:
                 # podľa typu dáme default hodnotu
                 if col in ("money", "finance_employees", "reputation", "owner_id"):
                     self.teams[col] = 0
-                elif col in ("found",):
-                    self.teams[col] = 1800
-                elif col in ("folded",):
-                    self.teams[col] = 3000
+                elif col == COL_FOUND:
+                    self.teams[col] = DEFAULT_FOUND_YEAR
+                elif col == COL_FOLDED:
+                    self.teams[col] = DEFAULT_FOLDED_YEAR
 
         return True
 
     def save(self, base_name: str):
         if base_name:
-            self.teams.to_csv(f"{base_name}teams.csv", index=False)
+            self.teams.to_csv(f"{base_name}{TEAMS_FILE}", index=False)
 
     def get_finance_employee_salary(self) -> int:
         return self.finance_employee_salary
@@ -125,7 +134,8 @@ class TeamsModel:
 
     @staticmethod
     def _calculate_financial_update(row: pd.Series) -> pd.Series:
-        earn_coef = [12000, 11000, 10000, 9000, 8000, 7000, 6000, 5000, 4000, 3000, 2000, 1000, 0]
+        earn_coef = FINANCE_EARN_COEF
+
         money, finance_employees = row["money"], row["finance_employees"]
 
         for coef in earn_coef:
@@ -143,31 +153,31 @@ class TeamsModel:
         """
         Nastaví počet finančných zamestnancov pre daný tím na hodnotu `amount`.
         """
-        if team_id in self.teams["teamID"].values:
-            self.teams.loc[self.teams["teamID"] == team_id, "finance_employees"] = amount
+        if team_id in self.teams[COL_TEAM_ID].values:
+            self.teams.loc[self.teams[COL_TEAM_ID] == team_id, "finance_employees"] = amount
             print(f"👥 Tím {team_id} má teraz {amount} finančných zamestnancov.")
         else:
-            print(f"⚠️ Tím {team_id} neexistuje – nemôžem upraviť zamestnancov.")
+            print(f"Tím {team_id} neexistuje – nemôžem upraviť zamestnancov.")
 
     def deduct_money(self, team_id: int, amount: int) -> None:
         """Odpočíta peniaze tímu za kontrakt."""
-        if team_id in self.teams["teamID"].values:
-            self.teams.loc[self.teams["teamID"] == team_id, "money"] -= amount
-            print(f"💸 Tím {team_id} zaplatil {amount}.")
+        if team_id in self.teams[COL_TEAM_ID].values:
+            self.teams.loc[self.teams[COL_TEAM_ID] == team_id, "money"] -= amount
+            print(f"Tím {team_id} zaplatil {amount}.")
         else:
-            print(f"⚠️ Tím {team_id} neexistuje – nemôžem odpočítať peniaze.")
+            print(f"Tím {team_id} neexistuje – nemôžem odpočítať peniaze.")
 
     def get_team_finance_info(self, team_id: int) -> dict:
         """
         Vráti základné finančné údaje tímu: teamID, money, finance_employees.
         """
         if not hasattr(self, "teams"):
-            print("[TeamsModel] ⚠️ teams tabuľka nie je inicializovaná.")
+            print("[TeamsModel] teams tabuľka nie je inicializovaná.")
             return {}
 
-        match = self.teams[self.teams["teamID"] == team_id]
+        match = self.teams[self.teams[COL_TEAM_ID] == team_id]
         if match.empty:
-            print(f"[TeamsModel] ⚠️ Tím s ID {team_id} neexistuje.")
+            print(f"[TeamsModel]  Tím s ID {team_id} neexistuje.")
             return {}
 
         row = match.iloc[0]
@@ -186,7 +196,7 @@ class TeamsModel:
 
     def add_race_reputation(self, base_reputation: int, results: list[int]):
         for i, team_id in enumerate(results):
-            if team_id in self.teams["teamID"].values:
+            if team_id in self.teams[COL_TEAM_ID].values:
                 self.teams.loc[
-                    self.teams["teamID"] == team_id, "reputation"
+                    self.teams[COL_TEAM_ID] == team_id, "reputation"
                 ] += base_reputation // (i + 1)

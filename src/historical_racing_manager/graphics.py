@@ -4,35 +4,23 @@ from typing import Optional
 import customtkinter as ctk
 import pandas as pd
 
-ctk.set_appearance_mode("System")
-ctk.set_default_color_theme("blue")
+from historical_racing_manager.consts import (
+    WINDOW_TITLE, WINDOW_SIZE, DEFAULT_THEME, DEFAULT_COLOR_THEME,
+    TAB_NAMES, TEAM_SELECTOR_WIDTH, SIMULATION_STEPS, CONTRACT_MIN_LENGTH,
+    CONTRACT_MAX_LENGTH, DEFAULT_SALARY, CONTRACT_YEARS,
+    PART_TYPES, COLUMN_LABELS
+)
 
-COLUMN_LABELS = {
-    "forename": "First Name",
-    "surname": "Last Name",
-    "nationality": "Nationality",
-    "age": "Age",
-    "salary": "Salary",
-    "staffYear": "Start Year",
-    "endYear": "End Year",
-    "partType": "Part Type",
-    "cost": "Cost",
-    "name": "Component Name",
-    "staff": "Staff",
-    "date": "Race Date",
-    "race": "Race Name",
-    "department": "Department",
-    "employees": "Employees",
-    # doplň podľa potreby
-}
+ctk.set_appearance_mode(DEFAULT_THEME)
+ctk.set_default_color_theme(DEFAULT_COLOR_THEME)
 
 
 class Graphics:
     def __init__(self, controller):
         self.controller = controller
         self.root = ctk.CTk()
-        self.root.title("Historical Racing Manager")
-        self.root.geometry("1600x900")
+        self.root.title(WINDOW_TITLE)
+        self.root.geometry(WINDOW_SIZE)
 
         self.name_var = ctk.StringVar()
         self.var_1 = ctk.StringVar()
@@ -55,7 +43,7 @@ class Graphics:
             frame,
             variable=self.selected_team,
             state="readonly",
-            width=250,
+            width=TEAM_SELECTOR_WIDTH,
             command=self.on_team_change
         )
         self.team_selector.pack(side="left", padx=10)
@@ -132,11 +120,9 @@ class Graphics:
 
         self.cmb_2 = ctk.CTkComboBox(controls, variable=self.var_2, state="readonly")
         self.cmb_2.grid(row=0, column=1, padx=5)
-
         self._create_button(controls, "Show Results", self.show_results, 2)
-        self._create_button(controls, "Next Day", lambda: self.sim_step(20000), 3)
-        self._create_button(controls, "Next Week", lambda: self.sim_step(7), 4)
-        self._create_button(controls, "Next Year", lambda: self.sim_step(4000), 5)
+        for idx, (label, days) in enumerate(SIMULATION_STEPS.items(), start=3):
+            self._create_button(controls, label, lambda d=days: self.sim_step(d), idx)
 
         self.date_label = ctk.CTkLabel(controls, text="", font=("Arial", 14))
         self.date_label.grid(row=0, column=9, padx=10, sticky="e")
@@ -145,7 +131,8 @@ class Graphics:
         self.tabview = ctk.CTkTabview(self.root, command=self.on_tab_change)
         self.tabview.pack(fill="both", expand=True, padx=10, pady=10)
 
-        tabs = ["Game", "Drivers", "Teams", "Manufacturers", "Series", "Seasons", "My Team"]
+        tabs = TAB_NAMES
+
         self.trees = {}
 
         for name in tabs:
@@ -487,7 +474,7 @@ class Graphics:
                 driver_box.set(driver_names[0])
 
             ctk.CTkLabel(dialog, text="Salary Offer (€):").pack(pady=5)
-            salary_var = ctk.StringVar(value="10000")
+            salary_var = ctk.StringVar(value=str(DEFAULT_SALARY))
             ctk.CTkEntry(dialog, textvariable=salary_var).pack(pady=5)
 
             ctk.CTkLabel(dialog, text="Contract Length (years):").pack(pady=5)
@@ -497,11 +484,11 @@ class Graphics:
             frame.pack(pady=5)
 
             def increase_length():
-                if length_var.get() < 4:
+                if length_var.get() < CONTRACT_MAX_LENGTH:
                     length_var.set(length_var.get() + 1)
 
             def decrease_length():
-                if length_var.get() > 1:
+                if length_var.get() > CONTRACT_MIN_LENGTH:
                     length_var.set(length_var.get() - 1)
 
             ctk.CTkButton(frame, text="-", command=decrease_length, width=30).pack(side="left", padx=5)
@@ -629,8 +616,7 @@ class Graphics:
 
             ctk.CTkLabel(dialog, text="Start Year:").pack(pady=5)
             year_var = ctk.StringVar(value="Current Year")
-            year_box = ctk.CTkComboBox(dialog, variable=year_var, values=["Current Year", "Next Year"],
-                                       state="readonly", width=150)
+            year_box = ctk.CTkComboBox(dialog, variable=year_var, values=CONTRACT_YEARS, state="readonly", width=150)
             year_box.pack(pady=5)
 
             def confirm_offer():
@@ -672,7 +658,7 @@ class Graphics:
 
             ctk.CTkLabel(dialog, text="Part Type:").pack(pady=5)
             part_type_var = ctk.StringVar()
-            ctk.CTkComboBox(dialog, variable=part_type_var, values=["engine", "chassi", "pneu"]).pack(pady=5)
+            ctk.CTkComboBox(dialog, variable=part_type_var, values=PART_TYPES)
 
             ctk.CTkLabel(dialog, text="Development Cost (€):").pack(pady=5)
             cost_var = ctk.StringVar()
@@ -753,30 +739,6 @@ class Graphics:
     def _populate_treeview(self, tree: ttk.Treeview, dataframe: Optional[pd.DataFrame]):
         try:
             # Preklady technických názvov na čitateľné
-            COLUMN_LABELS = {
-                "forename": "First Name",
-                "surname": "Last Name",
-                "nationality": "Nationality",
-                "age": "Age",
-                "salary": "Salary",
-                "startYear": "Start Year",
-                "endYear": "End Year",
-                "partType": "Part Type",
-                "cost": "Cost",
-                "name": "Name",
-                "staff": "Staff",
-                "car": "Car",
-                "date": "Race Date",
-                "race": "Race Name",
-                "department": "Department",
-                "employees": "Employees",
-                "team": "Team"
-                # doplň podľa potreby
-            }
-
-            def format_column_label(col: str) -> str:
-                # Použije preklad, alebo nahradí podčiarkovníky medzerami
-                return COLUMN_LABELS.get(col, col.replace("_", " ").title())
 
             tree.delete(*tree.get_children())
 
@@ -795,7 +757,8 @@ class Graphics:
             display_labels = {}
             used_labels = {}
             for col in cols:
-                label = format_column_label(col)
+                label = label = COLUMN_LABELS.get(col, col.replace("_", " ").title())
+
                 if label in used_labels:
                     used_labels[label] += 1
                     label = f"{label} {used_labels[label]}"

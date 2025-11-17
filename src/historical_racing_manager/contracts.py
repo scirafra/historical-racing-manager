@@ -2,6 +2,8 @@ import os
 import random
 from datetime import datetime
 from typing import Dict, List, Optional
+from historical_racing_manager.consts import MIN_SALARY_BASE, HUMAN_CONTRACT_DECISION_DAYS, DEFAULT_SALARY_BASE, \
+    SALARY_REPUTATION_MULTIPLIER, AI_CONTRACT_LENGTHS, AI_CONTRACT_WEIGHTS
 
 import pandas as pd
 
@@ -530,9 +532,10 @@ class ContractsModel:
         print(f"Rezervované sloty: {self.reserved_slots}")
 
     def _estimate_salary(self, drivers_df: pd.DataFrame, driver_id: int) -> int:
-        base = 25000
+
+        base = DEFAULT_SALARY_BASE
         rep = int(drivers_df.loc[drivers_df["driverID"] == driver_id, "reputation_race"].iloc[0])
-        return int(base + rep * 100)
+        return int(base + rep * SALARY_REPUTATION_MULTIPLIER)
 
     def _deactivate_lower_series_contract(self, driver_id: int, year: int, new_team_id: int) -> None:
         """
@@ -820,8 +823,9 @@ class ContractsModel:
         salary = self._estimate_salary(available, driver_id)
         max_len = int(available.loc[available["driverID"] == driver_id, "max_contract_len"].iloc[0])
         # Realistické rozdelenie dĺžok zmlúv v F1
-        lengths = [1, 2, 3, 4]
-        weights = [40, 30, 20, 10]
+
+        lengths = AI_CONTRACT_LENGTHS
+        weights = AI_CONTRACT_WEIGHTS
 
         # Ak je max_len menší ako 4, obmedz zoznamy
         max_len = max_len if max_len >= 1 else 1  # istota, že nebude 0 alebo menej
@@ -1100,7 +1104,8 @@ class ContractsModel:
             "salary": int(salary),
             "length": int(length),
             "year": int(year),
-            "days_pending": 1,  # jazdec sa rozhodne do jedného dňa
+            "days_pending": HUMAN_CONTRACT_DECISION_DAYS,
+
         }
         self.pending_offers.append(offer)
         print(f"[ContractsModel] Ponuka pre jazdca {driver_id} vytvorená (rok {year}).")
@@ -1134,7 +1139,8 @@ class ContractsModel:
                 continue
 
             position = driver_pos[0] + 1
-            min_salary = 4000000 // position
+
+            min_salary = MIN_SALARY_BASE // position
 
             # Získaj info o tíme a sérii
             team_series = self.STcontract[self.STcontract["teamID"] == team_id]

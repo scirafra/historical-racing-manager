@@ -5,4 +5,9 @@ setup(
     version="0.1.0",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
+    entry_points={
+        'console_scripts': [
+            'historical_racing_manager=historical_racing_manager.main:main',
+        ],
+    },
 )

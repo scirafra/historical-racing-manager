@@ -6,6 +6,10 @@ from typing import Any
 import pandas as pd
 
 import load as ld
+from historical_racing_manager.consts import (
+    DEFAULT_BEGIN_YEAR, DEFAULT_END_YEAR, DEFAULT_DRIVERS_PER_YEAR, DEFAULT_SIM_YEARS_STEP,
+    SEASON_START_DAY, SEASON_START_MONTH, FIRST_REAL_SEASON_YEAR, FIRST_RACE_PLANNING_YEAR
+)
 from historical_racing_manager.contracts import ContractsModel
 from historical_racing_manager.drivers import DriversModel
 from historical_racing_manager.graphics import Graphics
@@ -17,10 +21,10 @@ from historical_racing_manager.teams import TeamsModel
 
 class Controller:
     def __init__(self):
-        self.begin_year = 1843
-        self.end_year = 3000
-        self.drivers_per_year = 4
-        self.sim_years_step = 36
+        self.begin_year = DEFAULT_BEGIN_YEAR
+        self.end_year = DEFAULT_END_YEAR
+        self.drivers_per_year = DEFAULT_DRIVERS_PER_YEAR
+        self.sim_years_step = DEFAULT_SIM_YEARS_STEP
 
         self.begin_date = datetime.strptime(f"01-01-{self.begin_year}", "%d-%m-%Y")
         self.current_date = self.begin_date
@@ -309,7 +313,7 @@ class Controller:
                 with pd.option_context('display.max_columns', None, 'display.expand_frame_repr', False):
                     print(self.teams_model.teams.sort_values(by="reputation", ascending=False))
                 #  print(self.drivers_model.active_drivers.sort_values(by="reputation_race", ascending=False).head(50))
-            if date.year >= 1894:
+            if date.year >= FIRST_REAL_SEASON_YEAR:
                 """
                 driver_inputs = self.view.ask_driver_contracts(
                     self.teams_model.get_human_teams(date),
@@ -418,7 +422,8 @@ class Controller:
             return pd.DataFrame()
 
     def _is_season_start(self, date: datetime) -> bool:
-        return 2999 > date.year and date.day == 1 and date.month == 1
+
+        return date.year < DEFAULT_END_YEAR and date.day == SEASON_START_DAY and date.month == SEASON_START_MONTH
 
     def _deduct_all_contracts_for_year(self, year: int):
         contracts = self.contracts_model.get_contracts_for_year(year)
@@ -435,7 +440,7 @@ class Controller:
 
     def _handle_season_start(self, date: datetime):
 
-        if date.year > 1896:
+        if date.year > FIRST_RACE_PLANNING_YEAR:
             self.race_model.plan_races(self.series_model, date)
 
         self._update_entities_for_new_season(date)
@@ -444,7 +449,7 @@ class Controller:
         self.contracts_model.rollover_driver_slots()
         self.contracts_model.reset_reserved_slot()
 
-        if date.year >= 1894:
+        if date.year >= FIRST_REAL_SEASON_YEAR:
             self._handle_contracts(date)
             self._deduct_all_contracts_for_year(date.year)
             self._deduct_all_part_contracts_for_year(date.year)
@@ -585,15 +590,15 @@ class Controller:
             print(f"[Controller]  Chyba pri spracovaní ponúk: {e}")
 
     def get_max_marketing_staff(self, team_id: int) -> int:
-        return 100
+
         return self.teams_model.get_max_marketing_staff(team_id)
 
     def get_marketing_hire_cost(self) -> int:
-        return 30
+
         return self.teams_model.marketing_hire_cost
 
     def get_marketing_fire_cost(self) -> int:
-        return 20
+
         return self.teams_model.marketing_fire_cost
 
     def adjust_marketing_staff(self, new_employees: int, cost: int) -> str:

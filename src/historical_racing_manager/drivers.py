@@ -6,70 +6,31 @@ from typing import List
 import numpy as np
 import pandas as pd
 
+from historical_racing_manager.consts import (
+    DRIVER_ABILITY_MIN, DRIVER_ABILITY_MAX,
+    DRIVER_MIN_AGE, DRIVER_RETIRE_MIN_AGE, DRIVER_RETIRE_MAX_AGE,
+    ABILITY_CHANGE_SEQUENCE,
+    DRIVER_ABILITY_DISTRIBUTION_START, DRIVER_ABILITY_DISTRIBUTION_END,
+    DRIVERS_FILE
+)
+
 
 class DriversModel:
-    def __init__(self, ability_min: int = 36, ability_max: int = 69):
+    def __init__(self):
         self.drivers = pd.DataFrame()
         self.active_drivers = pd.DataFrame()
         self.retiring_drivers = pd.DataFrame()
         self.old_active_drivers = pd.DataFrame()
         self.dead_drivers: List[List] = []
-        self.ability_min = ability_min
-        self.ability_max = ability_max
-
-        self.ability_change = [
-            4,
-            4,
-            3,
-            3,
-            3,
-            2,
-            2,
-            2,
-            2,
-            1,
-            1,
-            1,
-            1,
-            1,
-            0,
-            0,
-            -1,
-            -1,
-            -1,
-            -1,
-            -1,
-            -2,
-            -2,
-            -2,
-            -2,
-            -3,
-            -3,
-            -3,
-            -4,
-            -4,
-            -5,
-            -6,
-            -7,
-            -8,
-            -9,
-            -10,
-            -11,
-            -12,
-            -13,
-            -14,
-            -15,
-            -16,
-            -17,
-            -18,
-            -19,
-            -20,
-        ]
+        self.ability_min = DRIVER_ABILITY_MIN
+        self.ability_max = DRIVER_ABILITY_MAX
+        self.ability_change = ABILITY_CHANGE_SEQUENCE
 
     # ====== DATA I/O ======
 
     def load(self, folder: str) -> bool:
-        path = os.path.join(folder, "drivers.csv")
+        path = os.path.join(folder, DRIVERS_FILE)
+
         if not os.path.exists(path):
             return False
 
@@ -84,7 +45,8 @@ class DriversModel:
 
         self.sort_active_drivers()
         self._sync_active_to_main()
-        self.drivers.to_csv(os.path.join(folder, "drivers.csv"), index=False)
+        self.drivers.to_csv(os.path.join(folder, DRIVERS_FILE), index=False)
+
         self.old_active_drivers = self.active_drivers.copy()
         self.active_drivers.drop(self.active_drivers.index, inplace=True)
 
@@ -135,7 +97,7 @@ class DriversModel:
     def _initialize_active_drivers(self, current_date: date) -> None:
         self._update_ages(self.drivers, current_date.year)
         self.active_drivers = self.drivers[
-            (self.drivers["age"] >= 15)
+            (self.drivers["age"] >= DRIVER_MIN_AGE)
             & (self.drivers["age"] <= self.drivers["retire"])
             & (self.drivers["alive"])
             ].copy()
@@ -144,7 +106,7 @@ class DriversModel:
         self._update_ages(self.drivers, current_date.year)
         self._update_ages(self.active_drivers, current_date.year)
 
-        new_drivers = self.drivers[self.drivers["age"] == 15]
+        new_drivers = self.drivers[self.drivers["age"] == DRIVER_MIN_AGE]
 
         if not self.retiring_drivers.empty:
             self.active_drivers = self.active_drivers[
@@ -153,7 +115,7 @@ class DriversModel:
 
         self.retiring_drivers = self.active_drivers[
             (self.active_drivers["age"] > self.active_drivers["retire"])
-            | (self.active_drivers["age"] < 15)
+            | (self.active_drivers["age"] < DRIVER_MIN_AGE)
             ]
 
         if not new_drivers.empty:
@@ -227,9 +189,9 @@ class DriversModel:
         age = year - self.active_drivers["year"]
         return (
             self.active_drivers[
-                (age > (15 + 3 * offset))
-                & (age < (19 + 3 * offset))
-                & (self.active_drivers["ability"] > 35)
+                (age > (DRIVER_MIN_AGE + 3 * offset))
+                & (age < (DRIVER_MIN_AGE + 4 + 3 * offset))
+                & (self.active_drivers["ability"] > DRIVER_ABILITY_MIN)
                 ]
             .sort_values(by="reputation_race", ascending=False)
             .reset_index(drop=True)
@@ -267,7 +229,7 @@ class DriversModel:
         69 once, 68 twice, 67 three times, ... down to 36.
         """
         distribution = []
-        for ability in range(69, 35, -1):
+        for ability in range(DRIVER_ABILITY_DISTRIBUTION_START, DRIVER_ABILITY_DISTRIBUTION_END - 1, -1):
             count = 70 - ability
             distribution.extend([ability] * count)
         return distribution
@@ -323,5 +285,6 @@ class DriversModel:
             "ability_best": ability,
             "reputation_race": 0,
             "reputation_season": 0,
-            "retire": np.random.randint(30, 59),
+            "retire": np.random.randint(DRIVER_RETIRE_MIN_AGE, DRIVER_RETIRE_MAX_AGE),
+
         }

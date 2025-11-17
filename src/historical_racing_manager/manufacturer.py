@@ -3,6 +3,18 @@ import os
 import numpy as np
 import pandas as pd
 
+from historical_racing_manager.consts import (
+    MANUFACTURER_REQUIRED_FILES,
+    MERGE_KEYS,
+    DEFAULT_PART_COST,
+    RANDOM_POWER_MIN,
+    RANDOM_POWER_MAX,
+    RANDOM_RELIABILITY_MIN,
+    RANDOM_RELIABILITY_MAX,
+    RANDOM_SAFETY_MIN,
+    RANDOM_SAFETY_MAX,
+)
+
 
 class ManufacturerModel:
     def __init__(self):
@@ -14,13 +26,8 @@ class ManufacturerModel:
 
     # --- Persistence ---
     def load(self, folder: str) -> bool:
-        required_files = [
-            "car_parts.csv",
-            "cars.csv",
-            "manufacturers.csv",
-            "car_part_models.csv",
-            "rules.csv",
-        ]
+        required_files = MANUFACTURER_REQUIRED_FILES
+
         missing = [f for f in required_files if not os.path.exists(os.path.join(folder, f))]
         if missing:
             self._initialize_empty()
@@ -55,7 +62,8 @@ class ManufacturerModel:
         last_year_parts = self.car_parts[self.car_parts["year"] == date.year - 1].copy()
 
         # Zjednotenie typov kľúčov pred merge
-        merge_keys = ["rulesID", "manufacturerID", "partType", "seriesID"]
+        merge_keys = MERGE_KEYS
+
         for key in merge_keys:
             if key in merged.columns:
                 merged[key] = merged[key].astype(str)
@@ -72,7 +80,7 @@ class ManufacturerModel:
         final = self._fill_missing_values(final)
         final = self._apply_random_improvements(final, date.year)
         final = self._clamp_values(final)
-        final["cost"] = 250000
+        final["cost"] = DEFAULT_PART_COST
 
         new_parts = final[
             [
@@ -121,9 +129,9 @@ class ManufacturerModel:
         return df
 
     def _apply_random_improvements(self, df: pd.DataFrame, year: int) -> pd.DataFrame:
-        rand_power = np.random.randint(0, 9, size=len(df))
-        rand_reliability = np.random.randint(0, 10, size=len(df))
-        rand_safety = np.random.randint(0, 10, size=len(df))
+        rand_power = np.random.randint(RANDOM_POWER_MIN, RANDOM_POWER_MAX + 1, size=len(df))
+        rand_reliability = np.random.randint(RANDOM_RELIABILITY_MIN, RANDOM_RELIABILITY_MAX + 1, size=len(df))
+        rand_safety = np.random.randint(RANDOM_SAFETY_MIN, RANDOM_SAFETY_MAX + 1, size=len(df))
 
         df["power"] += rand_power
         df["reliability"] += rand_power - rand_reliability
