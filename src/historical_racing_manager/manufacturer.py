@@ -17,6 +17,8 @@ from historical_racing_manager.consts import (
 
 
 class ManufacturerModel:
+    """Model handling manufacturers, car parts, part models, and related rules."""
+
     def __init__(self):
         self.car_parts = pd.DataFrame()
         self.car_part_models = pd.DataFrame()
@@ -26,6 +28,7 @@ class ManufacturerModel:
 
     # --- Persistence ---
     def load(self, folder: str) -> bool:
+        """Load manufacturer-related dataframes from CSV files in the given folder."""
         required_files = MANUFACTURER_REQUIRED_FILES
 
         missing = [f for f in required_files if not os.path.exists(os.path.join(folder, f))]
@@ -41,6 +44,7 @@ class ManufacturerModel:
         return True
 
     def save(self, folder: str):
+        """Save manufacturer-related dataframes to CSV files in the given folder."""
         self.car_parts.to_csv(os.path.join(folder, "car_parts.csv"), index=False)
         self.cars.to_csv(os.path.join(folder, "cars.csv"), index=False)
         self.manufacturers.to_csv(os.path.join(folder, "manufacturers.csv"), index=False)
@@ -48,6 +52,7 @@ class ManufacturerModel:
         self.rules.to_csv(os.path.join(folder, "rules.csv"), index=False)
 
     def _initialize_empty(self):
+        """Initialize all internal tables to empty DataFrames."""
         self.car_parts = pd.DataFrame()
         self.cars = pd.DataFrame()
         self.manufacturers = pd.DataFrame()
@@ -56,14 +61,13 @@ class ManufacturerModel:
 
     # --- Business logic ---
     def develop_part(self, date, contracts: pd.DataFrame):
-
+        """Develop parts for the given year based on active contracts and rules, then append to car_parts."""
         merged = self._merge_contracts_with_rules(contracts, date.year)
 
         last_year_parts = self.car_parts[self.car_parts["year"] == date.year - 1].copy()
 
-        # Zjednotenie typov kľúčov pred merge
+        # Unify key column types before merging
         merge_keys = MERGE_KEYS
-
         for key in merge_keys:
             if key in merged.columns:
                 merged[key] = merged[key].astype(str)
@@ -101,6 +105,7 @@ class ManufacturerModel:
         self.car_parts = pd.concat([self.car_parts, new_parts], ignore_index=True)
 
     def get_manufacturers(self) -> pd.DataFrame:
+        """Return manufacturer IDs and names, or an empty DataFrame if unavailable."""
         return (
             self.manufacturers[["manufacturerID", "name"]].copy()
             if not self.manufacturers.empty
@@ -108,11 +113,12 @@ class ManufacturerModel:
         )
 
     def get_manufacturers_id(self, manufacturer_name: str) -> int | None:
+        """Return the manufacturerID for a given name, or None if not found."""
         result = self.manufacturers.query("name == @manufacturer_name")
         return result["manufacturerID"].iat[0] if not result.empty else None
 
     def _merge_contracts_with_rules(self, contracts: pd.DataFrame, year: int) -> pd.DataFrame:
-
+        """Merge contracts with rules and filter to those active in the given year."""
         merged = pd.merge(contracts, self.rules, on=["seriesID", "partType"], how="left")
         mask = (
                 (merged["startYear"] <= year)
@@ -123,12 +129,14 @@ class ManufacturerModel:
         return merged.loc[mask].copy()
 
     def _fill_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Fill missing part attributes with safe defaults."""
         df["power"] = df["power"].fillna(df["min_ability"])
         df["reliability"] = df["reliability"].fillna(1)
         df["safety"] = df["safety"].fillna(1)
         return df
 
     def _apply_random_improvements(self, df: pd.DataFrame, year: int) -> pd.DataFrame:
+        """Apply random improvements to part attributes and set the target year."""
         rand_power = np.random.randint(RANDOM_POWER_MIN, RANDOM_POWER_MAX + 1, size=len(df))
         rand_reliability = np.random.randint(RANDOM_RELIABILITY_MIN, RANDOM_RELIABILITY_MAX + 1, size=len(df))
         rand_safety = np.random.randint(RANDOM_SAFETY_MIN, RANDOM_SAFETY_MAX + 1, size=len(df))
@@ -140,6 +148,7 @@ class ManufacturerModel:
         return df
 
     def _clamp_values(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Clamp attributes within rule bounds and minimum thresholds."""
         df["power"] = df[["power", "min_ability"]].max(axis=1)
         df["power"] = df[["power", "max_ability"]].min(axis=1)
         df["reliability"] = df["reliability"].apply(lambda x: max(1, x))
@@ -147,6 +156,7 @@ class ManufacturerModel:
         return df
 
     def _generate_new_part_ids(self, count: int) -> range:
+        """Generate a sequence of new part IDs continuing from the current maximum."""
         if self.car_parts.empty or self.car_parts["partID"].isnull().all():
             start = 0
         else:

@@ -47,7 +47,7 @@ class Controller:
 
     def get_team_list(self) -> list[dict]:
         """
-        Vráti zoznam názvov tímov, ktoré už majú majiteľa (owner_id > 0).
+        Returns a list of team names that already have an owner (owner_id > 0).
         """
         teams_df = self.teams_model.get_teams()
 
@@ -66,7 +66,7 @@ class Controller:
 
     def on_team_selected(self, value: str):
         """
-        Callback volaný z GUI pri zmene tímu v ComboBoxe.
+        Callback invoked from the GUI when the team is changed in the ComboBox.
         """
         try:
             if not value or "(" not in value:
@@ -76,57 +76,59 @@ class Controller:
             self.set_active_team(team_name)
 
         except Exception as e:
-            print(f"[Controller] Chyba pri výbere tímu: {e}")
+            print(f"[Controller] Error selecting team: {e}")
 
     def set_active_team(self, team_name: str):
         """
-        Nastaví aktívny tím podľa mena a aktualizuje My Team tab.
+        Sets the active team by name and refreshes the My Team tab.
         """
         try:
             teams_df = self.teams_model.get_teams()
             match = teams_df[teams_df["team_name"] == team_name]
 
             if match.empty:
-                print(f"[Controller]  Tím '{team_name}' sa nenašiel.")
+                print(f"[Controller] Team '{team_name}' not found.")
                 return
 
             self.active_team = team_name
             self.active_team_id = int(match.iloc[0]["teamID"])
-            print(f"[Controller]  Aktívny tím nastavený na {team_name} (ID {self.active_team_id})")
+            print(f"[Controller] Active team set to {team_name} (ID {self.active_team_id})")
 
-            #  automatická aktualizácia My Team tabu
+            # Automatically refresh the My Team tab
             self.refresh_myteam()
 
         except Exception as e:
-            print(f"[Controller]  Chyba pri nastavovaní aktívneho tímu: {e}")
+            print(f"[Controller] Error setting active team: {e}")
 
     def get_active_team(self) -> str:
         """
-        Vráti názov aktuálneho aktívneho tímu, ak je nastavený.
+        Returns the name of the current active team, if set.
         """
         return getattr(self, "active_team", None)
 
     def get_active_team_id(self) -> int | None:
         """
-        Vráti ID aktuálneho aktívneho tímu, ak je nastavený.
+        Returns the ID of the current active team, if set.
         """
         return getattr(self, "active_team_id", None)
 
     def get_owners_team_driver_data(self):
-        return self.contracts_model.find_active_driver_contracts(self.active_team_id, self.get_year(),
-                                                                 self.series_model.get_series(),
-                                                                 self.drivers_model.get_active_drivers(),
-                                                                 self.race_model
-                                                                 )
+        return self.contracts_model.find_active_driver_contracts(
+            self.active_team_id,
+            self.current_date.year,
+            self.series_model.get_series(),
+            self.drivers_model.get_active_drivers(),
+            self.race_model
+        )
 
     def get_team_money_and_finance_employees(self) -> tuple[int, int, int, int]:
         """
-        Vráti (finance_employees, max_possible_employees, employee_salary, kick_price) pre daný tím.
+        Returns (finance_employees, max_possible_employees, employee_salary, kick_price) for the active team.
         """
         team_id = self.get_active_team_id()
         team = self.teams_model.teams[self.teams_model.teams["teamID"] == team_id]
         if team.empty:
-            print(f"[Controller] Tím {team_id} neexistuje.")
+            print(f"[Controller] Team {team_id} does not exist.")
             return 0, 0, 0, 0
 
         row = team.iloc[0]
@@ -140,7 +142,7 @@ class Controller:
         return finance_employees, finance_employees + max_affordable, employee_salary, kick_price
 
     def get_active_team_info(self) -> dict:
-        """Vracia všetky dáta o aktívnom tíme."""
+        """Returns all data for the active team."""
         team_id = self.get_active_team_id()
         team_name = self.get_active_team()
         money = int(self.teams_model.teams.loc[self.teams_model.teams["teamID"] == team_id, "money"].iloc[0])
@@ -169,13 +171,13 @@ class Controller:
 
     def get_myteam_tab_data(self) -> dict:
         """
-        Vracia všetky dáta potrebné pre My Team tabuľku:
-        - názov tímu
-        - rozpočet
-        - DataFrame s jazdcami
-        - DataFrame s komponentmi
-        - DataFrame so staff
-        - DataFrame s nadchádzajúcimi pretekmi
+        Returns all data needed for the My Team table:
+        - team name
+        - budget
+        - drivers DataFrame
+        - components DataFrame
+        - staff DataFrame
+        - upcoming races DataFrame
         """
         try:
             team_info = self.get_active_team_info()
@@ -191,7 +193,7 @@ class Controller:
 
         except Exception as e:
             print(f" get_myteam_tab_data error: {e}")
-            # fallback – prázdne tabuľky, aby GUI nezlyhalo
+            # Fallback — empty tables so the GUI does not crash
             empty = pd.DataFrame()
             return {
                 "team_name": "No Team Selected",
@@ -204,8 +206,8 @@ class Controller:
 
     def get_team_staff(self, team_id: int) -> pd.DataFrame:
         """
-        Vracia informácie o zamestnancoch daného tímu podľa tabuľky teams.
-        Obsahuje stĺpce: Department, Employees, Next Year.
+        Returns information about the team's employees based on the teams table.
+        Includes columns: Department, Employees.
         """
         try:
             team = self.teams_model.get_team_staff_counts(team_id)
@@ -228,17 +230,18 @@ class Controller:
 
     def get_upcoming_races(self, team_id: int) -> pd.DataFrame:
         """
-        Vracia nadchádzajúce preteky pre série, v ktorých má tím kontrakt.
+        Returns upcoming races for the series in which the team has a contract.
         """
         try:
-            #  Zisti, v akých sériách má tím kontrakt
+            # Determine the series in which the team has a contract
             series_ids = self.contracts_model.get_team_series(team_id)
             if not series_ids:
                 return pd.DataFrame(columns=["Date", "Race Name", "Series"])
 
-            # Získaj nadchádzajúcich 5 pretekov pre tieto série
-            upcoming = self.race_model.get_upcoming_races_for_series(series_ids, self.series_model.get_series(),
-                                                                     self.current_date)
+            # Get the next races for these series
+            upcoming = self.race_model.get_upcoming_races_for_series(
+                series_ids, self.series_model.get_series(), self.current_date
+            )
             return upcoming
 
         except Exception as e:
@@ -247,23 +250,27 @@ class Controller:
 
     def refresh_myteam(self):
         """
-        Znovu načíta My Team tab z aktuálnych dát.
-        Volá sa po zmene tímu, po simulácii, alebo po zmene tabu.
+        Reloads the My Team tab from current data.
+        Called after changing the team, after simulation, or when the tab changes.
         """
 
         try:
             if hasattr(self, "view") and hasattr(self.view, "refresh_myteam_tab"):
                 self.view.refresh_myteam_tab()
-                print("[Controller]  My Team tab refreshed.")
+                print("[Controller] My Team tab refreshed.")
             else:
-                print("[Controller]  View nie je inicializovaný, refresh preskočený.")
+                print("[Controller] View is not initialized, refresh skipped.")
         except Exception as e:
-            print(f"[Controller]  Chyba pri refreshi My Team tabu: {e}")
+            print(f"[Controller] Error refreshing My Team tab: {e}")
 
     def get_owners_team_parts_data(self):
-        return self.contracts_model.find_active_manufacturer_contracts(self.active_team_id, self.get_year(),
-                                                                       self.series_model.get_series(),
-                                                                       self.manufacturer_model, self.race_model)
+        return self.contracts_model.find_active_manufacturer_contracts(
+            self.active_team_id,
+            self.current_date.year,
+            self.series_model.get_series(),
+            self.manufacturer_model,
+            self.race_model
+        )
 
     def get_owners_team_future_data(self, team_id):
         return
@@ -285,7 +292,6 @@ class Controller:
         if subject_type == "Drivers":
             df = self.drivers_model.get_drivers()
             df["name"] = df["forename"] + " " + df["surname"]
-
             return df["name"].tolist()
         if subject_type == "Teams":
             return self.teams_model.get_teams()["team_name"].tolist()
@@ -308,11 +314,11 @@ class Controller:
         for _ in range(days):
             date += timedelta(days=1)
             if self._is_season_start(date):
-                print("start of season", self.get_year())
+                print("start of season", self.current_date.year)
                 self._handle_season_start(date)
                 with pd.option_context('display.max_columns', None, 'display.expand_frame_repr', False):
                     print(self.teams_model.teams.sort_values(by="reputation", ascending=False))
-                #  print(self.drivers_model.active_drivers.sort_values(by="reputation_race", ascending=False).head(50))
+                # print(self.drivers_model.active_drivers.sort_values(by="reputation_race", ascending=False).head(50))
             if date.year >= FIRST_REAL_SEASON_YEAR:
                 """
                 driver_inputs = self.view.ask_driver_contracts(
@@ -389,7 +395,7 @@ class Controller:
 
         self.drivers_model.choose_active_drivers(self.current_date)
 
-        # Inicializácia slotov
+        # Initialize driver slots
         self.contracts_model.driver_slots_current = self.contracts_model.init_driver_slots_for_year(
             self.current_date.year, self.series_model.point_rules
         )
@@ -413,8 +419,8 @@ class Controller:
 
     def get_human_teams(self, date: datetime) -> pd.DataFrame:
         """
-        Wrapper pre získanie tímov, ktoré sú riadené hráčom pre dané dátumové obdobie.
-        Očakáva sa, že TeamsModel poskytuje metódu get_human_teams(date).
+        Wrapper to get teams controlled by the player for the given date range.
+        Assumes TeamsModel provides get_human_teams(date).
         """
         try:
             return self.teams_model.get_human_teams(date)
@@ -422,30 +428,29 @@ class Controller:
             return pd.DataFrame()
 
     def _is_season_start(self, date: datetime) -> bool:
-
         return date.year < DEFAULT_END_YEAR and date.day == SEASON_START_DAY and date.month == SEASON_START_MONTH
 
     def _deduct_all_contracts_for_year(self, year: int):
         contracts = self.contracts_model.get_contracts_for_year(year)
         for _, row in contracts.iterrows():
             self.teams_model.deduct_money(row["teamID"], row["salary"])
-            print(f"Tím {row['teamID']} zaplatil {row['salary']} za jazdca {row['driverID']} v roku {year}.")
+            print(f"Team {row['teamID']} paid {row['salary']} for driver {row['driverID']} in {year}.")
 
     def _deduct_all_part_contracts_for_year(self, year: int):
         contracts = self.contracts_model.get_active_part_contracts_for_year(year)
         for _, row in contracts.iterrows():
             self.teams_model.deduct_money(row["teamID"], row["cost"])
             print(
-                f"Tím {row['teamID']} zaplatil €{row['cost']} za {row['partType']} od výrobcu {row['manufacturerID']} v roku {year}.")
+                f"Team {row['teamID']} paid €{row['cost']} for {row['partType']} from manufacturer {row['manufacturerID']} in {year}."
+            )
 
     def _handle_season_start(self, date: datetime):
-
         if date.year > FIRST_RACE_PLANNING_YEAR:
             self.race_model.plan_races(self.series_model, date)
 
         self._update_entities_for_new_season(date)
 
-        # Prekopírovanie slotov
+        # Copy over driver slots
         self.contracts_model.rollover_driver_slots()
         self.contracts_model.reset_reserved_slot()
 
@@ -454,10 +459,11 @@ class Controller:
             self._deduct_all_contracts_for_year(date.year)
             self._deduct_all_part_contracts_for_year(date.year)
 
-        # Poznámka: investície sa už nespúšťajú automaticky pri štarte sezóny.
-        # Používateľ spúšťa investície cez tlačidlo v GUI.
+        # Note: investments are no longer triggered automatically at season start.
+        # The user triggers investments via a button in the GUI.
 
     def _update_entities_for_new_season(self, date: datetime):
+        print("rts", self.current_date.year, self.drivers_model.get_retiring_drivers())
         self.contracts_model.disable_driver_contracts(self.drivers_model.get_retiring_drivers())
         self.drivers_model.update_drivers(date)
         self.drivers_model.update_reputations()
@@ -468,11 +474,13 @@ class Controller:
     def _handle_contracts(self, date: datetime):
         self.manufacturer_model.develop_part(date, self.contracts_model.get_MScontract())
 
-        """car_part_inputs = self.view.ask_car_part_contracts(
+        """
+        car_part_inputs = self.view.ask_car_part_contracts(
             self.teams_model.get_human_teams(date),
             self.manufacturer_model.car_parts,
             date.year
-        )"""
+        )
+        """
         car_part_inputs = {}
         self.contracts_model.sign_car_part_contracts(
             active_series=self.series_model.get_active_series(date.year),
@@ -484,14 +492,14 @@ class Controller:
         )
 
     def _handle_investments(self, date: datetime):
-        # interná metóda; ponechaná pre prípady, keď je potrebné spúšťať investície programovo
+        # Internal method; kept for cases where investments need to be triggered programmatically
         investments = self.view.ask_finance_investments(self.teams_model.get_human_teams(date))
         self.teams_model.invest_finance(date.year, investments)
 
     def apply_investments(self, year: int, investments: Any):
         """
-        Verejná metóda, ktorú môže GUI zavolať pre aplikovanie investícií.
-        investments môže byť dict {team_id: amount} alebo list of dicts [{'team_id':..,'investment':..}, ...].
+        Public method the GUI can call to apply investments.
+        'investments' can be a dict {team_id: amount} or a list of dicts [{'team_id':..,'investment':..}, ...].
         """
         if investments is None:
             return
@@ -500,7 +508,7 @@ class Controller:
                 self.teams_model.invest_finance(year, investments)
                 return
             except Exception:
-                # fallback: pokus spracovať položky jednotlivo
+                # Fallback: attempt to process items individually
                 conv = {}
                 for k, v in investments.items():
                     try:
@@ -525,16 +533,16 @@ class Controller:
 
     def get_available_drivers_for_offer(self, next_year: bool = False) -> pd.DataFrame:
         """
-        Vráti DataFrame s jazdcami, ktorých môže aktívny tím podpísať
-        (pre aktuálny alebo budúci rok podľa parametra next_year).
+        Returns a DataFrame of drivers the active team can sign
+        (for the current or next year depending on the next_year parameter).
         """
         try:
             team_id = self.get_active_team_id()
             if not team_id:
-                print("Žiadny aktívny tím nie je nastavený.")
+                print("No active team selected.")
                 return pd.DataFrame()
 
-            year = self.get_year() + (1 if next_year else 0)
+            year = self.current_date.year + (1 if next_year else 0)
             active_drivers = self.drivers_model.get_active_drivers()
             rules = self.series_model.point_rules
 
@@ -545,35 +553,35 @@ class Controller:
                 series=self.series_model.series,
                 rules=rules
             )
-            print(f"[Controller]  Našiel som {len(df)} dostupných jazdcov pre rok {year}.")
+            print(f"[Controller] Found {len(df)} available drivers for year {year}.")
             return df
         except Exception as e:
-            print(f"[Controller]  Chyba pri načítaní dostupných jazdcov: {e}")
+            print(f"[Controller] Error loading available drivers: {e}")
             return pd.DataFrame()
 
     def offer_driver_contract(self, driver_id: int, salary: int, length: int, next_year: bool = False):
         """
-        Ponúkne zmluvu jazdcovi pre aktuálny alebo budúci rok.
-        Jazdec sa rozhodne pri nasledujúcom posune dňa.
+        Offers a contract to a driver for the current or next year.
+        The driver decides on the next day advance.
         """
         try:
             team_id = self.get_active_team_id()
             if not team_id:
-                print("Najprv musíš mať vybraný tím.")
+                print("You must select a team first.")
                 return False
 
-            year = self.get_year() + (1 if next_year else 0)
+            year = self.current_date.year + (1 if next_year else 0)
             self.contracts_model.offer_driver_contract(driver_id, team_id, salary, length, year)
-            print(f"[Controller]  Ponuka zmluvy pre jazdca {driver_id} (rok {year}) vytvorená.")
+            print(f"[Controller] Offer for driver {driver_id} (year {year}) created.")
             return True
         except Exception as e:
-            print(f"[Controller]  Chyba pri vytváraní ponuky: {e}")
+            print(f"[Controller] Error creating offer: {e}")
             return False
 
     def process_driver_offers(self):
         """
-        Spracuje všetky čakajúce ponuky jazdcov (hráčove aj AI),
-        či boli prijaté alebo odmietnuté.
+        Processes all pending driver offers (player and AI),
+        whether they were accepted or rejected.
         """
         try:
             signed = self.contracts_model.process_driver_offers(
@@ -581,38 +589,35 @@ class Controller:
                 self.drivers_model.get_active_drivers_with_reputation()
             )
             for contract in signed:
-                if contract["year"] == self.get_year():
+                if contract["year"] == self.current_date.year:
                     self.teams_model.deduct_money(contract["team_id"], contract["salary"])
 
             # self.refresh_myteam()
-            # print("[Controller]  Spracované všetky ponuky jazdcov.")
+            # print("[Controller] Processed all driver offers.")
         except Exception as e:
-            print(f"[Controller]  Chyba pri spracovaní ponúk: {e}")
+            print(f"[Controller] Error processing offers: {e}")
 
     def get_max_marketing_staff(self, team_id: int) -> int:
-
         return self.teams_model.get_max_marketing_staff(team_id)
 
     def get_marketing_hire_cost(self) -> int:
-
         return self.teams_model.marketing_hire_cost
 
     def get_marketing_fire_cost(self) -> int:
-
         return self.teams_model.marketing_fire_cost
 
     def adjust_marketing_staff(self, new_employees: int, cost: int) -> str:
         """
-        Nastaví nový počet marketingových zamestnancov a odpočíta náklady.
+        Sets a new number of marketing employees and deducts the cost.
         """
         team_id = self.get_active_team_id()
         if not team_id:
             return "⚠️ No active team selected."
 
-        # Odpočet peňazí
+        # Deduct money
         self.teams_model.deduct_money(team_id, cost)
 
-        # Nastavenie nového počtu
+        # Set new count
         self.teams_model.change_finance_employees(team_id, new_employees)
 
         return f"Finance employees set on:{new_employees}. Cost: €{cost}"
@@ -637,6 +642,7 @@ class Controller:
 
         if died:
             self.drivers_model.mark_drivers_dead(died, date.year)
+            print("ts", date.year, died)
             self.contracts_model.disable_driver_contracts(died)
 
             if date.year >= 1894:
@@ -652,19 +658,22 @@ class Controller:
                     team_inputs={},  # AI fallback only
                 )
 
-    # Výstupy / formátovanie výsledkov pre GUI
+    # Outputs / formatting results for GUI
     def get_results(self, series_name: str, season_str: str) -> pd.DataFrame:
         sid = self.series_model.get_series_id(series_name)
+
         if not season_str or not season_str.strip().isdigit():
             return pd.DataFrame()
 
         season = int(season_str)
-
+        print("tu")
         df = self.race_model.pivot_results_by_race(sid, season, self.manufacturer_model.get_manufacturers())
+        print(df)
+        print("tam")
+        print(self._format_results(df, season))
         return self._format_results(df, season)
 
     def get_stats(self, subject_name: str, stats_type: str, manufacturer_type: str) -> pd.DataFrame:
-
         if stats_type == "Drivers":
             if not subject_name or not stats_type:
                 return pd.DataFrame()
@@ -673,14 +682,14 @@ class Controller:
             sid = self.drivers_model.get_driver_id(name[0], name[-1])
 
             df = self.race_model.get_subject_season_stands(sid, "driver", self.series_model.get_series())
-            return df  # self._format_results(df, season)
+            return df
         elif stats_type == "Manufacturers":
             if not subject_name or not stats_type or not manufacturer_type:
                 return pd.DataFrame()
 
             mid = self.manufacturer_model.get_manufacturers_id(subject_name)
             df = self.race_model.get_subject_season_stands(mid, manufacturer_type, self.series_model.get_series())
-            return df  # self._format_results(df, season)
+            return df
         elif stats_type == "Teams":
             if not subject_name or not stats_type:
                 return pd.DataFrame()
@@ -688,27 +697,31 @@ class Controller:
             tid = self.teams_model.get_teams_id(subject_name)
 
             df = self.race_model.get_subject_season_stands(tid, "team", self.series_model.get_series())
-            return df  # self._format_results(df, season)
+            return df
         elif stats_type == "Series":
             if not subject_name or not stats_type:
                 return pd.DataFrame()
 
             sid = self.series_model.get_series_id(subject_name)
 
-            df = self.race_model.extract_champions(sid, self.series_model.get_series(),
-                                                   self.manufacturer_model.get_manufacturers(),
-                                                   self.teams_model.get_teams(), self.drivers_model.get_drivers())
-            return df  # self._format_results(df, season)
+            df = self.race_model.extract_champions(
+                sid,
+                self.series_model.get_series(),
+                self.manufacturer_model.get_manufacturers(),
+                self.teams_model.get_teams(),
+                self.drivers_model.get_drivers()
+            )
+            return df
         return None
 
     def _format_results(self, df: pd.DataFrame, season: int) -> pd.DataFrame:
         if df is None or df.empty:
             return pd.DataFrame()
 
-        # Mapovanie manufacturerID → názov
+        # Map manufacturerID → name
         mf_map = self.manufacturer_model.manufacturers.set_index("manufacturerID")["name"].to_dict()
 
-        # Spracovanie stĺpcov engine/chassi/pneu alebo engineID/chassiID/pneuID
+        # Handle columns engine/chassi/pneu or engineID/chassiID/pneuID
         part_columns = {
             "engine": "Engine",
             "engineID": "Engine",
@@ -728,22 +741,45 @@ class Controller:
                     df[final_col] = df[raw_col]
                 df.drop(columns=[raw_col], inplace=True)
 
-        # Pridaj meno a vek jazdca
+        # Add driver name and age
+        print("I")
+        with pd.option_context(
+                "display.max_columns", None,
+                "display.width", None,
+                "display.max_colwidth", None,
+                "display.expand_frame_repr", False
+        ):
+            print(df.head(60))
+            print(self.drivers_model.drivers.head(60))
+
+        df["driverID"] = df["driverID"].astype(int)
+        self.drivers_model.drivers["driverID"] = self.drivers_model.drivers["driverID"].astype(int)
         df = df.merge(
             self.drivers_model.drivers[["driverID", "forename", "surname", "year"]],
-            on="driverID", how="left"
+            left_on="driverID",
+            right_on="driverID",
+            how="left"
         )
+
         df["Age"] = season - df["year"]
+        print("J")
+        with pd.option_context(
+                "display.max_columns", None,
+                "display.width", None,
+                "display.max_colwidth", None,
+                "display.expand_frame_repr", False
+        ):
+            print(df.head(60))
         df.drop(columns=["year", "driverID"], inplace=True)
 
-        # Pridaj názov tímu
+        # Add team name
         df = df.merge(
             self.teams_model.teams[["teamID", "team_name"]],
             on="teamID", how="left"
         )
         df.drop(columns=["teamID"], inplace=True)
 
-        # Premenuj stĺpce
+        # Rename columns
         df.rename(columns={
             "forename": "Forename",
             "surname": "Surname",
@@ -752,11 +788,11 @@ class Controller:
             "final_points": "Points",
         }, inplace=True)
 
-        # Zoradenie podľa pozície
+        # Sort by final position
         if "Position" in df.columns:
             df.sort_values("Position", inplace=True)
 
-        # Zoradenie stĺpcov: základné + ostatné
+        # Column ordering: base + others
         base_cols = ["Forename", "Surname", "Age", "Team Name"]
         for extra in ("Engine", "Chassi", "Tyres", "Position", "Points"):
             if extra in df.columns:
@@ -765,7 +801,7 @@ class Controller:
         others = [c for c in df.columns if c not in base_cols]
         df = df[base_cols + others]
 
-        # Formátovanie pozícií v jednotlivých kolách
+        # Format positions in individual rounds
         def fmt(x):
             if x in ("Crash", "Death"):
                 return x
@@ -784,14 +820,14 @@ class Controller:
         if not team_id:
             return "No active team selected."
 
-        current_year = self.get_year()
+        current_year = self.current_date.year
         contracts = self.contracts_model.get_terminable_contracts(team_id, current_year)
 
         if contracts.empty:
             return "No terminable contracts found."
 
-        # Tu by si mal zobraziť výber jazdca (napr. cez GUI)
-        # Pre testovanie vyberme prvého:
+        # In production, you should display a driver selection (e.g., via GUI).
+        # For testing, we pick the first:
         contract = contracts.iloc[0]
         driver_id = contract["driverID"]
         cost = self.contracts_model.terminate_driver_contract(driver_id, team_id, current_year)
@@ -804,12 +840,11 @@ class Controller:
         if not team_id:
             return pd.DataFrame()
 
-        contracts = self.contracts_model.get_terminable_contracts(team_id, self.get_year())
+        contracts = self.contracts_model.get_terminable_contracts(team_id, self.current_date.year)
         if contracts.empty:
             return contracts
 
         drivers = self.drivers_model.get_active_drivers()
-
         merged = drivers.merge(contracts, on="driverID", how="right")
         return merged
 
@@ -818,7 +853,7 @@ class Controller:
         if not team_id:
             return "No active team selected."
 
-        # Overenie existencie zmluvy (voliteľné, ak už UI filtruje správne)
+        # Verify the contract exists (optional if UI filters correctly)
         contract = self.contracts_model.DTcontract[
             (self.contracts_model.DTcontract["driverID"] == driver_id) &
             (self.contracts_model.DTcontract["teamID"] == team_id) &
@@ -828,13 +863,14 @@ class Controller:
         if contract.empty:
             return f"No active contract found for driver {driver_id}."
 
-        # Deaktivácia zmluvy
-        self.contracts_model.disable_driver_contract(driver_id, is_current, self.get_year())
+        # Deactivate contract
+        print("t", self.current_date.year, driver_id, is_current)
+        self.contracts_model.disable_driver_contract(driver_id, is_current, self.current_date.year)
 
-        # Odpočítanie peňazí
+        # Deduct money
         self.teams_model.deduct_money(team_id, cost)
 
-        # Typ zmluvy
+        # Type of contract
         contract_type = "current" if is_current else "future"
         return f"Contract with driver {driver_id} terminated. Type: {contract_type}. Cost: €{cost:,}"
 
@@ -845,7 +881,7 @@ class Controller:
 
         parts = self.contracts_model.get_available_series_parts(
             team_id,
-            self.get_year(),
+            self.current_date.year,
             car_parts=self.manufacturer_model.car_parts
         )
 
@@ -859,17 +895,17 @@ class Controller:
         return parts
 
     def offer_car_part_contract(self, manufacturer_id: int, length: int, price: int, year: int, part_type: str) -> bool:
-
         try:
             team_id = self.get_active_team_id()
             if not team_id:
                 return False
 
-            if self.contracts_model.offer_car_part_contract(manufacturer_id, team_id, length, price, year,
-                                                            part_type) and year == self.get_year():
+            if self.contracts_model.offer_car_part_contract(
+                    manufacturer_id, team_id, length, price, year, part_type
+            ) and year == self.current_date.year:
                 self.teams_model.deduct_money(team_id, price)
 
             return True
         except Exception as e:
-            print(f"[Controller] Chyba pri ponuke súčiastky: {e}")
+            print(f"[Controller] Error when offering part: {e}")
             return False

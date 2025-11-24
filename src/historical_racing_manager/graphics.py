@@ -27,13 +27,14 @@ class Graphics:
         self.var_2 = ctk.StringVar()
         self.selected_team = ctk.StringVar()
 
+        # Optional top menu (logo or nothing)
         # self._setup_menu()
         self._setup_team_selector()
         self._setup_controls()
         self._setup_tabview()
 
     def _setup_team_selector(self):
-        """Horný riadok s prepinátkom tímov (Team Selector)."""
+        """Top row with the team selection combobox."""
         frame = ctk.CTkFrame(self.root)
         frame.pack(pady=(10, 0), fill="x")
 
@@ -50,8 +51,10 @@ class Graphics:
         self._update_team_selector()
 
     def _update_team_selector(self):
+        """Refresh values of the team selector combobox."""
         try:
-            team_display = self.controller.get_team_selector_values()  # <- controller vráti ["Ferrari (ID 1)", "McLaren (ID 2)"]
+            # Example format: ["Ferrari (Owner 1)", "McLaren (Owner 2)"]
+            team_display = self.controller.get_team_selector_values()
             self.team_selector.configure(values=team_display)
             if team_display:
                 self.team_selector.set(team_display[0])
@@ -60,32 +63,28 @@ class Graphics:
             self.team_selector.configure(values=["No teams loaded"])
             self.team_selector.set("No teams loaded")
 
-
-        except Exception as e:
-            print(f" Failed to update team selector: {e}")
-            self.team_selector.configure(values=["No teams loaded"])
-            self.team_selector.set("No teams loaded")
-
     def refresh_myteam_tab(self):
-        """Reloads the My Team tab content according to the active team."""
+        """Reload the My Team tab content according to the active team."""
         try:
             if not hasattr(self, "tab_myteam"):
-                return  # tab ešte neexistuje
+                return  # Tab doesn’t exist yet
 
-            # Vyčisti obsah tabu (ponecháme rámec)
+            # Clear the tab content (keep the container frame)
             for widget in self.tab_myteam.winfo_children():
                 widget.destroy()
 
-            # Znova vytvor GUI pre aktuálny tím
+            # Rebuild GUI for the current team
             self._create_myteam(self.tab_myteam)
 
         except Exception as e:
             print(f" My Team tab refresh failed: {e}")
 
     def on_team_change(self, value):
+        """Handle team selection change and refresh the My Team tab."""
         try:
             self.controller.set_active_team(value.split(" (")[0])
-            team_info = self.controller.get_active_team_info()  # <- controller vráti {"name": ..., "budget": ...}
+            # Controller returns {"name": ..., "budget": ...}
+            team_info = self.controller.get_active_team_info()
 
             self.myteam_name_label.configure(text=team_info["name"])
             self.myteam_budget_label.configure(text=f"Total Budget: {team_info['budget']:,} €")
@@ -97,6 +96,7 @@ class Graphics:
 
     # Theme
     def change_theme(self, mode: str):
+        """Change application theme to Light or Dark."""
         try:
             ctk.set_appearance_mode(mode)
         except Exception as e:
@@ -104,13 +104,13 @@ class Graphics:
 
     # UI setup
     def _setup_menu(self):
+        """Optional top menu (currently unused)."""
         menu = ctk.CTkFrame(self.root)
         menu.pack(pady=10, fill="x")
-
-        # sem už len možno logo alebo nič
         ctk.CTkLabel(menu, text="Historical Racing Manager", font=("Arial", 16)).pack(side="left", padx=10)
 
     def _setup_controls(self):
+        """Top controls for selecting subject and season, plus simulation shortcuts."""
         controls = ctk.CTkFrame(self.root)
         controls.pack(pady=10, fill="x")
 
@@ -120,7 +120,10 @@ class Graphics:
 
         self.cmb_2 = ctk.CTkComboBox(controls, variable=self.var_2, state="readonly")
         self.cmb_2.grid(row=0, column=1, padx=5)
+
         self._create_button(controls, "Show Results", self.show_results, 2)
+
+        # Simulation shortcuts
         for idx, (label, days) in enumerate(SIMULATION_STEPS.items(), start=3):
             self._create_button(controls, label, lambda d=days: self.sim_step(d), idx)
 
@@ -128,11 +131,11 @@ class Graphics:
         self.date_label.grid(row=0, column=9, padx=10, sticky="e")
 
     def _setup_tabview(self):
+        """Create the tab view and initialize tabs."""
         self.tabview = ctk.CTkTabview(self.root, command=self.on_tab_change)
         self.tabview.pack(fill="both", expand=True, padx=10, pady=10)
 
         tabs = TAB_NAMES
-
         self.trees = {}
 
         for name in tabs:
@@ -149,7 +152,7 @@ class Graphics:
                 tab = self.tabview.add(name)
                 self.trees[name] = self._create_tree_in_tab(tab)
 
-        # Odkazy na ostatné tabuľky
+        # References to treeviews in other tabs
         self.tab_drivers = self.trees["Drivers"]
         self.tab_teams = self.trees["Teams"]
         self.tab_manufacturers = self.trees["Manufacturers"]
@@ -157,6 +160,7 @@ class Graphics:
         self.tab_results = self.trees["Seasons"]
 
     def _create_myteam(self, parent):
+        """Build the My Team tab layout with Drivers, Components, Staff, and Upcoming Races."""
         try:
             data = self.controller.get_myteam_tab_data()
 
@@ -172,13 +176,12 @@ class Graphics:
                                                     font=("Arial", 14))
             self.myteam_budget_label.pack(side="right", padx=10)
 
-            # MAIN SECTION – DRIVERS a COMPONENTS POD SEBOU
+            # MAIN SECTION – vertical: Drivers on top, Components below
             main_frame = ctk.CTkFrame(parent)
             main_frame.pack(fill="both", expand=False, padx=10, pady=(0, 5))
-
             main_frame.columnconfigure(0, weight=1)
 
-            # DRIVERS (hore)
+            # DRIVERS (top)
             drivers_frame = ctk.CTkFrame(main_frame)
             drivers_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
             ctk.CTkLabel(drivers_frame, text="Drivers", font=("Arial", 14, "bold")).pack(anchor="w", padx=5, pady=5)
@@ -187,7 +190,7 @@ class Graphics:
             tree_drivers.pack(fill="x", padx=5, pady=5)
             self._populate_treeview(tree_drivers, data["drivers"])
 
-            # COMPONENTS (dole)
+            # COMPONENTS (bottom)
             components_frame = ctk.CTkFrame(main_frame)
             components_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
             ctk.CTkLabel(components_frame, text="Components", font=("Arial", 14, "bold")).pack(anchor="w", padx=5,
@@ -197,7 +200,7 @@ class Graphics:
             tree_parts.pack(fill="x", padx=5, pady=5)
             self._populate_treeview(tree_parts, data["components"])
 
-            # STAFF + RACES
+            # STAFF + RACES section
             info_frame = ctk.CTkFrame(parent)
             info_frame.pack(fill="x", padx=10, pady=(0, 5))
             info_frame.columnconfigure(0, weight=1)
@@ -219,8 +222,9 @@ class Graphics:
             tree_races.pack(fill="x", padx=5, pady=5)
             self._populate_treeview(tree_races, data["races"])
 
-            # Ovládacie tlačidlá pre My Team – presunuté úplne dole
-            team_controls = ctk.CTkFrame(self.tab_myteam)
+            # Controls for actions at the bottom of My Team
+            # Attach to the current parent (not a stored tab reference) for clean refreshes
+            team_controls = ctk.CTkFrame(parent)
             team_controls.pack(pady=(5, 10), fill="x")
 
             ctk.CTkButton(team_controls, text="Offer Driver Contract For This Year",
@@ -229,29 +233,29 @@ class Graphics:
             ctk.CTkButton(team_controls, text="Offer Driver Contract For Next Year",
                           command=lambda: self.offer_contract(next_year=True)).pack(side="left", padx=5, pady=5)
 
-            ctk.CTkButton(team_controls, text="Offer Car Part Contract", command=self.offer_car_part_contract).pack(
-                side="left", padx=5,
-                pady=5)
-            ctk.CTkButton(team_controls, text="Terminate Contract", command=self.terminate_contract).pack(side="left",
-                                                                                                          padx=5,
-                                                                                                          pady=5)
-            # ctk.CTkButton(team_controls, text="Build Own Part", command=self.create_own_part).pack(side="left", padx=5,
-            #                                                                                      pady=5)
-            ctk.CTkButton(team_controls, text="Invest in Marketing", command=self.invest_in_marketing).pack(side="left",
-                                                                                                            padx=5,
-                                                                                                            pady=5)
+            ctk.CTkButton(team_controls, text="Offer Car Part Contract",
+                          command=self.offer_car_part_contract).pack(side="left", padx=5, pady=5)
+
+            ctk.CTkButton(team_controls, text="Terminate Contract",
+                          command=self.terminate_contract).pack(side="left", padx=5, pady=5)
+
+            # If your backend uses finance for this control, consider aligning the label
+            ctk.CTkButton(team_controls, text="Invest in Marketing", command=self.invest_in_marketing).pack(
+                side="left", padx=5, pady=5
+            )
 
         except Exception as e:
             print(f"️ Failed to build My Team tab: {e}")
 
     def on_tab_change(self, event=None):
+        """Handle tab change: refresh My Team tab and update dropdowns/results."""
         current_tab = self.tabview.get()
 
-        # Ak ide o tab My Team → refresh
+        # Refresh My Team on tab activation
         if current_tab == "My Team":
             self.refresh_myteam_tab()
 
-        # Štandardné správanie (aktualizácia comboboxov a výsledkov)
+        # Standard behavior: update selectors and results
         try:
             self.update_dropdown()
             self.show_results()
@@ -259,6 +263,7 @@ class Graphics:
             print(f"Tab change error: {e}")
 
     def _create_game_tab(self, parent):
+        """Build the Game tab with save/load controls and theme switcher."""
         frame = ctk.CTkFrame(parent)
         frame.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -280,6 +285,7 @@ class Graphics:
         self.theme_option.set("System")
 
     def _create_tree_in_tab(self, tab):
+        """Create a treeview with scrollbars inside a tab."""
         tree = ttk.Treeview(tab, show="headings")
         vsb = ttk.Scrollbar(tab, orient="vertical", command=tree.yview)
         hsb = ttk.Scrollbar(tab, orient="horizontal", command=tree.xview)
@@ -292,10 +298,12 @@ class Graphics:
         return tree
 
     def _create_button(self, parent, text, command, column):
+        """Helper to create a button in a single row at a given column."""
         ctk.CTkButton(parent, text=text, command=command).grid(row=0, column=column, padx=5)
 
     # Main loop
     def run(self):
+        """Start the GUI event loop."""
         try:
             self.update_dropdown()
         except Exception:
@@ -304,6 +312,7 @@ class Graphics:
 
     # --- Game management ---
     def on_new_game(self):
+        """Initialize a new game from 'my_data' and refresh UI state."""
         try:
             ok = self.controller.load_game("my_data")
             if ok:
@@ -317,6 +326,7 @@ class Graphics:
             messagebox.showerror("Error", f"Failed to start new game: {e}")
 
     def on_save_game(self):
+        """Save the current game using the provided name."""
         name = self.name_var.get().strip()
         if not name:
             messagebox.showwarning("Missing Name", "Please enter a name to save the game.")
@@ -325,12 +335,14 @@ class Graphics:
             messagebox.showwarning("Invalid Name", "Please use a different game name.")
             return
         try:
-            msg = self.controller.save_game(name)
-            messagebox.showinfo("Saved", msg)
+            # Controller returns None; show a consistent message
+            self.controller.save_game(name)
+            messagebox.showinfo("Saved", f"Game '{name}' has been saved.")
         except Exception as e:
             messagebox.showerror("Error", f"Saving failed: {e}")
 
     def on_load_game(self):
+        """Load a saved game and refresh the UI."""
         name = self.name_var.get().strip()
         if not name:
             messagebox.showwarning("Missing Name", "Please enter a name to load the game.")
@@ -349,6 +361,7 @@ class Graphics:
 
     # --- Simulation ---
     def on_series_change(self, event=None):
+        """Update season list when the series combobox changes."""
         try:
             self.controller.update_seasons(self.var_1.get())
             seasons = self.controller.get_season_list()
@@ -359,21 +372,22 @@ class Graphics:
             pass
 
     def on_subject_change(self, list_2: list):
+        """Update second-level combobox values for stats views."""
         try:
-
             self.cmb_2.configure(values=list_2)
-            self.cmb_2.set(list_2[-1])
+            self.cmb_2.set(list_2[-1] if list_2 else "")
         except Exception:
             pass
 
     def sim_step(self, days: int):
+        """Advance the simulation by a given number of days and refresh UI state."""
         try:
             self.controller.simulate_days(days)
             self.date_label.configure(text=self.controller.get_date())
             self.update_dropdown()
             self.show_results()
 
-            # Obnov aj My Team tab (ak existuje)
+            # Refresh My Team tab if present
             if hasattr(self, "tab_myteam"):
                 self.refresh_myteam_tab()
 
@@ -381,63 +395,70 @@ class Graphics:
             messagebox.showerror("Simulation Error", str(e))
 
     def update_dropdown(self):
+        """Update top comboboxes according to the active tab."""
         try:
             current_tab = self.tabview.get()
 
-            # teraz podľa tabu nastavíš správny combobox
+            # Set the correct combobox values based on the active tab
             if current_tab == "Seasons":
                 items = self.controller.get_names(current_tab)
                 self.cmb_1.configure(values=items)
-                self.cmb_1.set(items[0])
+                if items:
+                    self.cmb_1.set(items[0])
                 self.on_series_change()
 
             elif current_tab == "Drivers":
                 items = self.controller.get_names(current_tab)
                 self.cmb_1.configure(values=items)
-                self.cmb_1.set(items[0])
+                if items:
+                    self.cmb_1.set(items[0])
                 self.on_subject_change([""])
 
             elif current_tab == "Teams":
                 items = self.controller.get_names(current_tab)
                 self.cmb_1.configure(values=items)
-                self.cmb_1.set(items[0])
+                if items:
+                    self.cmb_1.set(items[0])
                 self.on_subject_change([""])
 
             elif current_tab == "Manufacturers":
                 items = self.controller.get_names(current_tab)
                 self.cmb_1.configure(values=items)
-                self.cmb_1.set(items[0])
+                if items:
+                    self.cmb_1.set(items[0])
                 self.on_subject_change(["engine", "chassi", "pneu"])
 
             elif current_tab == "Series":
                 items = self.controller.get_names(current_tab)
                 self.cmb_1.configure(values=items)
-                self.cmb_1.set(items[0])
+                if items:
+                    self.cmb_1.set(items[0])
                 self.on_subject_change([""])
 
         except Exception as e:
             print(f"update_dropdown error: {e}")
 
     def show_results(self):
+        """Populate the current tab’s treeview with results/statistics."""
         try:
             current_tab = self.tabview.get()
             if current_tab == "Seasons":
                 df = self.controller.get_results(self.var_1.get(), self.var_2.get())
                 self._populate_treeview(self.tab_results, df)
-            elif current_tab == "Manufacturers":
 
+            elif current_tab == "Manufacturers":
                 df = self.controller.get_stats(self.var_1.get(), current_tab, self.var_2.get())
                 self._populate_treeview(self.tab_manufacturers, df)
-            elif current_tab == "Teams":
 
+            elif current_tab == "Teams":
                 df = self.controller.get_stats(self.var_1.get(), current_tab, "")
                 self._populate_treeview(self.tab_teams, df)
-            elif current_tab == "Drivers":
 
+            elif current_tab == "Drivers":
                 df = self.controller.get_stats(self.var_1.get(), current_tab, "")
                 self._populate_treeview(self.tab_drivers, df)
-            elif current_tab == "Series":
 
+            elif current_tab == "Series":
                 df = self.controller.get_stats(self.var_1.get(), current_tab, "")
                 self._populate_treeview(self.tab_series, df)
         except Exception as e:
@@ -445,21 +466,20 @@ class Graphics:
 
     # --- My Team actions ---
     def offer_contract(self, next_year: bool):
-
+        """Open a dialog to offer a driver contract for this or next year."""
         try:
             team = self.controller.get_active_team()
             if not team:
                 messagebox.showwarning("No Team Selected", "Please select a team first.")
                 return
 
-            #  Získaj dostupných jazdcov z controlleru
+            # Get available drivers from the controller
             df = self.controller.get_available_drivers_for_offer(next_year=next_year)
-
             if df.empty:
                 messagebox.showinfo("No Available Drivers", "No drivers are currently available for contracts.")
                 return
 
-            # 🪟 Vyskakovacie okno
+            # Dialog window
             dialog = ctk.CTkToplevel(self.root)
             dialog.title("Offer Contract to Driver")
             dialog.geometry("500x400")
@@ -496,6 +516,7 @@ class Graphics:
             ctk.CTkButton(frame, text="+", command=increase_length, width=30).pack(side="left", padx=5)
 
             def confirm_offer():
+                """Confirm and submit the contract offer via controller."""
                 try:
                     idx = driver_names.index(driver_var.get())
                     driver_id = driver_ids[idx]
@@ -518,6 +539,7 @@ class Graphics:
             messagebox.showerror("Error", f"Failed to offer contract: {e}")
 
     def terminate_contract(self):
+        """Open a dialog to terminate a driver contract."""
         try:
             team = self.controller.get_active_team()
             if not team:
@@ -529,13 +551,11 @@ class Graphics:
                 messagebox.showinfo("No Contracts", "No active contracts available for termination.")
                 return
 
-            # 🪟 Vyskakovacie okno
             dialog = ctk.CTkToplevel(self.root)
             dialog.title("Terminate Driver Contract")
             dialog.geometry("500x400")
 
             ctk.CTkLabel(dialog, text="Select Driver to Terminate:", font=("Arial", 13, "bold")).pack(pady=5)
-            print("df", df)
             driver_names = [
                 f"{row.forename} {row.surname} ({row.nationality}) – Cost: €{row.termination_cost:,} – {'Current contract' if row.current else 'Future contract'}"
                 for _, row in df.iterrows()
@@ -549,6 +569,7 @@ class Graphics:
                 driver_box.set(driver_names[0])
 
             def confirm_termination():
+                """Confirm and submit the termination via controller."""
                 try:
                     idx = driver_names.index(driver_var.get())
                     driver_id = driver_ids[idx]
@@ -568,6 +589,7 @@ class Graphics:
             messagebox.showerror("Error", f"Failed to terminate contract: {e}")
 
     def offer_car_part_contract(self):
+        """Open a dialog to offer a car part contract."""
         try:
             team = self.controller.get_active_team()
             if not team:
@@ -575,7 +597,6 @@ class Graphics:
                 return
 
             parts_df = self.controller.get_available_car_parts()
-
             if parts_df.empty:
                 messagebox.showinfo("No Parts Available", "No car parts available for contract.")
                 return
@@ -588,7 +609,6 @@ class Graphics:
 
             part_names = [f"{row.manufacturer_name} ({row.partType}) – Cost: €{row.cost}" for _, row in
                           parts_df.iterrows()]
-
             part_ids = list(parts_df["partID"])
 
             part_var = ctk.StringVar()
@@ -620,13 +640,14 @@ class Graphics:
             year_box.pack(pady=5)
 
             def confirm_offer():
+                """Confirm and submit the part contract via controller."""
                 try:
                     idx = part_names.index(part_var.get())
                     part_id = part_ids[idx]
                     length = int(length_var.get())
 
                     row = parts_df.iloc[idx]
-                    price = int(row.cost)  # alebo round(row.cost) ak chceš zaokrúhliť
+                    price = int(row.cost)
                     manufacturer_id = int(row.manufacturerID)
                     part_type = row.partType
                     start_year = self.controller.get_year()
@@ -651,6 +672,7 @@ class Graphics:
             messagebox.showerror("Error", f"Failed to offer car part contract: {e}")
 
     def create_own_part(self):
+        """Open a dialog to define and confirm development of an own car part."""
         try:
             dialog = ctk.CTkToplevel(self.root)
             dialog.title("Create Own Part")
@@ -665,6 +687,7 @@ class Graphics:
             ctk.CTkEntry(dialog, textvariable=cost_var).pack(pady=5)
 
             def confirm():
+                """Confirm and send development request to controller."""
                 try:
                     part_type = part_type_var.get()
                     cost = int(cost_var.get())
@@ -680,6 +703,7 @@ class Graphics:
             messagebox.showerror("Error", f"Could not open dialog: {e}")
 
     def invest_in_marketing(self):
+        """Open a dialog to adjust marketing/finance staff with cost preview."""
         try:
             team = self.controller.get_active_team()
             if not team:
@@ -700,6 +724,7 @@ class Graphics:
             cost_var = ctk.StringVar()
 
             def update_cost(*_):
+                """Compute and display the cost preview based on slider target."""
                 target = staff_var.get()
                 delta = target - current
                 if delta > 0:
@@ -720,9 +745,9 @@ class Graphics:
             update_cost()
 
             def confirm():
+                """Submit the staff adjustment via controller."""
                 try:
                     new_employees, cost = update_cost()
-                    print("T", new_employees, cost)
                     msg = self.controller.adjust_marketing_staff(new_employees, cost)
                     messagebox.showinfo("Marketing Update", msg)
                     dialog.destroy()
@@ -737,9 +762,8 @@ class Graphics:
 
     # --- Utility ---
     def _populate_treeview(self, tree: ttk.Treeview, dataframe: Optional[pd.DataFrame]):
+        """Populate a ttk.Treeview from a pandas DataFrame, with readable column labels."""
         try:
-            # Preklady technických názvov na čitateľné
-
             tree.delete(*tree.get_children())
 
             if dataframe is None or dataframe.empty:
@@ -753,12 +777,11 @@ class Graphics:
             cols = [str(c) for c in df.columns]
             tree["columns"] = cols
 
-            # Zabezpečí unikátne zobrazované názvy (ak by sa opakovali)
+            # Ensure unique displayed labels (if duplicates occur)
             display_labels = {}
             used_labels = {}
             for col in cols:
-                label = label = COLUMN_LABELS.get(col, col.replace("_", " ").title())
-
+                label = COLUMN_LABELS.get(col, col.replace("_", " ").title())
                 if label in used_labels:
                     used_labels[label] += 1
                     label = f"{label} {used_labels[label]}"

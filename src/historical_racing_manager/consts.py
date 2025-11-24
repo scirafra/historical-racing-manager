@@ -7,10 +7,10 @@ HUMAN_CONTRACT_DECISION_DAYS = 1
 DEFAULT_CONTRACT_MIN_LENGTH = 1
 DEFAULT_CONTRACT_MAX_LENGTH = 4
 AI_CONTRACT_LENGTHS = [1, 2, 3, 4]
-AI_CONTRACT_WEIGHTS = [40, 30, 20, 10]  # % šanca
+AI_CONTRACT_WEIGHTS = [40, 30, 20, 10]  # % chance
 
 # --- Driver salary rules ---
-MIN_SALARY_BASE = 4_000_000  # základ pre výpočet minimálnej ponuky
+MIN_SALARY_BASE = 4_000_000  # base for calculate drivers price
 # --- Simulation timeline ---
 DEFAULT_BEGIN_YEAR = 1843
 DEFAULT_END_YEAR = 3000
@@ -72,7 +72,7 @@ TEAM_SELECTOR_WIDTH = 250
 
 # Simulation Steps
 SIMULATION_STEPS = {
-    "Next Day": 6000,
+    "Next Day": 1,
     "Next Week": 7,
     "Next Year": 365
 }
