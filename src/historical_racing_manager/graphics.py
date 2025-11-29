@@ -386,6 +386,7 @@ class Graphics:
             self.date_label.configure(text=self.controller.get_date())
             self.update_dropdown()
             self.show_results()
+            self._update_team_selector()
 
             # Refresh My Team tab if present
             if hasattr(self, "tab_myteam"):

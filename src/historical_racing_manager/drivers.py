@@ -1,7 +1,7 @@
 import os
 import sys
 from datetime import date
-from typing import List
+from typing import List, Iterable
 
 import numpy as np
 import pandas as pd
@@ -53,6 +53,87 @@ class DriversModel:
     def get_driver_id(self, driver_forename: str, driver_surname: str) -> int | None:
         result = self.drivers.query("forename == @driver_forename and surname == @driver_surname")
         return result["driverID"].iat[0] if not result.empty else None
+
+    def get_raced_drivers(self, driver_ids: Iterable[int]) -> List[str]:
+        """
+        Return list of full driver names for provided driver_ids, but with drivers
+        that are currently active placed first (order preserved).
+        - driver_ids: iterable of driverID (ints or convertible to int)
+        - Uses self.active_drivers if available; falls back to self.drivers.
+        - Returns list[str] with same length as unique driver_ids (duplicates removed, first kept).
+        - Missing IDs produce empty string entries.
+        """
+        # Normalize input to list of ints and preserve first-occurrence order
+        seen = set()
+        ids = []
+        for v in driver_ids:
+            try:
+                did = int(v)
+            except Exception:
+                continue
+            if did not in seen:
+                seen.add(did)
+                ids.append(did)
+        if not ids:
+            return []
+
+        # Determine active set (use active_drivers if present, else drivers)
+        active_df = getattr(self, "active_drivers", None)
+        if active_df is None or active_df.empty or "driverID" not in active_df.columns:
+            main_df = getattr(self, "drivers", None)
+            active_set = set(main_df["driverID"].astype(
+                int).tolist()) if main_df is not None and not main_df.empty and "driverID" in main_df.columns else set()
+        else:
+            active_set = set(active_df["driverID"].astype(int).tolist())
+
+        # Split ids preserving order
+        active_in_ids = [i for i in ids if i in active_set]
+        others_in_ids = [i for i in ids if i not in active_set]
+        ordered_ids = active_in_ids + others_in_ids
+
+        # Reuse existing get_driver_full_names to map ids -> names
+        return self.get_driver_full_names(active_in_ids, others_in_ids)
+
+    def get_drivers_light(self) -> pd.DataFrame:
+        """
+        Return a lightweight DataFrame with driverID, forename and surname.
+        Always returns a DataFrame with those columns even if self.drivers is empty.
+        """
+        if getattr(self, "drivers", None) is None or self.drivers.empty:
+            return pd.DataFrame(columns=["driverID", "forename", "surname"])
+        # Ensure required columns exist
+        df = self.drivers.copy()
+        for col in ("driverID", "forename", "surname"):
+            if col not in df.columns:
+                df[col] = "" if col != "driverID" else 0
+        return df[["driverID", "forename", "surname"]].copy()
+
+    def get_driver_full_names(self, active_driver_ids: Iterable[int], driver_ids: Iterable[int]) -> List[str]:
+        """
+        Return list of full driver names ("Forename Surname") for the provided driver_ids
+        in the same order. If an ID is not found, returns an empty string for that position.
+        """
+        df = self.get_drivers_light()
+        if df is None or df.empty:
+            return ["" for _ in driver_ids]
+
+        # Build lookup map keyed by stringified id for robust matching
+        lookup = df.copy()
+        lookup["id_norm"] = lookup["driverID"].astype(str)
+        lookup["full_name"] = lookup["surname"].astype(str) + " " + lookup["forename"].astype(str)
+        name_map = lookup.set_index("id_norm")["full_name"].to_dict()
+
+        active_result: List[str] = []
+        for did in active_driver_ids:
+            key = str(did)
+            active_result.append(name_map.get(key, ""))
+        rest_result: List[str] = []
+        for did in driver_ids:
+            key = str(did)
+            rest_result.append(name_map.get(key, ""))
+        active_result = sorted(active_result)
+        rest_result = sorted(rest_result)
+        return active_result + rest_result
 
     def get_drivers(self) -> pd.DataFrame:
         return (
@@ -121,7 +202,14 @@ class DriversModel:
         if not new_drivers.empty:
             self.active_drivers = pd.concat([self.active_drivers, new_drivers], ignore_index=True)
 
-        self.drivers.update(self.retiring_drivers.set_index("driverID"))
+        # Fix: update rows using driverID, not row index!
+        self.drivers.set_index("driverID", inplace=True)
+        ret = self.retiring_drivers.set_index("driverID")
+
+        self.drivers.update(ret)
+
+        self.drivers.reset_index(inplace=True)
+
         return self.retiring_drivers
 
     def _update_ages(self, df: pd.DataFrame, year: int) -> None:
@@ -264,7 +352,7 @@ class DriversModel:
 
     @staticmethod
     def _generate_driver_id(df: pd.DataFrame, id_offset: int) -> tuple[int, int]:
-        max_id = df["driverId"].max() if not df.empty else 0
+        max_id = df["driverID"].max() if not df.empty else 0
         new_id = max_id + 1 + id_offset
         return new_id, id_offset + 1
 

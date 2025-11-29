@@ -490,8 +490,10 @@ class ContractsModel:
         )
 
         for idx, row in self.DTcontract[mask].iterrows():
+            # print(new_team_id, year, self.DTcontract.at[idx, "endYear"], row)
             self.DTcontract.at[idx, "endYear"] = year - 1
-            self.DTcontract.at[idx, "active"] = False
+            # print(self.DTcontract.at[idx, "endYear"], row)
+            # self.DTcontract.at[idx, "active"] = False
 
     def _create_driver_contract(
             self, driver_id: int, team_id: int, series_reputation: int, salary: int, start_year: int, length: int

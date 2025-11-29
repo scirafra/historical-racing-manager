@@ -1,4 +1,5 @@
 import os
+from typing import Iterable, List
 
 import pandas as pd
 
@@ -67,6 +68,29 @@ class SeriesModel:
         """
         self.series.to_csv(os.path.join(folder, SERIES_FILE), index=False)
         self.point_rules.to_csv(os.path.join(folder, POINT_RULES_FILE), index=False)
+
+    def get_series_by_id(self, series_ids: Iterable[int]) -> List[str]:
+        """
+        Return list of series names for the provided series_ids in the same order.
+        If an ID is not found, an empty string is returned for that position.
+        Relies on self.get_series() which returns a DataFrame with columns
+        [COL_SERIES_ID, COL_SERIES_NAME].
+        """
+        df = self.get_series()
+        if df is None or df.empty:
+            return ["" for _ in series_ids]
+
+        # Normalize lookup column to string for robust matching
+        lookup = df.copy()
+        lookup["sid_norm"] = lookup[COL_SERIES_ID].astype(str)
+        lookup = lookup.set_index("sid_norm")[COL_SERIES_NAME].to_dict()
+
+        result: List[str] = []
+        for sid in series_ids:
+            key = str(sid)
+            result.append(lookup.get(key, ""))
+
+        return result
 
     def get_series(self) -> pd.DataFrame:
         """

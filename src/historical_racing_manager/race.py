@@ -1,7 +1,7 @@
 import os
 import random as rd
 from datetime import timedelta
-
+from typing import List
 import numpy as np
 import pandas as pd
 
@@ -75,6 +75,87 @@ class RaceModel:
         self.circuit_layouts.to_csv(base_path + "circuit_layouts.csv", index=False)
 
     # ===== Queries =====
+    def get_raced_series(self) -> List[int]:
+
+        """
+        Vráti unikátne seriesID z self.results ako list int v poradí prvého výskytu.
+        Predpoklad: self.results je pandas.DataFrame.
+        """
+        # overenie typu
+        if not isinstance(self.results, pd.DataFrame):
+            # ak nie je DataFrame, vrátime prázdny zoznam
+            return []
+
+        # overenie existencie stĺpca
+        if "seriesID" not in self.results.columns:
+            return []
+
+        # vybrať stĺpec, odstrániť NA, konvertovať na int ak je to možné,
+        # zachovať poradie prvého výskytu pomocou drop_duplicates
+        series = self.results["seriesID"].dropna()
+
+        try:
+            series_int = series.astype(int)
+        except Exception:
+            # ak konverzia zlyhá (napr. textové ID), vrátime unikátne hodnoty ako stringy
+            return series.astype(str).drop_duplicates(keep="first").tolist()
+
+        return series_int.drop_duplicates(keep="first").tolist()
+
+    def get_raced_teams(self) -> List[int]:
+
+        """
+        Vráti unikátne seriesID z self.results ako list int v poradí prvého výskytu.
+        Predpoklad: self.results je pandas.DataFrame.
+        """
+        # overenie typu
+        if not isinstance(self.results, pd.DataFrame):
+            # ak nie je DataFrame, vrátime prázdny zoznam
+            return []
+
+        # overenie existencie stĺpca
+        if "teamID" not in self.results.columns:
+            return []
+
+        # vybrať stĺpec, odstrániť NA, konvertovať na int ak je to možné,
+        # zachovať poradie prvého výskytu pomocou drop_duplicates
+        series = self.results["teamID"].dropna()
+
+        try:
+            series_int = series.astype(int)
+        except Exception:
+            # ak konverzia zlyhá (napr. textové ID), vrátime unikátne hodnoty ako stringy
+            return series.astype(str).drop_duplicates(keep="first").tolist()
+
+        return series_int.drop_duplicates(keep="first").tolist()
+
+    def get_raced_drivers(self) -> List[int]:
+
+        """
+        Vráti unikátne seriesID z self.results ako list int v poradí prvého výskytu.
+        Predpoklad: self.results je pandas.DataFrame.
+        """
+        # overenie typu
+        if not isinstance(self.results, pd.DataFrame):
+            # ak nie je DataFrame, vrátime prázdny zoznam
+            return []
+
+        # overenie existencie stĺpca
+        if "driverID" not in self.results.columns:
+            return []
+
+        # vybrať stĺpec, odstrániť NA, konvertovať na int ak je to možné,
+        # zachovať poradie prvého výskytu pomocou drop_duplicates
+        series = self.results["driverID"].dropna()
+
+        try:
+            series_int = series.astype(int)
+        except Exception:
+            # ak konverzia zlyhá (napr. textové ID), vrátime unikátne hodnoty ako stringy
+            return series.astype(str).drop_duplicates(keep="first").tolist()
+
+        return series_int.drop_duplicates(keep="first").tolist()
+
     def extract_champions(self, series_id: str, series: pd.DataFrame, manufacturers: pd.DataFrame,
                           teams: pd.DataFrame, drivers: pd.DataFrame) -> pd.DataFrame:
         """

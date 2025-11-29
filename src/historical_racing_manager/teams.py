@@ -1,4 +1,5 @@
 import os
+from typing import Iterable, List
 
 import pandas as pd
 
@@ -79,6 +80,40 @@ class TeamsModel:
     def mark_all_as_ai(self):
         """Mark all teams as AI-controlled (owner_id = 0)."""
         self.teams["owner_id"] = 0
+
+    def _get_teams_light(self) -> pd.DataFrame:
+        """
+        Return a lightweight DataFrame with teamID and team_name.
+        Always returns a DataFrame with those columns even if self.teams is empty.
+        """
+        if getattr(self, "teams", None) is None or self.teams.empty:
+            return pd.DataFrame(columns=[COL_TEAM_ID, "team_name"])
+        # Ensure teamID column exists
+        if COL_TEAM_ID not in self.teams.columns:
+            return pd.DataFrame(columns=[COL_TEAM_ID, "team_name"])
+        # Ensure team_name exists
+        if "team_name" not in self.teams.columns:
+            self.teams["team_name"] = ""
+        return self.teams[[COL_TEAM_ID, "team_name"]].copy()
+
+    def get_team_names(self, team_ids: Iterable[int]) -> List[str]:
+        """
+        Return list of team names for the provided team_ids in the same order.
+        If an ID is not found, returns an empty string for that position.
+        """
+        df = self._get_teams_light()
+        if df is None or df.empty:
+            return ["" for _ in team_ids]
+
+        lookup = df.copy()
+        lookup["tid_norm"] = lookup[COL_TEAM_ID].astype(str)
+        name_map = lookup.set_index("tid_norm")["team_name"].to_dict()
+
+        result: List[str] = []
+        for tid in team_ids:
+            key = str(tid)
+            result.append(name_map.get(key, ""))
+        return result
 
     def get_teams(self) -> pd.DataFrame:
         """
@@ -200,7 +235,7 @@ class TeamsModel:
         """Deduct money from the team's balance (e.g., for paying contracts)."""
         if team_id in self.teams[COL_TEAM_ID].values:
             self.teams.loc[self.teams[COL_TEAM_ID] == team_id, "money"] -= amount
-            print(f"Team {team_id} paid {amount}.")
+            # print(f"Team {team_id} paid {amount}.")
         else:
             print(f"Team {team_id} does not exist — cannot deduct money.")
 
@@ -230,7 +265,7 @@ class TeamsModel:
         """Halve all teams' reputation values (integer division)."""
         self.teams["reputation"] = self.teams["reputation"] // 2
 
-    def update_reputations(self):
+    def update_reputations_and_money(self):
         """Update money and then halve reputations as part of end-of-period maintenance."""
         self.update_money()
         self.halve_reputations()
@@ -245,3 +280,70 @@ class TeamsModel:
         for i, team_id in enumerate(results):
             if team_id in self.teams[COL_TEAM_ID].values:
                 self.teams.loc[self.teams[COL_TEAM_ID] == team_id, "reputation"] += base_reputation // (i + 1)
+
+    def auto_invest_ai_finance(self) -> None:
+        """
+        For every AI-controlled team (owner_id == 0) choose the number of finance employees
+        as min(max_affordable_with_current_money, 1000), deduct the total salary cost from
+        the team's money and set the team's finance_employees to that chosen number.
+
+        This operates in-place on self.teams and uses the configured finance_employee_salary.
+        """
+        if self.teams.empty:
+            return
+
+        # Ensure required columns exist to avoid KeyError
+        if "owner_id" not in self.teams.columns:
+            self.teams["owner_id"] = 0
+        if "money" not in self.teams.columns:
+            self.teams["money"] = 0
+        if "finance_employees" not in self.teams.columns:
+            self.teams["finance_employees"] = 0
+
+        # Mask for AI-controlled teams
+        ai_mask = self.teams["owner_id"] == 0
+
+        # Iterate over AI teams and apply investment logic
+        for idx, row in self.teams.loc[ai_mask].iterrows():
+            money = int(row.get("money", 0))
+            # Maximum number of finance employees the team can afford right now
+            max_affordable = self.max_affordable_finance(money)
+            # Choose the number to hire: cap at 1000
+            chosen_fin = min(max_affordable, 1000)
+            cost = chosen_fin * self.finance_employee_salary
+
+            # Deduct cost and set finance_employees
+            self.teams.at[idx, "money"] = money - cost
+            self.teams.at[idx, "finance_employees"] = int(chosen_fin)
+
+    def check_debt(self) -> None:
+        """
+        Check all teams for negative balance. For any team with money < 0:
+        - set owner_id to 0 (make the team AI-controlled)
+        - reset the team's money to 10_000_000
+
+        Operates in-place on self.teams and is safe if expected columns are missing.
+        """
+        if self.teams.empty:
+            return
+
+        # Ensure required columns exist to avoid KeyError
+        if "owner_id" not in self.teams.columns:
+            self.teams["owner_id"] = 0
+        if "money" not in self.teams.columns:
+            self.teams["money"] = 0
+
+        # Create boolean mask for teams with negative money (treat NaN as 0)
+        money_series = pd.to_numeric(self.teams["money"].fillna(0), errors="coerce").fillna(0).astype(int)
+        debt_mask = money_series < 0
+
+        if not debt_mask.any():
+            return
+
+        # Apply bankruptcy rules: make AI-controlled and give bailout
+        self.teams.loc[debt_mask, "owner_id"] = 0
+        self.teams.loc[debt_mask, "money"] = 10_000_000
+
+        # Optional logging for visibility
+        bankrupt_ids = self.teams.loc[debt_mask, "teamID"].tolist() if "teamID" in self.teams.columns else []
+        print(f"[TeamsModel] Applied bankruptcy reset to {len(bankrupt_ids)} teams: {bankrupt_ids}")

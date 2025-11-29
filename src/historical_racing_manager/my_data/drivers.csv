@@ -1,10 +1,10 @@
 driverID,forename,surname,year,dob,nationality,alive,ability,ability_original,ability_best,reputation_race,reputation_season,retire
-1,Lewis,Hamilton,1985,1985-01-07,British,True,69,69,69,0,0,38
+10000,Lewis,Hamilton,1985,1985-01-07,British,True,69,69,69,0,0,38
 30,Michael,Schumacher,1969,1969-01-03,German,True,69,69,69,0,0,39
 579,Juan,Fangio,1911,1911-06-24,Argentine,True,68,68,68,0,0,59
 117,Alain,Prost,1955,1955-02-24,French,True,68,68,68,0,0,42
 20,Sebastian,Vettel,1987,1987-07-03,German,True,68,68,68,0,0,38
-10000,Rudolf,Caracciola,1901,1901-01-30,German,True,68,68,68,0,0,58
+1,Rudolf,Caracciola,1901,1901-01-30,German,True,68,68,68,0,0,58
 102,Ayrton,Senna,1960,1960-03-21,Brazilian,True,67,67,67,0,0,59
 328,Jackie,Stewart,1939,1939-06-11,British,True,67,67,67,0,0,38
 137,Nelson,Piquet,1952,1952-08-17,Brazilian,True,67,67,67,0,0,56
