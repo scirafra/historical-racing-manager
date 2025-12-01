@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import pandas as pd
+from dateutil.relativedelta import relativedelta
 
 import load as ld
 from historical_racing_manager.consts import (
@@ -314,18 +315,18 @@ class Controller:
             raced = self.race_model.get_raced_series()
             return sorted(self.series_model.get_series_by_id(raced))
         if subject_type == "Manufacturers":
-            return self.manufacturer_model.get_manufacturers()["name"].tolist()
+            raced = self.race_model.get_raced_manufacturers()
+
+            return self.manufacturer_model.map_manufacturer_ids_to_names(raced)
+
         if subject_type == "Drivers":
             raced = self.race_model.get_raced_drivers()
             return self.drivers_model.get_raced_drivers(raced)
-            # df = self.drivers_model.get_drivers()
 
-            # df["name"] = df["forename"] + " " + df["surname"]
-            # return df["name"].tolist()
         if subject_type == "Teams":
             raced = self.race_model.get_raced_teams()
             return sorted(self.teams_model.get_team_names(raced))
-            # return self.teams_model.get_teams()["team_name"].tolist()
+
         if subject_type == "Series":
             raced = self.race_model.get_raced_series()
             return sorted(self.series_model.get_series_by_id(raced))
@@ -336,7 +337,7 @@ class Controller:
         self.seasons = self.race_model.get_seasons_for_series(sid)
 
     def get_season_list(self):
-        return [str(y) for y in self.seasons]
+        return [str(y) for y in self.seasons].reverse()
 
     def simulate_days(self, days: int):
         self.current_date = self.sim_day(self.current_date, days)
@@ -480,8 +481,8 @@ class Controller:
             )"""
 
     def _handle_season_start(self, date: datetime):
-        if date.year > FIRST_RACE_PLANNING_YEAR:
-            self.race_model.plan_races(self.series_model, date)
+        if date.year >= FIRST_RACE_PLANNING_YEAR:
+            self.race_model.plan_races(self.series_model, date + relativedelta(years=1))
 
         self._update_entities_for_new_season(date)
 

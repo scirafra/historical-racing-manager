@@ -166,3 +166,28 @@ class ManufacturerModel:
             except Exception:
                 start = 0
         return range(start, start + count)
+
+    def map_manufacturer_ids_to_names(self, manu_dict: dict[int, list[str]]) -> dict[str, list[str]]:
+        """
+        Convert {manufacturerID: [parts]} to {manufacturer_name: [parts]}.
+        If manufacturerID does not exist, the key becomes "" (empty string).
+        """
+        df = self.manufacturers
+
+        if df is None or df.empty:
+            # Every ID becomes empty string
+            return {"": parts for _, parts in manu_dict.items()}
+
+        # Build lookup: "0" -> "Ferrari"
+        lookup = (
+            df.assign(mid_norm=df["manufacturerID"].astype(str))
+            .set_index("mid_norm")["name"]
+            .to_dict()
+        )
+
+        result = {}
+        for mid, parts in manu_dict.items():
+            name = lookup.get(str(mid), "")
+            result[name] = parts
+
+        return result

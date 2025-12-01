@@ -114,14 +114,15 @@ class Graphics:
         controls = ctk.CTkFrame(self.root)
         controls.pack(pady=10, fill="x")
 
-        self.cmb_1 = ctk.CTkComboBox(controls, variable=self.var_1, state="readonly")
+        self.cmb_1 = ctk.CTkComboBox(controls, variable=self.var_1, state="readonly", command=self.on_dropdown_change)
         self.cmb_1.grid(row=0, column=0, padx=5)
-        self.cmb_1.bind("<<ComboboxSelected>>", self.on_series_change)
+        self.cmb_1.bind("<<ComboboxSelected>>", self.on_dropdown_change)
 
-        self.cmb_2 = ctk.CTkComboBox(controls, variable=self.var_2, state="readonly")
+        self.cmb_2 = ctk.CTkComboBox(controls, variable=self.var_2, state="readonly", command=self.show_results)
         self.cmb_2.grid(row=0, column=1, padx=5)
+        self.cmb_2.bind("<<ComboboxSelected>>", command=self.show_results)
 
-        self._create_button(controls, "Show Results", self.show_results, 2)
+        # self._create_button(controls, "Show Results", self.show_results, 2)
 
         # Simulation shortcuts
         for idx, (label, days) in enumerate(SIMULATION_STEPS.items(), start=3):
@@ -360,16 +361,32 @@ class Graphics:
             messagebox.showerror("Error", f"Loading failed: {e}")
 
     # --- Simulation ---
-    def on_series_change(self, event=None):
+    def on_dropdown_change(self, event=None):
         """Update season list when the series combobox changes."""
         try:
-            self.controller.update_seasons(self.var_1.get())
-            seasons = self.controller.get_season_list()
-            self.cmb_2.configure(values=seasons)
-            if seasons:
-                self.cmb_2.set(seasons[-1])
+
+            current_tab = self.tabview.get()
+
+            if current_tab == "Manufacturers":
+                manu_dict = self.controller.get_names(current_tab)
+                # Combo 2 = parts for the default manufacturer
+                parts = manu_dict[self.var_1.get()]
+
+                self.cmb_2.configure(values=parts)
+                if parts:
+                    self.cmb_2.set(parts[0])
+            elif current_tab == "Seasons":
+                self.controller.update_seasons(self.var_1.get())
+
+                seasons = self.controller.get_season_list()
+
+                self.cmb_2.configure(values=seasons)
+                if seasons:
+                    self.cmb_2.set(seasons[-1])
+            else:
+                self.show_results()
         except Exception:
-            pass
+            print("Error in on_dropdown_change:")
 
     def on_subject_change(self, list_2: list):
         """Update second-level combobox values for stats views."""
@@ -406,7 +423,7 @@ class Graphics:
                 self.cmb_1.configure(values=items)
                 if items:
                     self.cmb_1.set(items[0])
-                self.on_series_change()
+                self.on_dropdown_change()
 
             elif current_tab == "Drivers":
                 items = self.controller.get_names(current_tab)
@@ -422,12 +439,26 @@ class Graphics:
                     self.cmb_1.set(items[0])
                 self.on_subject_change([""])
 
-            elif current_tab == "Manufacturers":
+                """elif current_tab == "Manufacturers":
                 items = self.controller.get_names(current_tab)
                 self.cmb_1.configure(values=items)
                 if items:
                     self.cmb_1.set(items[0])
-                self.on_subject_change(["engine", "chassi", "pneu"])
+                self.on_subject_change(["engine", "chassi", "pneu"])"""
+
+            elif current_tab == "Manufacturers":
+                manu_dict = self.controller.get_names(current_tab)  # dict: name -> parts
+
+                # Combo 1 = list manufacturer names
+                names = list(manu_dict.keys())
+                self.cmb_1.configure(values=names)
+
+                if names:
+                    self.cmb_1.set(names[0])
+                self.on_dropdown_change()
+
+
+
 
             elif current_tab == "Series":
                 items = self.controller.get_names(current_tab)
@@ -439,7 +470,7 @@ class Graphics:
         except Exception as e:
             print(f"update_dropdown error: {e}")
 
-    def show_results(self):
+    def show_results(self, event=None):
         """Populate the current tab’s treeview with results/statistics."""
         try:
             current_tab = self.tabview.get()

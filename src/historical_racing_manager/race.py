@@ -156,6 +156,49 @@ class RaceModel:
 
         return series_int.drop_duplicates(keep="first").tolist()
 
+    def get_raced_manufacturers(self) -> dict[int, list[str]]:
+        """
+        Returns a dict mapping manufacturerID -> list of used part types.
+        Example:
+        {
+            5: ["engine", "pneu"],
+            12: ["chassi"],
+        }
+        """
+
+        if not isinstance(self.results, pd.DataFrame):
+            return {}
+
+        # required columns
+        columns = {
+            "engineID": "engine",
+            "chassiID": "chassi",
+            "pneuID": "pneu"
+        }
+
+        for col in columns:
+            if col not in self.results.columns:
+                return {}
+
+        manufacturer_map: dict[int, set[str]] = {}
+
+        # iterate each part column
+        for col, part_name in columns.items():
+            series = self.results[col].dropna()
+
+            # convert to int safely
+            try:
+                ids = series.astype(int).tolist()
+            except Exception:
+                ids = series.astype(str).tolist()
+
+            # add to dictionary
+            for manufacturer_id in ids:
+                manufacturer_map.setdefault(manufacturer_id, set()).add(part_name)
+
+        # convert sets to sorted lists
+        return {mid: sorted(list(parts)) for mid, parts in manufacturer_map.items()}
+
     def extract_champions(self, series_id: str, series: pd.DataFrame, manufacturers: pd.DataFrame,
                           teams: pd.DataFrame, drivers: pd.DataFrame) -> pd.DataFrame:
         """
