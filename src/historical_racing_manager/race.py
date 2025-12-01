@@ -405,13 +405,7 @@ class RaceModel:
         df = self.get_results_for_series_and_season(series_id, season)
         # Create mapping from manufacturer ID to manufacturer name
         manu_map = manufacturers.set_index("manufacturerID")["name"].to_dict()
-        with pd.option_context(
-                "display.max_columns", None,
-                "display.width", None,
-                "display.max_colwidth", None,
-                "display.expand_frame_repr", False
-        ):
-            print(df.head(60))
+
         if df.empty:
             return pd.DataFrame()
 
