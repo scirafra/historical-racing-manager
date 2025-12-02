@@ -517,6 +517,15 @@ class Graphics:
             dialog.title("Offer Contract to Driver")
             dialog.geometry("500x400")
 
+            # --- přidané řádky pro modalitu a přednost ---
+            dialog.transient(self.root)
+            dialog.grab_set()
+            dialog.lift()
+            dialog.focus_force()
+            dialog.attributes("-topmost", True)
+            dialog.after(100, lambda: dialog.attributes("-topmost", False))
+            # ------------------------------------------------
+
             ctk.CTkLabel(dialog, text="Select Driver:", font=("Arial", 13, "bold")).pack(pady=5)
             driver_names = [f"{row.forename} {row.surname} ({row.nationality})" for _, row in df.iterrows()]
             driver_ids = list(df["driverID"])
@@ -559,6 +568,10 @@ class Graphics:
                     success = self.controller.offer_driver_contract(driver_id, salary, length, next_year)
                     if success:
                         messagebox.showinfo("Success", "Contract offer created successfully.")
+                        try:
+                            dialog.grab_release()
+                        except Exception:
+                            pass
                         dialog.destroy()
                         self.refresh_myteam_tab()
                     else:
@@ -588,6 +601,15 @@ class Graphics:
             dialog.title("Terminate Driver Contract")
             dialog.geometry("500x400")
 
+            # --- přidané řádky pro modalitu a přednost ---
+            dialog.transient(self.root)
+            dialog.grab_set()
+            dialog.lift()
+            dialog.focus_force()
+            dialog.attributes("-topmost", True)
+            dialog.after(100, lambda: dialog.attributes("-topmost", False))
+            # ------------------------------------------------
+
             ctk.CTkLabel(dialog, text="Select Driver to Terminate:", font=("Arial", 13, "bold")).pack(pady=5)
             driver_names = [
                 f"{row.forename} {row.surname} ({row.nationality}) – Cost: €{row.termination_cost:,} – {'Current contract' if row.current else 'Future contract'}"
@@ -611,6 +633,10 @@ class Graphics:
                                                                              row.current)
 
                     messagebox.showinfo("Contract Terminated", result)
+                    try:
+                        dialog.grab_release()
+                    except Exception:
+                        pass
                     dialog.destroy()
                     self.refresh_myteam_tab()
                 except Exception as e:
@@ -637,6 +663,15 @@ class Graphics:
             dialog = ctk.CTkToplevel(self.root)
             dialog.title("Offer Car Part Contract")
             dialog.geometry("500x400")
+
+            # --- přidané řádky pro modalitu a přednost ---
+            dialog.transient(self.root)
+            dialog.grab_set()
+            dialog.lift()
+            dialog.focus_force()
+            dialog.attributes("-topmost", True)
+            dialog.after(100, lambda: dialog.attributes("-topmost", False))
+            # ------------------------------------------------
 
             ctk.CTkLabel(dialog, text="Select Part:", font=("Arial", 13, "bold")).pack(pady=5)
 
@@ -692,6 +727,10 @@ class Graphics:
 
                     if success:
                         messagebox.showinfo("Success", "Car part contract offer created.")
+                        try:
+                            dialog.grab_release()
+                        except Exception:
+                            pass
                         dialog.destroy()
                         self.refresh_myteam_tab()
                     else:
@@ -711,6 +750,15 @@ class Graphics:
             dialog.title("Create Own Part")
             dialog.geometry("400x200")
 
+            # --- přidané řádky pro modalitu a přednost ---
+            dialog.transient(self.root)
+            dialog.grab_set()
+            dialog.lift()
+            dialog.focus_force()
+            dialog.attributes("-topmost", True)
+            dialog.after(100, lambda: dialog.attributes("-topmost", False))
+            # ------------------------------------------------
+
             ctk.CTkLabel(dialog, text="Part Type:").pack(pady=5)
             part_type_var = ctk.StringVar()
             ctk.CTkComboBox(dialog, variable=part_type_var, values=PART_TYPES)
@@ -726,6 +774,10 @@ class Graphics:
                     cost = int(cost_var.get())
                     msg = self.controller.create_own_part(part_type, cost)
                     messagebox.showinfo("Success", msg)
+                    try:
+                        dialog.grab_release()
+                    except Exception:
+                        pass
                     dialog.destroy()
                     self.refresh_myteam_tab()
                 except Exception as e:
@@ -748,6 +800,15 @@ class Graphics:
             dialog = ctk.CTkToplevel(self.root)
             dialog.title("Adjust Marketing Staff")
             dialog.geometry("400x250")
+
+            # --- přidané řádky pro modalitu a přednost ---
+            dialog.transient(self.root)
+            dialog.grab_set()
+            dialog.lift()
+            dialog.focus_force()
+            dialog.attributes("-topmost", True)
+            dialog.after(100, lambda: dialog.attributes("-topmost", False))
+            # ------------------------------------------------
 
             ctk.CTkLabel(dialog, text=f"Current staff: {current}", font=("Arial", 13)).pack(pady=5)
             ctk.CTkLabel(dialog, text=f"Hire cost: €{hire_cost} / Fire cost: €{fire_cost}", font=("Arial", 12)).pack(
@@ -783,6 +844,10 @@ class Graphics:
                     new_employees, cost = update_cost()
                     msg = self.controller.adjust_marketing_staff(new_employees, cost)
                     messagebox.showinfo("Marketing Update", msg)
+                    try:
+                        dialog.grab_release()
+                    except Exception:
+                        pass
                     dialog.destroy()
                     self.refresh_myteam_tab()
                 except Exception as e:
