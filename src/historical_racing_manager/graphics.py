@@ -382,7 +382,8 @@ class Graphics:
 
                 self.cmb_2.configure(values=seasons)
                 if seasons:
-                    self.cmb_2.set(seasons[-1])
+                    self.cmb_2.set(seasons[0])
+                    self.show_results()
             else:
                 self.show_results()
         except Exception:

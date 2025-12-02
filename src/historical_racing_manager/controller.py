@@ -131,6 +131,7 @@ class Controller:
         """
         Returns the ID of the current active team, if set.
         """
+
         return getattr(self, "active_team_id", None)
 
     def get_owners_team_driver_data(self):
@@ -337,7 +338,11 @@ class Controller:
         self.seasons = self.race_model.get_seasons_for_series(sid)
 
     def get_season_list(self):
-        return [str(y) for y in self.seasons].reverse()
+
+        seasons = list(reversed(self.seasons))
+        a = [str(y) for y in seasons]
+        print(a.sort(), seasons)
+        return [str(y) for y in seasons]
 
     def simulate_days(self, days: int):
         self.current_date = self.sim_day(self.current_date, days)
@@ -576,7 +581,7 @@ class Controller:
         """
         try:
             team_id = self.get_active_team_id()
-            if not team_id:
+            if team_id is None:
                 print("No active team selected.")
                 return pd.DataFrame()
 
@@ -604,7 +609,7 @@ class Controller:
         """
         try:
             team_id = self.get_active_team_id()
-            if not team_id:
+            if team_id is None:
                 print("You must select a team first.")
                 return False
 
@@ -649,7 +654,7 @@ class Controller:
         Sets a new number of marketing employees and deducts the cost.
         """
         team_id = self.get_active_team_id()
-        if not team_id:
+        if team_id is None:
             return "No active team selected."
 
         # Deduct money
@@ -855,7 +860,7 @@ class Controller:
 
     def terminate_driver_contract(self) -> str:
         team_id = self.get_active_team_id()
-        if not team_id:
+        if team_id is None:
             return "No active team selected."
 
         current_year = self.current_date.year
@@ -875,7 +880,7 @@ class Controller:
 
     def get_terminable_contracts_for_team(self) -> pd.DataFrame:
         team_id = self.get_active_team_id()
-        if not team_id:
+        if team_id is None:
             return pd.DataFrame()
 
         contracts = self.contracts_model.get_terminable_contracts(team_id, self.current_date.year)
@@ -888,7 +893,7 @@ class Controller:
 
     def terminate_driver_contract_by_id(self, driver_id: int, cost: int, is_current: bool) -> str:
         team_id = self.get_active_team_id()
-        if not team_id:
+        if team_id is None:
             return "No active team selected."
 
         # Verify the contract exists (optional if UI filters correctly)
@@ -914,7 +919,7 @@ class Controller:
 
     def get_available_car_parts(self) -> pd.DataFrame:
         team_id = self.get_active_team_id()
-        if not team_id:
+        if team_id is None:
             return pd.DataFrame()
 
         parts = self.contracts_model.get_available_series_parts(
@@ -935,7 +940,7 @@ class Controller:
     def offer_car_part_contract(self, manufacturer_id: int, length: int, price: int, year: int, part_type: str) -> bool:
         try:
             team_id = self.get_active_team_id()
-            if not team_id:
+            if team_id is None:
                 return False
 
             if self.contracts_model.offer_car_part_contract(
