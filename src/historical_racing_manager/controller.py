@@ -6,7 +6,6 @@ from typing import Any
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 
-import load as ld
 from historical_racing_manager.consts import (
     DEFAULT_BEGIN_YEAR, DEFAULT_END_YEAR, DEFAULT_DRIVERS_PER_YEAR, DEFAULT_SIM_YEARS_STEP,
     SEASON_START_DAY, SEASON_START_MONTH, FIRST_REAL_SEASON_YEAR, FIRST_RACE_PLANNING_YEAR
@@ -14,6 +13,7 @@ from historical_racing_manager.consts import (
 from historical_racing_manager.contracts import ContractsModel
 from historical_racing_manager.drivers import DriversModel
 from historical_racing_manager.graphics import Graphics
+from historical_racing_manager.load import LoadManager
 from historical_racing_manager.manufacturer import ManufacturerModel
 from historical_racing_manager.race import RaceModel
 from historical_racing_manager.series import SeriesModel
@@ -33,12 +33,13 @@ class Controller:
         self.current_date = self.begin_date
         self.new_game = True
         self.ss = time.time()
-
+        self.generated_races = pd.DataFrame()
         self._initialize_models()
 
         self.view = Graphics(self)
 
     def _initialize_models(self):
+        self.load_model = LoadManager()
         self.drivers_model = DriversModel()
         self.teams_model = TeamsModel()
         self.series_model = SeriesModel()
@@ -403,8 +404,8 @@ class Controller:
             "new_game": [self.new_game]
         })
         meta.to_csv(f"{name}/data.csv", index=False)
-
-        ld.save(
+        self.generated_races.to_csv(f"{name}/generated_races.csv", index=False)
+        self.load_model.save(
             name,
             self.teams_model,
             self.series_model,
@@ -417,14 +418,16 @@ class Controller:
     def load_game(self, name: str):
         if not os.path.exists(f"{name}/data.csv"):
             return False
-
+        if not os.path.exists(f"{name}/generated_races.csv"):
+            return False
         meta = pd.read_csv(f"{name}/data.csv")
+        self.generated_races = pd.read_csv(f"{name}/generated_races.csv")
         self.current_date = datetime.strptime(meta.loc[0, "date"], "%Y-%m-%d")
         self.begin_date = datetime.strptime(meta.loc[0, "begin"], "%Y-%m-%d")
         self.begin_year = self.begin_date.year
         self.new_game = bool(meta.loc[0, "new_game"])
 
-        ld.load_all(
+        self.load_model.load_all(
             name,
             self.series_model,
             self.teams_model,
@@ -486,9 +489,32 @@ class Controller:
             )"""
 
     def _handle_season_start(self, date: datetime):
+        # If we should plan races this year
         if date.year >= FIRST_RACE_PLANNING_YEAR:
-            self.race_model.plan_races(self.series_model, date + relativedelta(years=1))
+            # plan for the next calendar year (your original behavior)
+            target_date = date + relativedelta(years=1)
+            target_year = int(target_date.year)
 
+            # get the DataFrame that contains per-year quotas
+            df = getattr(self, "generated_races", None)
+
+            # default quotas if no row exists
+            champ, nonchamp = 9, 1
+
+            # if DataFrame exists and has rows, try to find the row for target_year
+            if df is not None and not df.empty:
+                # match by year (ensure numeric comparison)
+                row = df[df["year"].astype(int) == target_year]
+                if not row.empty:
+                    # extract champ and nonchamp as ints
+                    champ = int(row.iloc[0]["champ"])
+                    nonchamp = int(row.iloc[0]["nonchamp"])
+
+            # call plan_races with the extracted values
+            # expected signature: plan_races(series_model, current_date, champ_per_series, nonchamp_per_series)
+            self.race_model.plan_races(self.series_model, target_date, champ, nonchamp)
+
+        # continue with the rest of the original season-start logic
         self._update_entities_for_new_season(date)
 
         # Copy over driver slots

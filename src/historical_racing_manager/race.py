@@ -2,6 +2,7 @@ import os
 import random as rd
 from datetime import timedelta
 from typing import List
+
 import numpy as np
 import pandas as pd
 
@@ -9,15 +10,13 @@ from historical_racing_manager.consts import (
     RACE_REQUIRED_FILES,
     DAYS_PER_SEASON,
     RACE_WEEKDAY,
-    RACE_INTERVAL_WEEKS,
-    CHAMPIONSHIP_INTERVAL_WEEKS,
     RAIN_TRIGGER_MIN,
     RAIN_TRIGGER_MAX,
     RAIN_STRENGTH_MIN,
     RAIN_STRENGTH_MAX,
     RNG_PICK_MAX,
     RNG_PICK_THRESHOLD,
-    SPEED_RANDOM_MULTIPLIER,
+    SPEED_MULTIPLIER,
     CRASH_CODE,
     DEATH_CODE,
 )
@@ -199,7 +198,7 @@ class RaceModel:
         # convert sets to sorted lists
         return {mid: sorted(list(parts)) for mid, parts in manufacturer_map.items()}
 
-    def extract_champions(self, series_id: str, series: pd.DataFrame, manufacturers: pd.DataFrame,
+    def extract_champions(self, series_id: int, series: pd.DataFrame, manufacturers: pd.DataFrame,
                           teams: pd.DataFrame, drivers: pd.DataFrame) -> pd.DataFrame:
         """
         Extract champions for a given series.
@@ -209,18 +208,25 @@ class RaceModel:
         The function enriches the pivot with human-readable names for drivers, teams,
         and manufacturers when those columns are present.
         """
-        # Filter standings by seriesID and position 1 (champions)
-        filtered = self.standings[
-            (self.standings['seriesID'] == series_id) &
-            (self.standings['position'] == 1)
-            ]
+        # keep only rows for the requested series
+        s = self.standings[self.standings['seriesID'] == series_id].copy()
 
-        # Pivot data so each subject type becomes its own column
-        pivot = filtered.pivot_table(
+        # compute max round per year and typ (if you want final per typ separately).
+        # If final should be per year regardless of typ, group only by 'year' instead of ['year','typ'].
+        s['max_round'] = s.groupby(['year', 'typ'])['round'].transform('max')
+
+        # keep only rows that correspond to the final round for that year/typ
+        final_round_rows = s[s['round'] == s['max_round']].copy()
+
+        # now pick champions (position == 1) from those final-round rows
+        champions = final_round_rows[final_round_rows['position'] == 1].copy()
+
+        # pivot so each typ becomes a column with the subjectID of the champion
+        pivot = champions.pivot_table(
             index='year',
             columns='typ',
             values='subjectID',
-            aggfunc='first'  # assume a single winner per type and year
+            aggfunc='first'  # one winner per type/year
         ).reset_index()
 
         # Insert seriesID column back into the pivot
@@ -688,7 +694,7 @@ class RaceModel:
         """
         died: list[int] = []
         if race_data.empty:
-            return died
+            return []
 
         # Apply track safety and wetness to car reliability
         track_safety = float(race_row.get("trackSafety", 1) or 1)
@@ -842,7 +848,7 @@ class RaceModel:
             return "Crash"
 
         # Random roll influenced by speed capability and a multiplier constant
-        rnd1 = np.random.randint(0, speed_limit * SPEED_RANDOM_MULTIPLIER)
+        rnd1 = np.random.randint(0, speed_limit * SPEED_MULTIPLIER)
 
         # If the first roll is below reliability, the car fails; second roll decides severity
         if rnd1 < reliability:
@@ -995,13 +1001,15 @@ class RaceModel:
         if final_blocks:
             self.standings = pd.concat([self.standings, *final_blocks], ignore_index=True)
 
-    def plan_races(self, series_model, current_date) -> None:
+    def plan_races(self, series_model, current_date, champ_per_series: int, nonchamp_per_series: int) -> None:
         """
         Plan races for a season starting from the given date.
 
-        This method iterates over a fixed number of days (DAYS_PER_SEASON) and schedules races
-        on specific weekdays and intervals. For each scheduled race it selects a circuit and layout,
-        computes weather/wetness, and appends a new race entry to self.races.
+        This version picks all candidate race dates (Sundays) inside the season window,
+        then for each active series selects (champ_per_series + nonchamp_per_series)
+        dates roughly evenly distributed across those Sundays. If there are fewer
+        candidate Sundays than required races, the remaining races are assigned
+        by round-robin reusing available Sundays so the requested counts always fit.
 
         Parameters
         ----------
@@ -1010,77 +1018,121 @@ class RaceModel:
             Expected columns: "startYear", "endYear", "seriesID", "name", "reputation".
         current_date : date-like
             Starting date for planning (converted to pandas.Timestamp).
+        champ_per_series : int
+            Number of races per series per season that should count to the championship.
+        nonchamp_per_series : int
+            Number of races per series per season that should NOT count to the championship.
         """
-        week_counter = 0
         date = pd.Timestamp(current_date)
 
-        # Iterate through the season day by day
+        # build list of candidate race dates (all Sundays within DAYS_PER_SEASON)
+        candidate_dates = []
+        d = date
         for _ in range(DAYS_PER_SEASON):
+            if d.strftime("%a") == RACE_WEEKDAY:
+                candidate_dates.append(pd.Timestamp(d))
+            d += timedelta(days=1)
 
-            # Only consider the configured race weekday
-            if date.strftime("%a") == RACE_WEEKDAY:
+        # helper: choose k indices from n positions roughly evenly distributed
+        def pick_even_indices(n: int, k: int):
+            if k <= 0:
+                return []
+            if n <= 0:
+                # no candidate dates; return k zeros (will be handled by round-robin later)
+                return [0] * k
+            if k == 1:
+                return [n // 2]
+            # distribute using linear spacing and round to nearest index
+            indices = []
+            for i in range(k):
+                # avoid division by zero when k==1 handled above
+                pos = i * (n - 1) / (k - 1)
+                indices.append(int(round(pos)))
+            return indices
 
-                week_counter += 1
-                # Schedule races at the configured interval of weeks
-                if week_counter % RACE_INTERVAL_WEEKS == 0:
+        # iterate active series per year and schedule required number of races
+        active_series_all = series_model.series  # DataFrame
+        # For each day we will still pick a random circuit/layout per race as before.
+        for si, srow in active_series_all.iterrows():
+            # determine seasons where this series is active within the planning window
+            # we will schedule per-season; current_date may span only one season so use candidate_dates' years
+            # collect unique seasons present in candidate_dates
+            seasons = sorted({int(d.year) for d in candidate_dates}) if candidate_dates else [
+                int(pd.Timestamp(current_date).year)]
+            for season in seasons:
+                # skip series not active this season
+                if not (int(srow["startYear"]) <= season <= int(srow["endYear"])):
+                    continue
 
-                    # Select active series for the current year
-                    active_series = series_model.series[
-                        (series_model.series["startYear"] <= date.year)
-                        & (series_model.series["endYear"] >= date.year)
-                        ]
-                    for si, srow in active_series.iterrows():
-                        # Determine new race ID (incremental)
-                        new_race_id = 0 if self.races.empty else int(self.races["raceID"].max()) + 1
-                        # Championship flag logic: before 1897 no championships; otherwise based on index and interval
-                        if date.year < 1897:
-                            championship = False
-                        else:
-                            championship = not (
-                                    si == active_series.index[-1] and week_counter % CHAMPIONSHIP_INTERVAL_WEEKS == 0
-                            )
+                total_required = int(champ_per_series) + int(nonchamp_per_series)
+                # pick indices of candidate_dates to use for this series-season
+                n = len(candidate_dates)
+                chosen_indices = pick_even_indices(n, total_required)
 
-                        # Skip if no circuits or layouts are available
-                        if self.circuits.empty or self.circuit_layouts.empty:
-                            continue
-                        # Choose a random circuit and a matching layout
-                        track_id = int(rd.choice(self.circuits["circuitID"].tolist()))
-                        matching = self.circuit_layouts[
-                            self.circuit_layouts["circuitID"] == track_id
-                            ]
-                        if matching.empty:
-                            continue
-                        layout_id = int(rd.choice(matching["layoutID"].tolist()))
-                        # Read layout safety rating
-                        safety = float(
-                            self.circuit_layouts.loc[
-                                self.circuit_layouts["layoutID"] == layout_id, "safety"
-                            ].iloc[0]
-                        )
+                # if there were fewer candidate dates than required, fill remaining by round-robin over available indices
+                if n < total_required and n > 0:
+                    # extend chosen_indices by cycling through 0..n-1 until length == total_required
+                    extra_needed = total_required - n
+                    for i in range(extra_needed):
+                        chosen_indices.append(i % n)
+                elif n == 0:
+                    # no candidate dates at all: fallback to schedule all races on the season start date
+                    chosen_indices = [0] * total_required
+                    candidate_dates = [pd.Timestamp(current_date)]
 
-                        # Determine wetness: a trigger roll and a strength roll if triggered
-                        wet_roll = rd.randint(RAIN_TRIGGER_MIN, RAIN_TRIGGER_MAX)
-                        wet = rd.randint(RAIN_STRENGTH_MIN,
-                                         RAIN_STRENGTH_MAX) / 100 + 1 if wet_roll == RAIN_TRIGGER_MAX else 1
+                # decide which of the chosen slots are championship races: pick champ_per_series indices evenly among chosen_indices
+                champ_indices_in_chosen = set()
+                if champ_per_series > 0:
+                    # choose positions among 0..total_required-1
+                    pos_indices = pick_even_indices(total_required, champ_per_series)
+                    champ_indices_in_chosen = set(pos_indices)
 
-                        # Append the new race entry to the races DataFrame
-                        self.races.loc[len(self.races)] = {
-                            "raceID": new_race_id,
-                            "seriesID": int(srow["seriesID"]),
-                            "season": int(date.year),
-                            "trackID": track_id,
-                            "layoutID": layout_id,
-                            "trackSafety": safety,
-                            "race_date": date,
-                            "name": f"Preteky {srow['name']}",
-                            "championship": championship,
-                            "reputation": (
-                                1000 // int(srow["reputation"]) if int(srow["reputation"]) else 0
-                            ),
-                            "reward": (
-                                1000000 // int(srow["reputation"]) if int(srow["reputation"]) else 0
-                            ),
-                            "wet": wet,
-                        }
-            # Advance to the next day
-            date += timedelta(days=1)
+                # now create races for each chosen slot
+                for pos, ci in enumerate(chosen_indices):
+                    race_date = candidate_dates[ci]
+                    is_championship = (pos in champ_indices_in_chosen) and (race_date.year >= 1897)
+
+                    # Skip if no circuits or layouts are available
+                    if self.circuits.empty or self.circuit_layouts.empty:
+                        continue
+
+                    # Choose a random circuit and a matching layout
+                    track_id = int(rd.choice(self.circuits["circuitID"].tolist()))
+                    matching = self.circuit_layouts[self.circuit_layouts["circuitID"] == track_id]
+                    if matching.empty:
+                        continue
+                    layout_id = int(rd.choice(matching["layoutID"].tolist()))
+                    # Read layout safety rating
+                    safety = float(
+                        self.circuit_layouts.loc[
+                            self.circuit_layouts["layoutID"] == layout_id, "safety"
+                        ].iloc[0]
+                    )
+
+                    # Determine wetness: a trigger roll and a strength roll if triggered
+                    wet_roll = rd.randint(RAIN_TRIGGER_MIN, RAIN_TRIGGER_MAX)
+                    wet = rd.randint(RAIN_STRENGTH_MIN,
+                                     RAIN_STRENGTH_MAX) / 100 + 1 if wet_roll == RAIN_TRIGGER_MAX else 1
+
+                    # Determine new race ID (incremental)
+                    new_race_id = 0 if self.races.empty else int(self.races["raceID"].max()) + 1
+
+                    # Append the new race entry to the races DataFrame
+                    self.races.loc[len(self.races)] = {
+                        "raceID": new_race_id,
+                        "seriesID": int(srow["seriesID"]),
+                        "season": int(season),
+                        "trackID": track_id,
+                        "layoutID": layout_id,
+                        "trackSafety": safety,
+                        "race_date": race_date,
+                        "name": f"Preteky {srow['name']}",
+                        "championship": bool(is_championship),
+                        "reputation": (
+                            1000 // int(srow["reputation"]) if int(srow["reputation"]) else 0
+                        ),
+                        "reward": (
+                            1000000 // int(srow["reputation"]) if int(srow["reputation"]) else 0
+                        ),
+                        "wet": wet,
+                    }

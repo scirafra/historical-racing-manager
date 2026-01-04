@@ -72,9 +72,9 @@ TEAM_SELECTOR_WIDTH = 250
 
 # Simulation Steps
 SIMULATION_STEPS = {
-    "Next Day": 3000,
+    "Next Day": 1,
     "Next Week": 7,
-    "Next Race": 365
+    "Next Year": 365
 }
 
 # Contract
@@ -123,14 +123,14 @@ MERGE_KEYS = ["rulesID", "manufacturerID", "partType", "seriesID"]
 DEFAULT_PART_COST = 250_000
 
 # --- Random improvement ranges ---
-RANDOM_POWER_MIN = 0
-RANDOM_POWER_MAX = 8
+UPGRADE_POWER_MIN = 0
+UPGRADE_POWER_MAX = 8
 
-RANDOM_RELIABILITY_MIN = 0
-RANDOM_RELIABILITY_MAX = 9
+UPGRADE_RELIABILITY_MIN = 0
+UPGRADE_RELIABILITY_MAX = 9
 
-RANDOM_SAFETY_MIN = 0
-RANDOM_SAFETY_MAX = 9
+UPGRADE_SAFETY_MIN = 0
+UPGRADE_SAFETY_MAX = 9
 
 # --- Required files for RaceModel ---
 RACE_REQUIRED_FILES = [
@@ -159,7 +159,7 @@ RNG_PICK_MAX = 9
 RNG_PICK_THRESHOLD = 3
 
 # --- Outcome randomness ---
-SPEED_RANDOM_MULTIPLIER = 1000
+SPEED_MULTIPLIER = 1000
 
 # --- Result codes ---
 CRASH_CODE = 999

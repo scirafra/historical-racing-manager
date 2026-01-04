@@ -7,12 +7,12 @@ from historical_racing_manager.consts import (
     MANUFACTURER_REQUIRED_FILES,
     MERGE_KEYS,
     DEFAULT_PART_COST,
-    RANDOM_POWER_MIN,
-    RANDOM_POWER_MAX,
-    RANDOM_RELIABILITY_MIN,
-    RANDOM_RELIABILITY_MAX,
-    RANDOM_SAFETY_MIN,
-    RANDOM_SAFETY_MAX,
+    UPGRADE_POWER_MIN,
+    UPGRADE_POWER_MAX,
+    UPGRADE_RELIABILITY_MIN,
+    UPGRADE_RELIABILITY_MAX,
+    UPGRADE_SAFETY_MIN,
+    UPGRADE_SAFETY_MAX,
 )
 
 
@@ -82,7 +82,7 @@ class ManufacturerModel:
         )
 
         final = self._fill_missing_values(final)
-        final = self._apply_random_improvements(final, date.year)
+        final = self._apply_car_part_improvements(final, date.year)
         final = self._clamp_values(final)
         final["cost"] = DEFAULT_PART_COST
 
@@ -135,11 +135,11 @@ class ManufacturerModel:
         df["safety"] = df["safety"].fillna(1)
         return df
 
-    def _apply_random_improvements(self, df: pd.DataFrame, year: int) -> pd.DataFrame:
+    def _apply_car_part_improvements(self, df: pd.DataFrame, year: int) -> pd.DataFrame:
         """Apply random improvements to part attributes and set the target year."""
-        rand_power = np.random.randint(RANDOM_POWER_MIN, RANDOM_POWER_MAX + 1, size=len(df))
-        rand_reliability = np.random.randint(RANDOM_RELIABILITY_MIN, RANDOM_RELIABILITY_MAX + 1, size=len(df))
-        rand_safety = np.random.randint(RANDOM_SAFETY_MIN, RANDOM_SAFETY_MAX + 1, size=len(df))
+        rand_power = np.random.randint(UPGRADE_POWER_MIN, UPGRADE_POWER_MAX + 1, size=len(df))
+        rand_reliability = np.random.randint(UPGRADE_RELIABILITY_MIN, UPGRADE_RELIABILITY_MAX + 1, size=len(df))
+        rand_safety = np.random.randint(UPGRADE_SAFETY_MIN, UPGRADE_SAFETY_MAX + 1, size=len(df))
 
         df["power"] += rand_power
         df["reliability"] += rand_power - rand_reliability
