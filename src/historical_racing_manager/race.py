@@ -1,7 +1,6 @@
-import os
+import pathlib
 import random as rd
 from datetime import timedelta
-from typing import List
 
 import numpy as np
 import pandas as pd
@@ -36,45 +35,45 @@ class RaceModel:
         self.f1_races = 0
 
     # ===== Persistence =====
-    def load(self, base_path: str) -> bool:
+    def load(self, folder: pathlib.Path) -> bool:
         """
-        Load required race-related CSV files from base_path into the model.
+        Load required race-related CSV files from folder into the model.
         Returns True if all required files exist and were loaded, False otherwise.
         """
         required = RACE_REQUIRED_FILES
 
-        missing = [f for f in required if not os.path.exists(base_path + f)]
+        missing = [f for f in required if not (folder / f).exists()]
         if missing:
             return False
 
-        self.standings = pd.read_csv(base_path + "stands.csv")
-        self.races = pd.read_csv(base_path + "races.csv")
+        self.standings = pd.read_csv(folder / "stands.csv")
+        self.races = pd.read_csv(folder / "races.csv")
         if not self.races.empty and "race_date" in self.races.columns:
             # Parse race_date column into pandas datetime
             self.races["race_date"] = pd.to_datetime(self.races["race_date"], errors="coerce")
 
-        self.point_system = pd.read_csv(base_path + "pointSystem.csv")
-        self.results = pd.read_csv(base_path + "results.csv")
-        self.circuits = pd.read_csv(base_path + "circuits.csv")
-        self.circuit_layouts = pd.read_csv(base_path + "circuit_layouts.csv")
+        self.point_system = pd.read_csv(folder / "pointSystem.csv")
+        self.results = pd.read_csv(folder / "results.csv")
+        self.circuits = pd.read_csv(folder / "circuits.csv")
+        self.circuit_layouts = pd.read_csv(folder / "circuit_layouts.csv")
         return True
 
-    def save(self, base_path: str) -> None:
+    def save(self, folder: pathlib.Path) -> None:
         """
-        Save model DataFrames to CSV files under base_path.
-        If base_path is falsy, do nothing.
+        Save model DataFrames to CSV files under folder.
+        If folder is falsy, do nothing.
         """
-        if not base_path:
+        if not folder:
             return
-        self.races.to_csv(base_path + "races.csv", index=False)
-        self.standings.to_csv(base_path + "stands.csv", index=False)
-        self.point_system.to_csv(base_path + "pointSystem.csv", index=False)
-        self.results.to_csv(base_path + "results.csv", index=False)
-        self.circuits.to_csv(base_path + "circuits.csv", index=False)
-        self.circuit_layouts.to_csv(base_path + "circuit_layouts.csv", index=False)
+        self.races.to_csv(folder / "races.csv", index=False)
+        self.standings.to_csv(folder / "stands.csv", index=False)
+        self.point_system.to_csv(folder / "pointSystem.csv", index=False)
+        self.results.to_csv(folder / "results.csv", index=False)
+        self.circuits.to_csv(folder / "circuits.csv", index=False)
+        self.circuit_layouts.to_csv(folder / "circuit_layouts.csv", index=False)
 
     # ===== Queries =====
-    def get_raced_series(self) -> List[int]:
+    def get_raced_series(self) -> list[int]:
 
         """
         Vráti unikátne seriesID z self.results ako list int v poradí prvého výskytu.
@@ -101,7 +100,7 @@ class RaceModel:
 
         return series_int.drop_duplicates(keep="first").tolist()
 
-    def get_raced_teams(self) -> List[int]:
+    def get_raced_teams(self) -> list[int]:
 
         """
         Vráti unikátne seriesID z self.results ako list int v poradí prvého výskytu.
@@ -128,7 +127,7 @@ class RaceModel:
 
         return series_int.drop_duplicates(keep="first").tolist()
 
-    def get_raced_drivers(self) -> List[int]:
+    def get_raced_drivers(self) -> list[int]:
 
         """
         Vráti unikátne seriesID z self.results ako list int v poradí prvého výskytu.

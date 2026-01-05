@@ -1,13 +1,54 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
+requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "historical_racing_manager"
+name = "historical-racing-manager"
 version = "0.1.0"
-description = "Historical racing manager game"
-authors = [{ name = "František" }]
-dependencies = [
-    "pygame==2.5.2"
-    # ďalšie podľa potreby
+description = "Historical racing simulation game built with Python and Tkinter"
+readme = "README.md"
+keywords = ["historical", "racing", "simulation", "game", "tkinter"]
+authors = [
+    { name = "František Sciranka", email = "scirafra@fit.cvut.cz" }
 ]
+classifiers = [# https://pypi.org/classifiers/
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Education",
+    "Topic :: Games/Entertainment",
+    "Topic :: Games/Entertainment :: Role-Playing",
+    "Topic :: Games/Entertainment :: Simulation",
+]
+requires-python = ">=3.11, <4"
+dependencies = [
+    "customtkinter >=5.2, <6",
+    "numpy >=2.4, <3",
+    "pandas >=2.3, <3",
+    "python-dateutil >=2.8, <3",
+]
+
+# dev dependencies
+[project.optional-dependencies]
+dev = [
+    "flake8==7.3.0",
+    "mypy==1.19.1",
+]
+
+[project.urls]
+Repository = "https://github.com/scirafra/historical-racing-manager"
+
+[project.scripts]
+historical-racing-manager = 'historical_racing_manager:main'
+
+[tool.setuptools]
+zip-safe = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ['*.csv']
+
+[tool.distutils.bdist_wheel]
+universal = true

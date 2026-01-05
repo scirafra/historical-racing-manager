@@ -1,4 +1,4 @@
-import os
+import pathlib
 import time
 from datetime import datetime, timedelta
 from typing import Any
@@ -18,6 +18,10 @@ from historical_racing_manager.manufacturer import ManufacturerModel
 from historical_racing_manager.race import RaceModel
 from historical_racing_manager.series import SeriesModel
 from historical_racing_manager.teams import TeamsModel
+
+PACKAGE_DIR = pathlib.Path(__file__).parent
+# TODO: Alternatively could use: USER_DIR = pathlib.Path.home() / ".hrm" instead of working dir
+USER_DIR = pathlib.Path.cwd()
 
 
 class Controller:
@@ -390,13 +394,14 @@ class Controller:
         return start_date
 
     def start_new_season(self):
-        self.load_game("my_data")
+        self.load_game("default_data", base_folder=PACKAGE_DIR)
         self._set_default_active_team()
         self.current_date = self.sim_year(self.current_date, self.sim_years_step)
 
     def save_game(self, name: str):
-        if not os.path.isdir(name):
-            os.makedirs(name, exist_ok=True)
+        folder = USER_DIR / name
+        if not folder.exists():
+            folder.mkdir(parents=True, exist_ok=True)
 
         meta = pd.DataFrame({
             "date": [self.current_date.strftime("%Y-%m-%d")],
@@ -406,7 +411,7 @@ class Controller:
         meta.to_csv(f"{name}/data.csv", index=False)
         self.generated_races.to_csv(f"{name}/generated_races.csv", index=False)
         self.load_model.save(
-            name,
+            folder,
             self.teams_model,
             self.series_model,
             self.drivers_model,
@@ -415,20 +420,23 @@ class Controller:
             self.race_model,
         )
 
-    def load_game(self, name: str):
-        if not os.path.exists(f"{name}/data.csv"):
+    def load_game(self, name: str, base_folder: pathlib.Path = USER_DIR) -> bool:
+        folder = base_folder / name
+        data_file = folder / "data.csv"
+        if not data_file.exists():
             return False
-        if not os.path.exists(f"{name}/generated_races.csv"):
+        generated_races_file = folder / "generated_races.csv"
+        if not generated_races_file.exists():
             return False
-        meta = pd.read_csv(f"{name}/data.csv")
-        self.generated_races = pd.read_csv(f"{name}/generated_races.csv")
+        meta = pd.read_csv(data_file)
+        self.generated_races = pd.read_csv(generated_races_file)
         self.current_date = datetime.strptime(meta.loc[0, "date"], "%Y-%m-%d")
         self.begin_date = datetime.strptime(meta.loc[0, "begin"], "%Y-%m-%d")
         self.begin_year = self.begin_date.year
         self.new_game = bool(meta.loc[0, "new_game"])
 
         self.load_model.load_all(
-            name,
+            folder,
             self.series_model,
             self.teams_model,
             self.drivers_model,
@@ -484,9 +492,6 @@ class Controller:
         contracts = self.contracts_model.get_active_part_contracts_for_year(year)
         for _, row in contracts.iterrows():
             self.teams_model.deduct_money(row["teamID"], row["cost"])
-            """print(
-                f"Team {row['teamID']} paid €{row['cost']} for {row['partType']} from manufacturer {row['manufacturerID']} in {year}."
-            )"""
 
     def _handle_season_start(self, date: datetime):
         # If we should plan races this year
@@ -543,13 +548,6 @@ class Controller:
     def _handle_contracts(self, date: datetime):
         self.manufacturer_model.develop_part(date, self.contracts_model.get_MScontract())
 
-        """
-        car_part_inputs = self.view.ask_car_part_contracts(
-            self.teams_model.get_human_teams(date),
-            self.manufacturer_model.car_parts,
-            date.year
-        )
-        """
         car_part_inputs = {}
         self.contracts_model.sign_car_part_contracts(
             active_series=self.series_model.get_active_series(date.year),
@@ -926,7 +924,7 @@ class Controller:
         contract = self.contracts_model.DTcontract[
             (self.contracts_model.DTcontract["driverID"] == driver_id) &
             (self.contracts_model.DTcontract["teamID"] == team_id) &
-            (self.contracts_model.DTcontract["active"] == True)
+            (self.contracts_model.DTcontract["active"] is True)
             ]
 
         if contract.empty:

@@ -1,5 +1,5 @@
-import os
-from typing import Iterable, List
+import pathlib
+from collections.abc import Iterable
 
 import pandas as pd
 
@@ -33,21 +33,21 @@ class SeriesModel:
         self.series = pd.DataFrame()
         self.point_rules = pd.DataFrame()
 
-    def load(self, folder: str) -> bool:
+    def load(self, folder: pathlib.Path) -> bool:
         """
         Load series and point rules CSV files from the given folder.
 
         Args:
-            folder (str): Path to the folder containing SERIES_FILE and POINT_RULES_FILE.
+            folder (Path): Path to the folder containing SERIES_FILE and POINT_RULES_FILE.
 
         Returns:
             bool: True if both files were loaded successfully, False otherwise.
         """
-        series_path = os.path.join(folder, SERIES_FILE)
-        points_path = os.path.join(folder, POINT_RULES_FILE)
+        series_path = folder / SERIES_FILE
+        points_path = folder / POINT_RULES_FILE
 
         # If either file is missing, initialize empty structures and return False
-        if not os.path.exists(series_path) or not os.path.exists(points_path):
+        if not series_path.exists() or not points_path.exists():
             self.series = pd.DataFrame(columns=[
                 COL_SERIES_ID, COL_SERIES_NAME, COL_SERIES_START, COL_SERIES_END
             ])
@@ -59,17 +59,17 @@ class SeriesModel:
         self.point_rules = pd.read_csv(points_path)
         return True
 
-    def save(self, folder: str):
+    def save(self, folder: pathlib.Path):
         """
         Save series and point rules DataFrames to CSV files in the given folder.
 
         Args:
-            folder (str): Destination folder for the CSV files.
+            folder (Path): Destination folder for the CSV files.
         """
-        self.series.to_csv(os.path.join(folder, SERIES_FILE), index=False)
-        self.point_rules.to_csv(os.path.join(folder, POINT_RULES_FILE), index=False)
+        self.series.to_csv(folder / SERIES_FILE, index=False)
+        self.point_rules.to_csv(folder / POINT_RULES_FILE, index=False)
 
-    def get_series_by_id(self, series_ids: Iterable[int]) -> List[str]:
+    def get_series_by_id(self, series_ids: Iterable[int]) -> list[str]:
         """
         Return list of series names for the provided series_ids in the same order.
         If an ID is not found, an empty string is returned for that position.
@@ -85,7 +85,7 @@ class SeriesModel:
         lookup["sid_norm"] = lookup[COL_SERIES_ID].astype(str)
         lookup = lookup.set_index("sid_norm")[COL_SERIES_NAME].to_dict()
 
-        result: List[str] = []
+        result: list[str] = []
         for sid in series_ids:
             key = str(sid)
             result.append(lookup.get(key, ""))

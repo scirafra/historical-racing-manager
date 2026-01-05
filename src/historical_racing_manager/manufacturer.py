@@ -1,4 +1,4 @@
-import os
+import pathlib
 
 import numpy as np
 import pandas as pd
@@ -27,29 +27,30 @@ class ManufacturerModel:
         self.rules = pd.DataFrame()
 
     # --- Persistence ---
-    def load(self, folder: str) -> bool:
+    def load(self, folder: pathlib.Path) -> bool:
         """Load manufacturer-related dataframes from CSV files in the given folder."""
         required_files = MANUFACTURER_REQUIRED_FILES
 
-        missing = [f for f in required_files if not os.path.exists(os.path.join(folder, f))]
+        missing = [f for f in required_files if not (folder / f).exists()]
         if missing:
             self._initialize_empty()
             return False
 
-        self.car_parts = pd.read_csv(os.path.join(folder, "car_parts.csv"))
-        self.cars = pd.read_csv(os.path.join(folder, "cars.csv"))
-        self.manufacturers = pd.read_csv(os.path.join(folder, "manufacturers.csv"))
-        self.car_part_models = pd.read_csv(os.path.join(folder, "car_part_models.csv"))
-        self.rules = pd.read_csv(os.path.join(folder, "rules.csv"))
+        # TODO: Why not constants??
+        self.car_parts = pd.read_csv(folder / "car_parts.csv")
+        self.cars = pd.read_csv(folder / "cars.csv")
+        self.manufacturers = pd.read_csv(folder / "manufacturers.csv")
+        self.car_part_models = pd.read_csv(folder / "car_part_models.csv")
+        self.rules = pd.read_csv(folder / "rules.csv")
         return True
 
-    def save(self, folder: str):
+    def save(self, folder: pathlib.Path):
         """Save manufacturer-related dataframes to CSV files in the given folder."""
-        self.car_parts.to_csv(os.path.join(folder, "car_parts.csv"), index=False)
-        self.cars.to_csv(os.path.join(folder, "cars.csv"), index=False)
-        self.manufacturers.to_csv(os.path.join(folder, "manufacturers.csv"), index=False)
-        self.car_part_models.to_csv(os.path.join(folder, "car_part_models.csv"), index=False)
-        self.rules.to_csv(os.path.join(folder, "rules.csv"), index=False)
+        self.car_parts.to_csv(folder / "car_parts.csv", index=False)
+        self.cars.to_csv(folder / "cars.csv", index=False)
+        self.manufacturers.to_csv(folder / "manufacturers.csv", index=False)
+        self.car_part_models.to_csv(folder / "car_part_models.csv", index=False)
+        self.rules.to_csv(folder / "rules.csv", index=False)
 
     def _initialize_empty(self):
         """Initialize all internal tables to empty DataFrames."""

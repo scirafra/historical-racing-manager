@@ -1,5 +1,5 @@
-import os
-from typing import Iterable, List
+import pathlib
+from collections.abc import Iterable
 
 import pandas as pd
 
@@ -22,14 +22,14 @@ class TeamsModel:
         self.teams = pd.DataFrame()
 
     # --- Persistence ---
-    def load(self, folder: str) -> bool:
+    def load(self, folder: pathlib.Path) -> bool:
         """
         Load teams from a CSV file into a DataFrame.
         If required columns are missing, add them with sensible defaults so GUI and logic work.
         """
-        path = os.path.join(folder, TEAMS_FILE)
+        path = folder / TEAMS_FILE
 
-        if not os.path.exists(path):
+        if not path.exists():
             self.teams = pd.DataFrame()
             return False
 
@@ -96,7 +96,7 @@ class TeamsModel:
             self.teams["team_name"] = ""
         return self.teams[[COL_TEAM_ID, "team_name"]].copy()
 
-    def get_team_names(self, team_ids: Iterable[int]) -> List[str]:
+    def get_team_names(self, team_ids: Iterable[int]) -> list[str]:
         """
         Return list of team names for the provided team_ids in the same order.
         If an ID is not found, returns an empty string for that position.
@@ -109,7 +109,7 @@ class TeamsModel:
         lookup["tid_norm"] = lookup[COL_TEAM_ID].astype(str)
         name_map = lookup.set_index("tid_norm")["team_name"].to_dict()
 
-        result: List[str] = []
+        result: list[str] = []
         for tid in team_ids:
             key = str(tid)
             result.append(name_map.get(key, ""))

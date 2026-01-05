@@ -1,7 +1,7 @@
-import os
+import pathlib
 import sys
+from collections.abc import Iterable
 from datetime import date
-from typing import List, Iterable
 
 import numpy as np
 import pandas as pd
@@ -21,17 +21,17 @@ class DriversModel:
         self.active_drivers = pd.DataFrame()
         self.retiring_drivers = pd.DataFrame()
         self.old_active_drivers = pd.DataFrame()
-        self.dead_drivers: List[List] = []
+        self.dead_drivers: list[list] = []
         self.ability_min = DRIVER_ABILITY_MIN
         self.ability_max = DRIVER_ABILITY_MAX
         self.ability_change = ABILITY_CHANGE_SEQUENCE
 
     # ====== DATA I/O ======
 
-    def load(self, folder: str) -> bool:
-        path = os.path.join(folder, DRIVERS_FILE)
+    def load(self, folder: pathlib.Path) -> bool:
+        path = folder / DRIVERS_FILE
 
-        if not os.path.exists(path):
+        if not path.exists():
             return False
 
         self.drivers = pd.read_csv(path)
@@ -39,13 +39,13 @@ class DriversModel:
         self.active_drivers = pd.DataFrame(columns=self.drivers.columns)
         return True
 
-    def save(self, folder: str) -> None:
+    def save(self, folder: pathlib.Path) -> None:
         if not folder:
             return
 
         self.sort_active_drivers()
         self._sync_active_to_main()
-        self.drivers.to_csv(os.path.join(folder, DRIVERS_FILE), index=False)
+        self.drivers.to_csv(folder / DRIVERS_FILE, index=False)
 
         self.old_active_drivers = self.active_drivers.copy()
         self.active_drivers.drop(self.active_drivers.index, inplace=True)
@@ -54,7 +54,7 @@ class DriversModel:
         result = self.drivers.query("forename == @driver_forename and surname == @driver_surname")
         return result["driverID"].iat[0] if not result.empty else None
 
-    def get_raced_drivers(self, driver_ids: Iterable[int]) -> List[str]:
+    def get_raced_drivers(self, driver_ids: Iterable[int]) -> list[str]:
         """
         Return list of full driver names for provided driver_ids, but with drivers
         that are currently active placed first (order preserved).
@@ -89,7 +89,6 @@ class DriversModel:
         # Split ids preserving order
         active_in_ids = [i for i in ids if i in active_set]
         others_in_ids = [i for i in ids if i not in active_set]
-        ordered_ids = active_in_ids + others_in_ids
 
         # Reuse existing get_driver_full_names to map ids -> names
         return self.get_driver_full_names(active_in_ids, others_in_ids)
@@ -108,7 +107,7 @@ class DriversModel:
                 df[col] = "" if col != "driverID" else 0
         return df[["driverID", "forename", "surname"]].copy()
 
-    def get_driver_full_names(self, active_driver_ids: Iterable[int], driver_ids: Iterable[int]) -> List[str]:
+    def get_driver_full_names(self, active_driver_ids: Iterable[int], driver_ids: Iterable[int]) -> list[str]:
         """
         Return list of full driver names ("Forename Surname") for the provided driver_ids
         in the same order. If an ID is not found, returns an empty string for that position.
@@ -123,11 +122,11 @@ class DriversModel:
         lookup["full_name"] = lookup["surname"].astype(str) + " " + lookup["forename"].astype(str)
         name_map = lookup.set_index("id_norm")["full_name"].to_dict()
 
-        active_result: List[str] = []
+        active_result: list[str] = []
         for did in active_driver_ids:
             key = str(did)
             active_result.append(name_map.get(key, ""))
-        rest_result: List[str] = []
+        rest_result: list[str] = []
         for did in driver_ids:
             key = str(did)
             rest_result.append(name_map.get(key, ""))
@@ -224,18 +223,18 @@ class DriversModel:
         if self.active_drivers["driverID"].duplicated().any():
             sys.exit("Program terminated due to duplicate driverID.")
 
-    def get_retiring_drivers(self) -> List[int]:
+    def get_retiring_drivers(self) -> list[int]:
         return self.retiring_drivers["driverID"].tolist() if not self.retiring_drivers.empty else []
 
     # ====== DRIVER STATUS UPDATES ======
 
-    def mark_drivers_dead(self, driver_ids: List[int], event_date: str) -> None:
+    def mark_drivers_dead(self, driver_ids: list[int], event_date: str) -> None:
         self.active_drivers.loc[self.active_drivers["driverID"].isin(driver_ids), "alive"] = False
         self.drivers.loc[self.drivers["driverID"].isin(driver_ids), "alive"] = False
         self.active_drivers = self.active_drivers[~self.active_drivers["driverID"].isin(driver_ids)]
         self.dead_drivers.append([event_date, driver_ids])
 
-    def race_reputations(self, reputation: int, results: List[int]) -> None:
+    def race_reputations(self, reputation: int, results: list[int]) -> None:
         for idx, driver_id in enumerate(results, start=1):
             self.active_drivers.loc[
                 self.active_drivers["driverID"] == driver_id, "reputation_race"

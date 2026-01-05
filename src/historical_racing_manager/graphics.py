@@ -313,9 +313,9 @@ class Graphics:
 
     # --- Game management ---
     def on_new_game(self):
-        """Initialize a new game from 'my_data' and refresh UI state."""
+        """Initialize a new game from 'default_data' and refresh UI state."""
         try:
-            ok = self.controller.load_game("my_data")
+            ok = self.controller.load_game("default_data")
             if ok:
                 self.date_label.configure(text=self.controller.get_date())
                 self._update_team_selector()
@@ -332,7 +332,7 @@ class Graphics:
         if not name:
             messagebox.showwarning("Missing Name", "Please enter a name to save the game.")
             return
-        if name in ("my_data", "original", "custom_original"):
+        if name in ("default_data", "original", "custom_original"):
             messagebox.showwarning("Invalid Name", "Please use a different game name.")
             return
         try:
@@ -400,7 +400,9 @@ class Graphics:
     def sim_step(self, days: int):
         """Advance the simulation by a given number of days and refresh UI state."""
         try:
+            
             self.controller.simulate_days(days)
+
             self.date_label.configure(text=self.controller.get_date())
             self.update_dropdown()
             self.show_results()
@@ -457,9 +459,6 @@ class Graphics:
                 if names:
                     self.cmb_1.set(names[0])
                 self.on_dropdown_change()
-
-
-
 
             elif current_tab == "Series":
                 items = self.controller.get_names(current_tab)
@@ -612,7 +611,9 @@ class Graphics:
 
             ctk.CTkLabel(dialog, text="Select Driver to Terminate:", font=("Arial", 13, "bold")).pack(pady=5)
             driver_names = [
-                f"{row.forename} {row.surname} ({row.nationality}) – Cost: €{row.termination_cost:,} – {'Current contract' if row.current else 'Future contract'}"
+                (f"{row.forename} {row.surname} ({row.nationality}) – "
+                 f"Cost: €{row.termination_cost:,} – "
+                 f"{'Current contract' if row.current else 'Future contract'}")
                 for _, row in df.iterrows()
             ]
 
@@ -677,7 +678,6 @@ class Graphics:
 
             part_names = [f"{row.manufacturer_name} ({row.partType}) – Cost: €{row.cost}" for _, row in
                           parts_df.iterrows()]
-            part_ids = list(parts_df["partID"])
 
             part_var = ctk.StringVar()
             part_box = ctk.CTkComboBox(dialog, variable=part_var, values=part_names, state="readonly", width=300)
@@ -711,7 +711,7 @@ class Graphics:
                 """Confirm and submit the part contract via controller."""
                 try:
                     idx = part_names.index(part_var.get())
-                    part_id = part_ids[idx]
+
                     length = int(length_var.get())
 
                     row = parts_df.iloc[idx]

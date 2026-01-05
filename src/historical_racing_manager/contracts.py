@@ -1,7 +1,6 @@
-import os
+import pathlib
 import random
 from datetime import datetime
-from typing import Dict, List, Optional
 
 import pandas as pd
 
@@ -20,27 +19,31 @@ class ContractsModel:
         self.CScontract: pd.DataFrame = pd.DataFrame()
         self.MScontract: pd.DataFrame = pd.DataFrame()
         self.MTcontract: pd.DataFrame = pd.DataFrame()
-        self.reserved_slots: Dict[int, int] = {}  # teamID → available seats
+        self.reserved_slots: dict[int, int] = {}  # teamID → available seats
         self.driver_slots_current: pd.DataFrame = pd.DataFrame()
         self.driver_slots_next: pd.DataFrame = pd.DataFrame()
         self.rules: pd.DataFrame = pd.DataFrame()
         # Mapping: seriesID -> reputation (filled during sign_driver_contracts)
-        self.series_reputation: Dict[int, float] = {}
+        self.series_reputation: dict[int, float] = {}
 
     # === Persistence ===
-    def load(self, folder: str) -> bool:
+    def load(self, folder: pathlib.Path) -> bool:
         """Loads all contract-related CSV files from the given folder.
 
         Ensures required columns exist in ``DTcontract``.
 
+         folder (Path): Path to the folder containing contract CSV files.
+
         Returns ``True`` on success, ``False`` on failure.
         """
         try:
-            self.DTcontract = pd.read_csv(os.path.join(folder, "DTcontract.csv"))
-            self.STcontract = pd.read_csv(os.path.join(folder, "STcontract.csv"))
-            self.CScontract = pd.read_csv(os.path.join(folder, "CScontract.csv"))
-            self.MScontract = pd.read_csv(os.path.join(folder, "MScontract.csv"))
-            self.MTcontract = pd.read_csv(os.path.join(folder, "MTcontract.csv"))
+            # TODO: why no constants for those file names??
+            self.DTcontract = pd.read_csv(folder / "DTcontract.csv")
+            self.STcontract = pd.read_csv(folder / "STcontract.csv")
+            self.CScontract = pd.read_csv(folder / "CScontract.csv")
+            self.MScontract = pd.read_csv(folder / "MScontract.csv")
+            self.MTcontract = pd.read_csv(folder / "MTcontract.csv")
+            # TODO: why inconsistent column names and not in some enum/constants?
             self._ensure_columns(
                 self.DTcontract,
                 {
@@ -58,15 +61,15 @@ class ContractsModel:
             print("Contract load failed:", e)
             return False
 
-    def save(self, folder: str) -> None:
+    def save(self, folder: pathlib.Path) -> None:
         """Saves all contract-related DataFrames into CSV files in the given folder."""
-        self.DTcontract.to_csv(os.path.join(folder, "DTcontract.csv"), index=False)
-        self.STcontract.to_csv(os.path.join(folder, "STcontract.csv"), index=False)
-        self.CScontract.to_csv(os.path.join(folder, "CScontract.csv"), index=False)
-        self.MScontract.to_csv(os.path.join(folder, "MScontract.csv"), index=False)
-        self.MTcontract.to_csv(os.path.join(folder, "MTcontract.csv"), index=False)
+        self.DTcontract.to_csv(folder / "DTcontract.csv", index=False)
+        self.STcontract.to_csv(folder / "STcontract.csv", index=False)
+        self.CScontract.to_csv(folder / "CScontract.csv", index=False)
+        self.MScontract.to_csv(folder / "MScontract.csv", index=False)
+        self.MTcontract.to_csv(folder / "MTcontract.csv", index=False)
 
-    def _ensure_columns(self, df: pd.DataFrame, required: Dict[str, object]) -> None:
+    def _ensure_columns(self, df: pd.DataFrame, required: dict[str, object]) -> None:
         """Ensures the DataFrame ``df`` contains required columns.
 
         Missing columns are added with the provided default values.
@@ -83,7 +86,7 @@ class ContractsModel:
             DataFrame with columns: ``teamID``, ``seriesID``, ``year``, ``max_slots``, ``signed_slots``, ``free_slots``.
         """
         self.rules = rules
-        records: List[Dict[str, int]] = []
+        records: list[dict[str, int]] = []
         for _, row in self.STcontract.iterrows():
             team_id = int(row["teamID"])
             series_id = int(row["seriesID"])
@@ -192,7 +195,7 @@ class ContractsModel:
         return self.DTcontract[
             (self.DTcontract["startYear"] <= year)
             & (self.DTcontract["endYear"] >= year)
-            & (self.DTcontract["active"] == True)
+            & (self.DTcontract["active"] is True)
             ].copy()
 
     def get_team_series(self, team_id: int) -> list[int]:
@@ -352,7 +355,7 @@ class ContractsModel:
                     self.driver_slots_next = pd.concat([self.driver_slots_next, pd.DataFrame([rec])], ignore_index=True)
 
     # === Driver Contracts ===
-    def disable_driver_contracts(self, driver_ids: List[int]) -> None:
+    def disable_driver_contracts(self, driver_ids: list[int]) -> None:
         """Disable contracts for the given driver IDs."""
         self._ensure_columns(self.DTcontract, {"active": True})
         self.DTcontract.loc[self.DTcontract["driverID"].isin(driver_ids), "active"] = False
@@ -368,13 +371,13 @@ class ContractsModel:
                     (self.DTcontract["driverID"] == driver_id) &
                     (self.DTcontract["startYear"] <= current_year) &
                     (self.DTcontract["endYear"] >= current_year) &
-                    (self.DTcontract["active"] == True)
+                    (self.DTcontract["active"] is True)
             )
         else:
             mask = (
                     (self.DTcontract["driverID"] == driver_id) &
                     (self.DTcontract["startYear"] > current_year) &
-                    (self.DTcontract["active"] == True)
+                    (self.DTcontract["active"] is True)
             )
 
         affected = self.DTcontract.loc[mask]
@@ -425,7 +428,7 @@ class ContractsModel:
                 return df.iloc[i:]
         return df.iloc[0:0]  # if no row has a free slot
 
-    def _choose_team_by_reputation(self, teams_df: pd.DataFrame) -> Optional[int]:
+    def _choose_team_by_reputation(self, teams_df: pd.DataFrame) -> int | None:
         """
         Choose a team based on reputation, ensuring it has free slots available.
         Returns the teamID or None if no suitable team is found.
@@ -451,7 +454,7 @@ class ContractsModel:
         team_id = int(filtered_teams.iloc[chosen_index]["teamID"])
         return team_id
 
-    def _choose_driver_by_reputation(self, drivers_df: pd.DataFrame) -> Optional[int]:
+    def _choose_driver_by_reputation(self, drivers_df: pd.DataFrame) -> int | None:
         """
         Choose a driver based on race reputation.
         Returns the driverID or None if no drivers are available.
@@ -552,7 +555,7 @@ class ContractsModel:
             (self.DTcontract["active"])
             ]
 
-        unavailable_ids: List[int] = []
+        unavailable_ids: list[int] = []
         for _, row in active_contracts.iterrows():
             driver_id = int(row["driverID"])
             wanted_rep = int(row.get("wanted_reputation", 0))
@@ -581,7 +584,7 @@ class ContractsModel:
             & (self.DTcontract["active"])
             ]
 
-    def _get_teams_without_driver(self, teams_df: pd.DataFrame, year: int) -> List[int]:
+    def _get_teams_without_driver(self, teams_df: pd.DataFrame, year: int) -> list[int]:
         """Return a list of team IDs that do not have an active driver contract in the given year."""
         active_contracts = self.DTcontract[
             (self.DTcontract["active"]) & (self.DTcontract["startYear"] <= year) & (self.DTcontract["endYear"] >= year)]
@@ -599,7 +602,7 @@ class ContractsModel:
             series: pd.DataFrame,
             temp,
             teams: pd.DataFrame,
-            team_inputs: Dict[int, tuple],
+            team_inputs: dict[int, tuple],
     ) -> None:
         """Main method for signing driver contracts."""
         self._ensure_columns(self.DTcontract, {
@@ -632,7 +635,7 @@ class ContractsModel:
 
     def _sign_current_year_contracts(
             self, series_id: int, teams_model, current_date: datetime,
-            active_drivers: pd.DataFrame, series: pd.DataFrame, rules: pd.DataFrame, team_inputs: Dict[int, tuple]
+            active_drivers: pd.DataFrame, series: pd.DataFrame, rules: pd.DataFrame, team_inputs: dict[int, tuple]
     ) -> None:
         """Sign contracts for the current year for all teams in a given series."""
         max_cars = int(rules.loc[rules["seriesID"] == series_id, "max_cars"].iloc[0])
@@ -688,7 +691,7 @@ class ContractsModel:
     def _sign_next_year_contract_if_needed(
             self, teams_model, current_date: datetime,
             active_drivers: pd.DataFrame, series: pd.DataFrame, rules: pd.DataFrame,
-            teams: pd.DataFrame, team_inputs: Dict[int, tuple]
+            teams: pd.DataFrame, team_inputs: dict[int, tuple]
     ) -> None:
         """Attempt to sign contracts for the next year if conditions are met."""
         teams_updated = self._annotate_teams_with_free_slots(series, teams, rules, current_date.year)
@@ -737,7 +740,7 @@ class ContractsModel:
     def _handle_human_contract(
             self, team_id: int, series_id: int, year: int,
             active_drivers: pd.DataFrame, series: pd.DataFrame, rules: pd.DataFrame,
-            team_inputs: Dict[int, tuple]
+            team_inputs: dict[int, tuple]
     ) -> None:
         """Handle contract signing for a human-controlled team."""
         print("Human team:", team_id)
@@ -819,12 +822,12 @@ class ContractsModel:
             manufacturers: pd.DataFrame,
             teams_in_series: pd.Series,
             active_contracts: pd.DataFrame,
-            team_inputs: Dict[int, Dict[str, tuple]],
+            team_inputs: dict[int, dict[str, tuple]],
             year: int,
             teams: pd.DataFrame,
-    ) -> List[Dict[str, object]]:
+    ) -> list[dict[str, object]]:
         """Generate contracts for AI teams for a given part type if no active contract exists."""
-        contracts: List[Dict[str, object]] = []
+        contracts: list[dict[str, object]] = []
         parts_of_type = series_parts[series_parts["partType"] == part_type].copy()
         if parts_of_type.empty:
             return contracts
@@ -886,7 +889,7 @@ class ContractsModel:
 
     def sign_car_part_contracts(self, active_series: pd.DataFrame, current_date: datetime, car_parts: pd.DataFrame,
                                 teams_model, manufacturers: pd.DataFrame,
-                                team_inputs: Dict[int, Dict[str, tuple]]) -> None:
+                                team_inputs: dict[int, dict[str, tuple]]) -> None:
         """
         Sign car part contracts for AI teams and process pending offers for human teams.
         """
@@ -915,7 +918,7 @@ class ContractsModel:
             (self.MTcontract["startYear"] <= current_date.year) & (self.MTcontract["endYear"] >= current_date.year)]
         self._deduct_existing_contract_costs(human_teams, active_contracts, teams)
 
-        new_contracts: List[Dict[str, object]] = []
+        new_contracts: list[dict[str, object]] = []
         for si in active_series["seriesID"]:
             series_parts = car_parts[
                 (car_parts["seriesID"] == si) & (car_parts["year"] == current_date.year)
@@ -1049,7 +1052,7 @@ class ContractsModel:
         Creates a pending contract offer – the driver will decide the next day.
         """
         if not hasattr(self, "pending_offers"):
-            self.pending_offers: List[Dict[str, int]] = []
+            self.pending_offers: list[dict[str, int]] = []
         team_series = self.STcontract[self.STcontract["teamID"] == team_id]
         if team_series.empty:
             print(f"Team {team_id} has no series – cannot offer contract.")
@@ -1066,7 +1069,7 @@ class ContractsModel:
         self.pending_offers.append(offer)
         print(f"[ContractsModel] Offer for driver {driver_id} created (year {year}).")
 
-    def process_driver_offers(self, current_date: datetime, active_drivers: pd.DataFrame) -> List[Dict]:
+    def process_driver_offers(self, current_date: datetime, active_drivers: pd.DataFrame) -> list[dict]:
         """
         Processes pending offers – drivers decide whether to accept the contract.
         Typically called during daily progression.
@@ -1160,7 +1163,7 @@ class ContractsModel:
         """
         contracts = self.DTcontract[
             (self.DTcontract["teamID"] == team_id) &
-            (self.DTcontract["active"] == True) &
+            (self.DTcontract["active"] is True) &
             (self.DTcontract["endYear"] >= current_year)
             ].copy()
 
