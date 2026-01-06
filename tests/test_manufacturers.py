@@ -101,7 +101,7 @@ def test_save(tmp_path, model):
 def test_get_manufacturers(model):
     df = model.get_manufacturers()
     assert list(df.columns) == ["manufacture_id", "name"]
-    assert len(df) == 2
+    assert len(df) == 7
 
 
 def test_get_manufacturers_empty():
@@ -114,14 +114,14 @@ def test_get_manufacturers_empty():
 # === Tests: get_manufacturers_id() ===
 
 def test_get_manufacturers_id(model):
-    assert model.get_manufacturers_id("Ferrari") == 10
+    assert model.get_manufacturers_id("Ford") == 1
     assert model.get_manufacturers_id("Unknown") is None
 
 
 # === Tests: map_manufacturer_ids_to_names() ===
 
 def test_map_manufacturer_ids_to_names(model):
-    result = model.map_manufacturer_ids_to_names({10: ["engine"], 999: ["gearbox"]})
+    result = model.map_manufacturer_ids_to_names({0: ["engine"], 999: ["gearbox"]})
     assert result["Ferrari"] == ["engine"]
     assert result[""] == ["gearbox"]
 
