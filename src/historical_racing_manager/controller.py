@@ -119,7 +119,7 @@ class Controller:
                 return
 
             self.active_team = team_name
-            self.active_team_id = int(match.iloc[0]["teamID"])
+            self.active_team_id = int(match.iloc[0]["team_id"])
             print(f"[Controller] Active team set to {team_name} (ID {self.active_team_id})")
 
             # Automatically refresh the My Team tab
@@ -155,7 +155,7 @@ class Controller:
         Returns (finance_employees, max_possible_employees, employee_salary, kick_price) for the active team.
         """
         team_id = self.get_active_team_id()
-        team = self.teams_model.teams[self.teams_model.teams["teamID"] == team_id]
+        team = self.teams_model.teams[self.teams_model.teams["team_id"] == team_id]
         if team.empty:
             print(f"[Controller] Team {team_id} does not exist.")
             return 0, 0, 0, 0
@@ -174,7 +174,7 @@ class Controller:
         """Returns all data for the active team."""
         team_id = self.get_active_team_id()
         team_name = self.get_active_team()
-        money = int(self.teams_model.teams.loc[self.teams_model.teams["teamID"] == team_id, "money"].iloc[0])
+        money = int(self.teams_model.teams.loc[self.teams_model.teams["team_id"] == team_id, "money"].iloc[0])
 
         return {
             "name": team_name,
@@ -492,13 +492,13 @@ class Controller:
     def _deduct_all_contracts_for_year(self, year: int):
         contracts = self.contracts_model.get_contracts_for_year(year)
         for _, row in contracts.iterrows():
-            self.teams_model.deduct_money(row["teamID"], row["salary"])
-            # print(f"Team {row['teamID']} paid {row['salary']} for driver {row['driverID']} in {year}.")
+            self.teams_model.deduct_money(row["team_id"], row["salary"])
+            # print(f"Team {row['team_id']} paid {row['salary']} for driver {row['driver_id']} in {year}.")
 
     def _deduct_all_part_contracts_for_year(self, year: int):
         contracts = self.contracts_model.get_active_part_contracts_for_year(year)
         for _, row in contracts.iterrows():
-            self.teams_model.deduct_money(row["teamID"], row["cost"])
+            self.teams_model.deduct_money(row["team_id"], row["cost"])
 
     def _handle_season_start(self, date: datetime):
         # If we should plan races this year
@@ -827,12 +827,12 @@ class Controller:
             print(df.head(60))
             print(self.drivers_model.drivers.head(60))"""
 
-        df["driverID"] = df["driverID"].astype(int)
-        self.drivers_model.drivers["driverID"] = self.drivers_model.drivers["driverID"].astype(int)
+        df["driver_id"] = df["driver_id"].astype(int)
+        self.drivers_model.drivers["driver_id"] = self.drivers_model.drivers["driver_id"].astype(int)
         df = df.merge(
-            self.drivers_model.drivers[["driverID", "forename", "surname", "year"]],
-            left_on="driverID",
-            right_on="driverID",
+            self.drivers_model.drivers[["driver_id", "forename", "surname", "year"]],
+            left_on="driver_id",
+            right_on="driver_id",
             how="left"
         )
 
@@ -846,14 +846,14 @@ class Controller:
                 "display.expand_frame_repr", False
         ):
             print(df.head(60))"""
-        df.drop(columns=["year", "driverID"], inplace=True)
+        df.drop(columns=["year", "driver_id"], inplace=True)
 
         # Add team name
         df = df.merge(
-            self.teams_model.teams[["teamID", "team_name"]],
-            on="teamID", how="left"
+            self.teams_model.teams[["team_id", "team_name"]],
+            on="team_id", how="left"
         )
-        df.drop(columns=["teamID"], inplace=True)
+        df.drop(columns=["team_id"], inplace=True)
 
         # Rename columns
         df.rename(columns={
@@ -905,7 +905,7 @@ class Controller:
         # In production, you should display a driver selection (e.g., via GUI).
         # For testing, we pick the first:
         contract = contracts.iloc[0]
-        driver_id = contract["driverID"]
+        driver_id = contract["driver_id"]
         cost = self.contracts_model.terminate_driver_contract(driver_id, team_id, current_year)
         self.teams_model.deduct_money(team_id, cost)
 
@@ -921,7 +921,7 @@ class Controller:
             return contracts
 
         drivers = self.drivers_model.get_active_drivers()
-        merged = drivers.merge(contracts, on="driverID", how="right")
+        merged = drivers.merge(contracts, on="driver_id", how="right")
         return merged
 
     def terminate_driver_contract_by_id(self, driver_id: int, cost: int, is_current: bool) -> str:
@@ -931,8 +931,8 @@ class Controller:
 
         # Verify the contract exists (optional if UI filters correctly)
         contract = self.contracts_model.dt_contract[
-            (self.contracts_model.dt_contract["driverID"] == driver_id) &
-            (self.contracts_model.dt_contract["teamID"] == team_id) &
+            (self.contracts_model.dt_contract["driver_id"] == driver_id) &
+            (self.contracts_model.dt_contract["team_id"] == team_id) &
             (self.contracts_model.dt_contract["active"] is True)
             ]
 

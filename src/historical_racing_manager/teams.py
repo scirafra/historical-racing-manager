@@ -37,7 +37,7 @@ class TeamsModel:
 
         # Ensure required columns exist so GUI and business logic don't fail
         required_cols = [
-            "teamID",
+            "team_id",
             "team_name",
             "owner_id",
             "money",
@@ -83,12 +83,12 @@ class TeamsModel:
 
     def _get_teams_light(self) -> pd.DataFrame:
         """
-        Return a lightweight DataFrame with teamID and team_name.
+        Return a lightweight DataFrame with team_id and team_name.
         Always returns a DataFrame with those columns even if self.teams is empty.
         """
         if getattr(self, "teams", None) is None or self.teams.empty:
             return pd.DataFrame(columns=[COL_TEAM_ID, "team_name"])
-        # Ensure teamID column exists
+        # Ensure team_id column exists
         if COL_TEAM_ID not in self.teams.columns:
             return pd.DataFrame(columns=[COL_TEAM_ID, "team_name"])
         # Ensure team_name exists
@@ -117,22 +117,22 @@ class TeamsModel:
 
     def get_teams(self) -> pd.DataFrame:
         """
-        Return a DataFrame with teamID, team_name and owner_id for all teams.
+        Return a DataFrame with team_id, team_name and owner_id for all teams.
 
         Ensures the returned DataFrame always contains these columns even if the main table is empty.
         """
         if self.teams.empty:
-            return pd.DataFrame(columns=["teamID", "team_name", "owner_id"])
+            return pd.DataFrame(columns=["team_id", "team_name", "owner_id"])
 
         if "owner_id" not in self.teams.columns:
             self.teams["owner_id"] = 0
 
-        return self.teams[["teamID", "team_name", "owner_id"]].copy()
+        return self.teams[["team_id", "team_name", "owner_id"]].copy()
 
     def get_teams_id(self, search_team_name: str) -> int | None:
-        """Return the teamID for a given team name, or None if not found."""
+        """Return the team_id for a given team name, or None if not found."""
         result = self.teams.query("team_name == @search_team_name")
-        return result["teamID"].iat[0] if not result.empty else None
+        return result["team_id"].iat[0] if not result.empty else None
 
     def get_human_team_mask(self, year: int) -> pd.Series:
         """
@@ -154,9 +154,9 @@ class TeamsModel:
     def get_team_staff_counts(self, team_id: int) -> pd.DataFrame:
         """
         Return a DataFrame with counts of finance and design employees for the given team_id.
-        Columns: teamID, finance_employees, design_employees.
+        Columns: team_id, finance_employees, design_employees.
         """
-        result = self.teams.loc[self.teams["teamID"] == team_id, ["teamID", "finance_employees", "design_employees"]]
+        result = self.teams.loc[self.teams["team_id"] == team_id, ["team_id", "finance_employees", "design_employees"]]
         return result.reset_index(drop=True)
 
     def invest_finance(self, year: int, investments: dict):
@@ -171,10 +171,10 @@ class TeamsModel:
         human_teams = self.teams.loc[human_mask].copy()
 
         for team_id, fin_count in investments.items():
-            if team_id not in human_teams["teamID"].values:
+            if team_id not in human_teams["team_id"].values:
                 continue
 
-            team_row = human_teams.loc[human_teams["teamID"] == team_id]
+            team_row = human_teams.loc[human_teams["team_id"] == team_id]
             money = team_row["money"].iloc[0]
             max_fin = money // self.finance_employee_salary
 
@@ -189,9 +189,9 @@ class TeamsModel:
         self._update_teams(human_teams)
 
     def _update_teams(self, updated_df: pd.DataFrame):
-        """Update the main teams table with values from updated_df (indexed by teamID)."""
-        self.teams.set_index("teamID", inplace=True)
-        updated_df.set_index("teamID", inplace=True)
+        """Update the main teams table with values from updated_df (indexed by team_id)."""
+        self.teams.set_index("team_id", inplace=True)
+        updated_df.set_index("team_id", inplace=True)
         self.teams.update(updated_df)
         self.teams.reset_index(inplace=True)
 
@@ -241,7 +241,7 @@ class TeamsModel:
 
     def get_team_finance_info(self, team_id: int) -> dict:
         """
-        Return basic financial information for a team: teamID, money, finance_employees.
+        Return basic financial information for a team: team_id, money, finance_employees.
 
         Returns an empty dict if the teams table is not initialized or the team is not found.
         """
@@ -256,7 +256,7 @@ class TeamsModel:
 
         row = match.iloc[0]
         return {
-            "teamID": int(row["teamID"]),
+            "team_id": int(row["team_id"]),
             "money": int(row["money"]),
             "finance_employees": int(row["finance_employees"]),
         }
@@ -345,5 +345,5 @@ class TeamsModel:
         self.teams.loc[debt_mask, "money"] = 10_000_000
 
         # Optional logging for visibility
-        bankrupt_ids = self.teams.loc[debt_mask, "teamID"].tolist() if "teamID" in self.teams.columns else []
+        bankrupt_ids = self.teams.loc[debt_mask, "team_id"].tolist() if "team_id" in self.teams.columns else []
         print(f"[TeamsModel] Applied bankruptcy reset to {len(bankrupt_ids)} teams: {bankrupt_ids}")

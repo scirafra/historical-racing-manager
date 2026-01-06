@@ -92,7 +92,7 @@ class ManufacturerModel:
                 "part_id",
                 "part_type",
                 "manufacture_id",
-                "rulesID",
+                "rules_id",
                 "series_id",
                 "power",
                 "reliability",

@@ -1,4 +1,4 @@
-driverID,forename,surname,year,dob,nationality,alive,ability,ability_original,ability_best,reputation_race,reputation_season,retire
+driver_id,forename,surname,year,dob,nationality,alive,ability,ability_original,ability_best,reputation_race,reputation_season,retire
 10000,Lewis,Hamilton,1985,1985-01-07,British,True,69,69,69,0,0,38
 30,Michael,Schumacher,1969,1969-01-03,German,True,69,69,69,0,0,39
 579,Juan,Fangio,1911,1911-06-24,Argentine,True,68,68,68,0,0,59

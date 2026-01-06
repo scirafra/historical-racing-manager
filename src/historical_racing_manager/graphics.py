@@ -527,7 +527,7 @@ class Graphics:
 
             ctk.CTkLabel(dialog, text="Select Driver:", font=("Arial", 13, "bold")).pack(pady=5)
             driver_names = [f"{row.forename} {row.surname} ({row.nationality})" for _, row in df.iterrows()]
-            driver_ids = list(df["driverID"])
+            driver_ids = list(df["driver_id"])
             driver_var = ctk.StringVar()
             driver_box = ctk.CTkComboBox(dialog, variable=driver_var, values=driver_names, state="readonly", width=300)
             driver_box.pack(pady=5)
@@ -617,7 +617,7 @@ class Graphics:
                 for _, row in df.iterrows()
             ]
 
-            driver_ids = list(df["driverID"])
+            driver_ids = list(df["driver_id"])
             driver_var = ctk.StringVar()
             driver_box = ctk.CTkComboBox(dialog, variable=driver_var, values=driver_names, state="readonly", width=400)
             driver_box.pack(pady=5)

@@ -20,7 +20,7 @@ class ContractsModel:
         self.cs_contract: pd.DataFrame = pd.DataFrame()
         self.ms_contract: pd.DataFrame = pd.DataFrame()
         self.mt_contract: pd.DataFrame = pd.DataFrame()
-        self.reserved_slots: dict[int, int] = {}  # teamID → available seats
+        self.reserved_slots: dict[int, int] = {}  # team_id → available seats
         self.driver_slots_current: pd.DataFrame = pd.DataFrame()
         self.driver_slots_next: pd.DataFrame = pd.DataFrame()
         self.rules: pd.DataFrame = pd.DataFrame()
@@ -48,8 +48,8 @@ class ContractsModel:
             self._ensure_columns(
                 self.dt_contract,
                 {
-                    "driverID": None,
-                    "teamID": None,
+                    "driver_id": None,
+                    "team_id": None,
                     "salary": 0,
                     "wanted_reputation": 0,
                     "startYear": 0,
@@ -84,17 +84,17 @@ class ContractsModel:
         """Creates a slot table for all teams in ``st_contract`` for the specified year.
 
         Returns:
-            DataFrame with columns: ``teamID``, ``series_id``, ``year``, ``max_slots``, ``signed_slots``, ``free_slots``.
+            DataFrame with columns: ``team_id``, ``series_id``, ``year``, ``max_slots``, ``signed_slots``, ``free_slots``.
         """
         self.rules = rules
         records: list[dict[str, int]] = []
         for _, row in self.st_contract.iterrows():
-            team_id = int(row["teamID"])
+            team_id = int(row["team_id"])
             series_id = int(row["series_id"])
             max_slots = int(rules.loc[rules["series_id"] == series_id, "max_cars"].iloc[0])
             signed = (
                 self.dt_contract[
-                    (self.dt_contract["teamID"] == team_id)
+                    (self.dt_contract["team_id"] == team_id)
                     & (self.dt_contract["startYear"] <= year)
                     & (self.dt_contract["endYear"] >= year)
                     & (self.dt_contract["active"])
@@ -102,7 +102,7 @@ class ContractsModel:
             )
             records.append(
                 {
-                    "teamID": team_id,
+                    "team_id": team_id,
                     "series_id": series_id,
                     "year": year,
                     "max_slots": max_slots,
@@ -147,7 +147,7 @@ class ContractsModel:
         years = (start_range, start_range - 1, start_range - 2)
 
         mask = (
-                (self.dt_contract["teamID"] == team_id)
+                (self.dt_contract["team_id"] == team_id)
                 & (self.dt_contract["active"])
                 & (
                         (self.dt_contract["endYear"] >= start_range)
@@ -157,8 +157,8 @@ class ContractsModel:
         contracts = self.dt_contract[mask].copy()
 
         if not active_drivers.empty:
-            custom_drivers = active_drivers[["driverID", "forename", "surname", "nationality", "age"]]
-            contracts = custom_drivers.merge(contracts, on="driverID", how="right")
+            custom_drivers = active_drivers[["driver_id", "forename", "surname", "nationality", "age"]]
+            contracts = custom_drivers.merge(contracts, on="driver_id", how="right")
 
             merged = contracts.copy()
 
@@ -179,16 +179,16 @@ class ContractsModel:
                     }
                 )[["subjectID", f"{yr}", f"Position_{yr}", f"Points_{yr}"]]
 
-                merged = merged.merge(year_standings, left_on="driverID", right_on="subjectID", how="left")
+                merged = merged.merge(year_standings, left_on="driver_id", right_on="subjectID", how="left")
                 merged = merged.drop(columns=["subjectID"], errors="ignore")
 
             base_cols = ["forename", "surname", "nationality", "age", "salary", "startYear", "endYear"]
-            other_cols = [c for c in merged.columns if c not in base_cols and c != "driverID"]
+            other_cols = [c for c in merged.columns if c not in base_cols and c != "driver_id"]
             merged = merged[base_cols + other_cols]
-            merged = merged.drop(columns=["teamID", "wanted_reputation", "active", "driverID"], errors="ignore")
+            merged = merged.drop(columns=["team_id", "wanted_reputation", "active", "driver_id"], errors="ignore")
             return merged
 
-        contracts = contracts.drop(columns=["teamID", "wanted_reputation", "active", "driverID"], errors="ignore")
+        contracts = contracts.drop(columns=["team_id", "wanted_reputation", "active", "driver_id"], errors="ignore")
         return contracts
 
     def get_contracts_for_year(self, year: int) -> pd.DataFrame:
@@ -204,7 +204,7 @@ class ContractsModel:
         Return a list of series IDs in which the team has a contract.
         """
         try:
-            team_contracts = self.st_contract[self.st_contract["teamID"] == team_id]
+            team_contracts = self.st_contract[self.st_contract["team_id"] == team_id]
             if team_contracts.empty:
                 return []
             return team_contracts["series_id"].astype(int).unique().tolist()
@@ -232,7 +232,7 @@ class ContractsModel:
         # TODO: emojis in comments are a bit weird... look like AI generated?
         # 🔍 Select all contracts for the given team
         mask = (
-                (self.mt_contract["teamID"] == team_id)
+                (self.mt_contract["team_id"] == team_id)
                 & (
                         (self.mt_contract["endYear"] >= start_range)
                         | (self.mt_contract["startYear"] >= start_range)
@@ -328,7 +328,7 @@ class ContractsModel:
         for df in (self.driver_slots_current, self.driver_slots_next):
             if df.empty:
                 continue
-            mask = (df["teamID"] == team_id) & (df["year"] == year)
+            mask = (df["team_id"] == team_id) & (df["year"] == year)
             if mask.any():
                 # Ensure free_slots does not go negative
                 df.loc[mask, "signed_slots"] = df.loc[mask, "signed_slots"] + 1
@@ -337,12 +337,12 @@ class ContractsModel:
         if not updated:
             # No record found -> create new (fallback)
             # Get series for team
-            series_row = self.st_contract[self.st_contract["teamID"] == team_id]
+            series_row = self.st_contract[self.st_contract["team_id"] == team_id]
             if not series_row.empty:
                 series_id = int(series_row.iloc[0]["series_id"])
                 max_slots = int(self.rules.loc[self.rules["series_id"] == series_id, "max_cars"].iloc[0])
                 rec = {
-                    "teamID": team_id,
+                    "team_id": team_id,
                     "series_id": series_id,
                     "year": year,
                     "max_slots": max_slots,
@@ -360,7 +360,7 @@ class ContractsModel:
     def disable_driver_contracts(self, driver_ids: list[int]) -> None:
         """Disable contracts for the given driver IDs."""
         self._ensure_columns(self.dt_contract, {"active": True})
-        self.dt_contract.loc[self.dt_contract["driverID"].isin(driver_ids), "active"] = False
+        self.dt_contract.loc[self.dt_contract["driver_id"].isin(driver_ids), "active"] = False
 
     def disable_driver_contract(self, driver_id: int, current: bool, current_year: int) -> None:
         """
@@ -370,14 +370,14 @@ class ContractsModel:
 
         if current:
             mask = (
-                    (self.dt_contract["driverID"] == driver_id) &
+                    (self.dt_contract["driver_id"] == driver_id) &
                     (self.dt_contract["startYear"] <= current_year) &
                     (self.dt_contract["endYear"] >= current_year) &
                     (self.dt_contract["active"] is True)
             )
         else:
             mask = (
-                    (self.dt_contract["driverID"] == driver_id) &
+                    (self.dt_contract["driver_id"] == driver_id) &
                     (self.dt_contract["startYear"] > current_year) &
                     (self.dt_contract["active"] is True)
             )
@@ -433,7 +433,7 @@ class ContractsModel:
     def _choose_team_by_reputation(self, teams_df: pd.DataFrame) -> int | None:
         """
         Choose a team based on reputation, ensuring it has free slots available.
-        Returns the teamID or None if no suitable team is found.
+        Returns the team_id or None if no suitable team is found.
         """
         if teams_df.empty:
             return None
@@ -453,13 +453,13 @@ class ContractsModel:
         if chosen_index < 0:
             return None  # no team with free slots
 
-        team_id = int(filtered_teams.iloc[chosen_index]["teamID"])
+        team_id = int(filtered_teams.iloc[chosen_index]["team_id"])
         return team_id
 
     def _choose_driver_by_reputation(self, drivers_df: pd.DataFrame) -> int | None:
         """
         Choose a driver based on race reputation.
-        Returns the driverID or None if no drivers are available.
+        Returns the driver_id or None if no drivers are available.
         """
         if drivers_df.empty:
             return None
@@ -467,7 +467,7 @@ class ContractsModel:
         n = len(sorted_drivers)
 
         chosen_index = self._generate_index(n)
-        return int(sorted_drivers.iloc[chosen_index]["driverID"])
+        return int(sorted_drivers.iloc[chosen_index]["driver_id"])
 
     def _reserve_slot_for_human_team(self, team_id: int, max_cars: int) -> None:
         """Increase the number of reserved slots for a human team if it has not reached the maximum."""
@@ -479,7 +479,7 @@ class ContractsModel:
     def _estimate_salary(self, drivers_df: pd.DataFrame, driver_id: int) -> int:
         """Estimate salary for a driver based on base salary and race reputation."""
         base = 25000
-        rep = int(drivers_df.loc[drivers_df["driverID"] == driver_id, "reputation_race"].iloc[0])
+        rep = int(drivers_df.loc[drivers_df["driver_id"] == driver_id, "reputation_race"].iloc[0])
         return int(base + rep * 100)
 
     def _deactivate_lower_series_contract(self, driver_id: int, year: int, new_team_id: int) -> None:
@@ -488,8 +488,8 @@ class ContractsModel:
         conflict with a new contract. Historical contracts remain untouched.
         """
         mask = (
-                (self.dt_contract["driverID"] == driver_id)
-                & (self.dt_contract["teamID"] != new_team_id)
+                (self.dt_contract["driver_id"] == driver_id)
+                & (self.dt_contract["team_id"] != new_team_id)
                 & (self.dt_contract["active"])
                 & (self.dt_contract["endYear"] >= year)
         )
@@ -505,8 +505,8 @@ class ContractsModel:
     ) -> None:
         """Create a new driver contract and update the system state."""
         self.dt_contract.loc[len(self.dt_contract)] = {
-            "driverID": int(driver_id),
-            "teamID": int(team_id),
+            "driver_id": int(driver_id),
+            "team_id": int(team_id),
             "salary": int(salary),
             "wanted_reputation": series_reputation,
             "startYear": int(start_year),
@@ -543,7 +543,7 @@ class ContractsModel:
         min_age = int(rules.loc[rules["series_id"] == series_id, "min_age"].iloc[0])
         max_age = int(rules.loc[rules["series_id"] == series_id, "max_age"].iloc[0])
 
-        team_series_row = self.st_contract[self.st_contract["teamID"] == team_id]
+        team_series_row = self.st_contract[self.st_contract["team_id"] == team_id]
         team_series_id = int(team_series_row.iloc[0]["series_id"]) if not team_series_row.empty else None
 
         # Get series reputation for the team
@@ -559,7 +559,7 @@ class ContractsModel:
 
         unavailable_ids: list[int] = []
         for _, row in active_contracts.iterrows():
-            driver_id = int(row["driverID"])
+            driver_id = int(row["driver_id"])
             wanted_rep = int(row.get("wanted_reputation", 0))
 
             # Driver is unavailable if their wanted_reputation is ≤ series reputation
@@ -567,7 +567,7 @@ class ContractsModel:
                 unavailable_ids.append(driver_id)
 
         # Filter out unavailable drivers
-        able = able[~able["driverID"].isin(unavailable_ids)]
+        able = able[~able["driver_id"].isin(unavailable_ids)]
         able = able[(able["age"] >= min_age) & (able["age"] <= max_age)]
 
         # Calculate maximum contract length so driver does not exceed max_age
@@ -580,7 +580,7 @@ class ContractsModel:
     def _get_active_team_contracts(self, team_id: int, year: int) -> pd.DataFrame:
         """Return all active driver contracts for a given team in a specific year."""
         return self.dt_contract[
-            (self.dt_contract["teamID"] == team_id)
+            (self.dt_contract["team_id"] == team_id)
             & (self.dt_contract["startYear"] <= year)
             & (self.dt_contract["endYear"] >= year)
             & (self.dt_contract["active"])
@@ -591,8 +591,8 @@ class ContractsModel:
         active_contracts = self.dt_contract[
             (self.dt_contract["active"]) & (self.dt_contract["startYear"] <= year) & (
                     self.dt_contract["endYear"] >= year)]
-        contracted_team_ids = active_contracts["teamID"].unique()
-        all_team_ids = teams_df["teamID"].unique()
+        contracted_team_ids = active_contracts["team_id"].unique()
+        all_team_ids = teams_df["team_id"].unique()
         return [int(tid) for tid in all_team_ids if int(tid) not in contracted_team_ids]
 
     def sign_driver_contracts(
@@ -609,8 +609,8 @@ class ContractsModel:
     ) -> None:
         """Main method for signing driver contracts."""
         self._ensure_columns(self.dt_contract, {
-            "driverID": None,
-            "teamID": None,
+            "driver_id": None,
+            "team_id": None,
             "salary": 0,
             "wanted_reputation": 0,
             "startYear": 0,
@@ -642,12 +642,12 @@ class ContractsModel:
     ) -> None:
         """Sign contracts for the current year for all teams in a given series."""
         max_cars = int(rules.loc[rules["series_id"] == series_id, "max_cars"].iloc[0])
-        team_ids = self.st_contract[self.st_contract["series_id"] == series_id]["teamID"].astype(int)
+        team_ids = self.st_contract[self.st_contract["series_id"] == series_id]["team_id"].astype(int)
 
         for team_id in team_ids:
             signed = len(self._get_active_team_contracts(team_id, current_date.year))
             missing = max_cars - signed
-            is_human = teams_model.teams.loc[teams_model.teams["teamID"] == team_id, "owner_id"].iloc[0] > 0
+            is_human = teams_model.teams.loc[teams_model.teams["team_id"] == team_id, "owner_id"].iloc[0] > 0
 
             for _ in range(missing):
                 if is_human and team_inputs.get(team_id):
@@ -671,10 +671,10 @@ class ContractsModel:
         free_slots = []
 
         for _, row in teams.iterrows():
-            team_id = row["teamID"]
+            team_id = row["team_id"]
 
             # Get series_id from st_contract
-            team_series = self.st_contract[self.st_contract["teamID"] == team_id]
+            team_series = self.st_contract[self.st_contract["team_id"] == team_id]
             if team_series.empty:
                 free_slots.append(0)
                 continue
@@ -701,8 +701,8 @@ class ContractsModel:
         if team_id is None:
             return
 
-        is_human = teams_model.teams.loc[teams_model.teams["teamID"] == team_id, "owner_id"].iloc[0] > 0
-        team_series = self.st_contract[self.st_contract["teamID"] == team_id]
+        is_human = teams_model.teams.loc[teams_model.teams["team_id"] == team_id, "owner_id"].iloc[0] > 0
+        team_series = self.st_contract[self.st_contract["team_id"] == team_id]
         if team_series.empty:
             return
 
@@ -749,11 +749,11 @@ class ContractsModel:
         driver_id, salary, length = team_inputs[team_id]
         available = self._get_available_drivers(active_drivers, series, year, series_id, team_id, rules)
 
-        if driver_id not in available["driverID"].values:
+        if driver_id not in available["driver_id"].values:
             self._decrement_reserved_slot(team_id)
             return
 
-        max_len = int(available.loc[available["driverID"] == driver_id, "max_contract_len"].iloc[0])
+        max_len = int(available.loc[available["driver_id"] == driver_id, "max_contract_len"].iloc[0])
         length = min(length, max_len)
         series_reputation = self._get_reputation_by_series_id(series, series_id)
         self._create_driver_contract(driver_id, team_id, series_reputation, salary, year, length)
@@ -775,7 +775,7 @@ class ContractsModel:
         salary = self._estimate_salary(available, driver_id)
         length = 1
         if future_years > 0:
-            max_len = int(available.loc[available["driverID"] == driver_id, "max_contract_len"].iloc[0])
+            max_len = int(available.loc[available["driver_id"] == driver_id, "max_contract_len"].iloc[0])
             # Realistic distribution of contract lengths in F1
             lengths = [1, 2, 3, 4]
             weights = [40, 30, 20, 10]
@@ -812,10 +812,10 @@ class ContractsModel:
                                         teams: pd.DataFrame) -> None:
         """Deduct costs of existing contracts from human teams' budgets."""
         pay_by_team = (
-            active_contracts[active_contracts["teamID"].isin(human_teams["teamID"])].groupby("teamID")["cost"].sum()
+            active_contracts[active_contracts["team_id"].isin(human_teams["team_id"])].groupby("team_id")["cost"].sum()
         )
         for team_id, total_cost in pay_by_team.items():
-            teams.loc[teams["teamID"] == team_id, "money"] -= total_cost
+            teams.loc[teams["team_id"] == team_id, "money"] -= total_cost
 
     def _generate_part_contracts(
             self,
@@ -841,7 +841,7 @@ class ContractsModel:
         for team_id in teams_in_series:
             team_id = int(team_id)
             current_contract = active_contracts[
-                (active_contracts["teamID"] == team_id) & (active_contracts["part_type"] == part_type)]
+                (active_contracts["team_id"] == team_id) & (active_contracts["part_type"] == part_type)]
             if not current_contract.empty:
                 continue
 
@@ -853,7 +853,7 @@ class ContractsModel:
             contracts.append(
                 {
                     "series_id": int(series_parts["series_id"].iloc[0]),
-                    "teamID": team_id,
+                    "team_id": team_id,
                     "manufacture_id": manufacture_id,
                     "part_type": part_type,
                     "startYear": year,
@@ -861,7 +861,7 @@ class ContractsModel:
                     "cost": int(cost),
                 }
             )
-            teams.loc[teams["teamID"] == team_id, "money"] -= cost
+            teams.loc[teams["team_id"] == team_id, "money"] -= cost
 
         return contracts
 
@@ -874,7 +874,7 @@ class ContractsModel:
             return pd.DataFrame()
 
         # Determine which series the team belongs to
-        match = self.st_contract[self.st_contract["teamID"] == team_id]
+        match = self.st_contract[self.st_contract["team_id"] == team_id]
         if match.empty:
             return pd.DataFrame()
 
@@ -898,7 +898,7 @@ class ContractsModel:
             self.mt_contract,
             {
                 "series_id": None,
-                "teamID": None,
+                "team_id": None,
                 "manufacture_id": None,
                 "part_type": "",
                 "startYear": 0,
@@ -924,10 +924,10 @@ class ContractsModel:
             series_parts = car_parts[
                 (car_parts["series_id"] == si) & (car_parts["year"] == current_date.year)
                 ]
-            all_teams_in_series = self.st_contract[self.st_contract["series_id"] == si]["teamID"].astype(int)
+            all_teams_in_series = self.st_contract[self.st_contract["series_id"] == si]["team_id"].astype(int)
 
             # Remove human teams
-            human_ids = set(teams_model.get_human_teams(current_date)["teamID"].astype(int).values)
+            human_ids = set(teams_model.get_human_teams(current_date)["team_id"].astype(int).values)
             ai_teams_in_series = all_teams_in_series[~all_teams_in_series.isin(human_ids)]
 
             for part_type in ["engine", "chassi", "pneu"]:
@@ -952,7 +952,7 @@ class ContractsModel:
                     self.mt_contract,
                     pd.DataFrame([{
                         "series_id": self._get_series_for_team(offer["team_id"]),
-                        "teamID": offer["team_id"],
+                        "team_id": offer["team_id"],
                         "manufacture_id": self._get_manufacturer_for_part(offer["part_id"]),
                         "part_type": self._get_part_type(offer["part_id"]),
                         "startYear": offer["year"],
@@ -961,12 +961,12 @@ class ContractsModel:
                     }])
                 ], ignore_index=True)
 
-                teams_model.teams.loc[teams_model.teams["teamID"] == offer["team_id"], "money"] -= offer["price"]
+                teams_model.teams.loc[teams_model.teams["team_id"] == offer["team_id"], "money"] -= offer["price"]
 
             self.pending_part_offers.clear()
 
     def _get_series_for_team(self, team_id: int) -> int:
-        match = self.st_contract[self.st_contract["teamID"] == team_id]
+        match = self.st_contract[self.st_contract["team_id"] == team_id]
         return int(match["series_id"].iloc[0]) if not match.empty else -1
 
     def _get_manufacturer_for_part(self, part_id: int) -> int:
@@ -985,7 +985,7 @@ class ContractsModel:
         """
         self._ensure_columns(self.mt_contract, {
             "series_id": None,
-            "teamID": None,
+            "team_id": None,
             "manufacture_id": None,
             "part_type": "",
             "startYear": 0,
@@ -995,7 +995,7 @@ class ContractsModel:
 
         # Check if a contract for this part type already exists during the given period
         overlap_mask = (
-                (self.mt_contract["teamID"] == team_id) &
+                (self.mt_contract["team_id"] == team_id) &
                 (self.mt_contract["part_type"] == part_type) &
                 (self.mt_contract["startYear"] <= year + length - 1) &
                 (self.mt_contract["endYear"] >= year)
@@ -1007,7 +1007,7 @@ class ContractsModel:
             return False
 
         # Determine the series for the team
-        match = self.st_contract[self.st_contract["teamID"] == team_id]
+        match = self.st_contract[self.st_contract["team_id"] == team_id]
         if match.empty:
             print(f"[ContractsModel] Team {team_id} has no series, contract not created.")
             return False
@@ -1017,7 +1017,7 @@ class ContractsModel:
         # Create the new contract
         new_contract = {
             "series_id": series_id,
-            "teamID": team_id,
+            "team_id": team_id,
             "manufacture_id": manufacturer_id,
             "part_type": part_type,
             "startYear": year,
@@ -1036,7 +1036,7 @@ class ContractsModel:
         """
         Returns a list of drivers that the team (player) can sign for the given year.
         """
-        team_row = self.st_contract[self.st_contract["teamID"] == team_id]
+        team_row = self.st_contract[self.st_contract["team_id"] == team_id]
         if team_row.empty:
             print("teamrow empty")
             return pd.DataFrame()
@@ -1053,7 +1053,7 @@ class ContractsModel:
         """
         if not hasattr(self, "pending_offers"):
             self.pending_offers: list[dict[str, int]] = []
-        team_series = self.st_contract[self.st_contract["teamID"] == team_id]
+        team_series = self.st_contract[self.st_contract["team_id"] == team_id]
         if team_series.empty:
             print(f"Team {team_id} has no series – cannot offer contract.")
             return
@@ -1090,7 +1090,7 @@ class ContractsModel:
 
             # Get driver's position based on reputation
             drivers_sorted = active_drivers.sort_values("reputation_race", ascending=False).reset_index(drop=True)
-            driver_pos = drivers_sorted[drivers_sorted["driverID"] == driver_id].index
+            driver_pos = drivers_sorted[drivers_sorted["driver_id"] == driver_id].index
             if driver_pos.empty:
                 print(f"Driver {driver_id} is not among active drivers.")
                 continue
@@ -1099,7 +1099,7 @@ class ContractsModel:
             min_salary = 4000000 // position
 
             # Get team and series info
-            team_series = self.st_contract[self.st_contract["teamID"] == team_id]
+            team_series = self.st_contract[self.st_contract["team_id"] == team_id]
             if team_series.empty:
                 print(f"Team {team_id} has no series.")
                 continue
@@ -1142,7 +1142,7 @@ class ContractsModel:
         return signed_contracts
 
     def reset_reserved_slot(self) -> None:
-        """Resets the reserved slot counts to 0 while preserving existing teamIDs."""
+        """Resets the reserved slot counts to 0 while preserving existing team_ids."""
         for team_id in self.reserved_slots:
             self.reserved_slots[team_id] = 0
 
@@ -1162,7 +1162,7 @@ class ContractsModel:
         including termination cost and a flag indicating whether the contract is currently active.
         """
         contracts = self.dt_contract[
-            (self.dt_contract["teamID"] == team_id) &
+            (self.dt_contract["team_id"] == team_id) &
             (self.dt_contract["active"] is True) &
             (self.dt_contract["endYear"] >= current_year)
             ].copy()
@@ -1192,8 +1192,8 @@ class ContractsModel:
             int: The cost of terminating the contract.
         """
         mask = (
-                (self.dt_contract["driverID"] == driver_id) &
-                (self.dt_contract["teamID"] == team_id) &
+                (self.dt_contract["driver_id"] == driver_id) &
+                (self.dt_contract["team_id"] == team_id) &
                 (self.dt_contract["endYear"] >= current_year)
         )
         contract = self.dt_contract[mask]
@@ -1222,7 +1222,7 @@ class ContractsModel:
         """
         self._ensure_columns(self.mt_contract, {
             "series_id": None,
-            "teamID": None,
+            "team_id": None,
             "manufacture_id": None,
             "part_type": "",
             "startYear": 0,

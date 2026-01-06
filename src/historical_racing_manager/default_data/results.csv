@@ -1,1 +1,1 @@
-raceID,driverID,teamID,carID,position,season,series_id,round,engineID,chassiID,pneuID
+raceID,driver_id,team_id,carID,position,season,series_id,round,engineID,chassiID,pneuID

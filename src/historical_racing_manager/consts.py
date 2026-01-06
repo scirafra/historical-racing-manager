@@ -117,7 +117,7 @@ MANUFACTURER_REQUIRED_FILES = [
 ]
 
 # --- Merge keys used when generating new parts ---
-MERGE_KEYS = ["rulesID", "manufacture_id", "part_type", "series_id"]
+MERGE_KEYS = ["rules_id", "manufacture_id", "part_type", "series_id"]
 
 # --- Default cost of generated parts ---
 DEFAULT_PART_COST = 250_000
@@ -183,7 +183,7 @@ COL_RULE_END = "endSeason"
 # ===== Teams Model =====
 TEAMS_FILE = "teams.csv"
 
-COL_TEAM_ID = "teamID"
+COL_TEAM_ID = "team_id"
 COL_TEAM_NAME = "team_name"
 COL_OWNER_ID = "owner_id"
 COL_MONEY = "money"

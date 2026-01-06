@@ -52,13 +52,13 @@ class DriversModel:
 
     def get_driver_id(self, driver_forename: str, driver_surname: str) -> int | None:
         result = self.drivers.query("forename == @driver_forename and surname == @driver_surname")
-        return result["driverID"].iat[0] if not result.empty else None
+        return result["driver_id"].iat[0] if not result.empty else None
 
     def get_raced_drivers(self, driver_ids: Iterable[int]) -> list[str]:
         """
         Return list of full driver names for provided driver_ids, but with drivers
         that are currently active placed first (order preserved).
-        - driver_ids: iterable of driverID (ints or convertible to int)
+        - driver_ids: iterable of driver_id (ints or convertible to int)
         - Uses self.active_drivers if available; falls back to self.drivers.
         - Returns list[str] with same length as unique driver_ids (duplicates removed, first kept).
         - Missing IDs produce empty string entries.
@@ -79,12 +79,12 @@ class DriversModel:
 
         # Determine active set (use active_drivers if present, else drivers)
         active_df = getattr(self, "active_drivers", None)
-        if active_df is None or active_df.empty or "driverID" not in active_df.columns:
+        if active_df is None or active_df.empty or "driver_id" not in active_df.columns:
             main_df = getattr(self, "drivers", None)
-            active_set = set(main_df["driverID"].astype(
-                int).tolist()) if main_df is not None and not main_df.empty and "driverID" in main_df.columns else set()
+            active_set = set(main_df["driver_id"].astype(
+                int).tolist()) if main_df is not None and not main_df.empty and "driver_id" in main_df.columns else set()
         else:
-            active_set = set(active_df["driverID"].astype(int).tolist())
+            active_set = set(active_df["driver_id"].astype(int).tolist())
 
         # Split ids preserving order
         active_in_ids = [i for i in ids if i in active_set]
@@ -95,17 +95,17 @@ class DriversModel:
 
     def get_drivers_light(self) -> pd.DataFrame:
         """
-        Return a lightweight DataFrame with driverID, forename and surname.
+        Return a lightweight DataFrame with driver_id, forename and surname.
         Always returns a DataFrame with those columns even if self.drivers is empty.
         """
         if getattr(self, "drivers", None) is None or self.drivers.empty:
-            return pd.DataFrame(columns=["driverID", "forename", "surname"])
+            return pd.DataFrame(columns=["driver_id", "forename", "surname"])
         # Ensure required columns exist
         df = self.drivers.copy()
-        for col in ("driverID", "forename", "surname"):
+        for col in ("driver_id", "forename", "surname"):
             if col not in df.columns:
-                df[col] = "" if col != "driverID" else 0
-        return df[["driverID", "forename", "surname"]].copy()
+                df[col] = "" if col != "driver_id" else 0
+        return df[["driver_id", "forename", "surname"]].copy()
 
     def get_driver_full_names(self, active_driver_ids: Iterable[int], driver_ids: Iterable[int]) -> list[str]:
         """
@@ -118,7 +118,7 @@ class DriversModel:
 
         # Build lookup map keyed by stringified id for robust matching
         lookup = df.copy()
-        lookup["id_norm"] = lookup["driverID"].astype(str)
+        lookup["id_norm"] = lookup["driver_id"].astype(str)
         lookup["full_name"] = lookup["surname"].astype(str) + " " + lookup["forename"].astype(str)
         name_map = lookup.set_index("id_norm")["full_name"].to_dict()
 
@@ -136,28 +136,28 @@ class DriversModel:
 
     def get_drivers(self) -> pd.DataFrame:
         return (
-            self.drivers[["driverID", "forename", "surname"]].copy()
+            self.drivers[["driver_id", "forename", "surname"]].copy()
             if not self.drivers.empty
-            else pd.DataFrame(columns=["driverID", "forename", "surname"])
+            else pd.DataFrame(columns=["driver_id", "forename", "surname"])
         )
 
     def get_active_drivers(self) -> pd.DataFrame:
         return (
-            self.active_drivers[["driverID", "forename", "surname", "nationality", "age"]].copy()
+            self.active_drivers[["driver_id", "forename", "surname", "nationality", "age"]].copy()
             if not self.active_drivers.empty
-            else pd.DataFrame(columns=["driverID", "forename", "surname", "nationality", "age"])
+            else pd.DataFrame(columns=["driver_id", "forename", "surname", "nationality", "age"])
         )
 
     def get_active_drivers_with_reputation(self) -> pd.DataFrame:
         return (
-            self.active_drivers[["driverID", "forename", "surname", "nationality", "age", "reputation_race"]].copy()
+            self.active_drivers[["driver_id", "forename", "surname", "nationality", "age", "reputation_race"]].copy()
             if not self.active_drivers.empty
-            else pd.DataFrame(columns=["driverID", "forename", "surname", "nationality", "age", "reputation_race"])
+            else pd.DataFrame(columns=["driver_id", "forename", "surname", "nationality", "age", "reputation_race"])
         )
 
     def _sync_active_to_main(self) -> None:
-        self.drivers.set_index("driverID", inplace=True)
-        self.active_drivers.set_index("driverID", inplace=True)
+        self.drivers.set_index("driver_id", inplace=True)
+        self.active_drivers.set_index("driver_id", inplace=True)
         self.drivers.update(self.active_drivers)
         self.drivers.reset_index(inplace=True)
         self.active_drivers.reset_index(inplace=True)
@@ -172,7 +172,7 @@ class DriversModel:
 
         self.sort_active_drivers()
         self._check_duplicates()
-        return self.active_drivers["driverID"]
+        return self.active_drivers["driver_id"]
 
     def _initialize_active_drivers(self, current_date: date) -> None:
         self._update_ages(self.drivers, current_date.year)
@@ -190,7 +190,7 @@ class DriversModel:
 
         if not self.retiring_drivers.empty:
             self.active_drivers = self.active_drivers[
-                ~self.active_drivers["driverID"].isin(self.retiring_drivers["driverID"])
+                ~self.active_drivers["driver_id"].isin(self.retiring_drivers["driver_id"])
             ]
 
         self.retiring_drivers = self.active_drivers[
@@ -201,9 +201,9 @@ class DriversModel:
         if not new_drivers.empty:
             self.active_drivers = pd.concat([self.active_drivers, new_drivers], ignore_index=True)
 
-        # Fix: update rows using driverID, not row index!
-        self.drivers.set_index("driverID", inplace=True)
-        ret = self.retiring_drivers.set_index("driverID")
+        # Fix: update rows using driver_id, not row index!
+        self.drivers.set_index("driver_id", inplace=True)
+        ret = self.retiring_drivers.set_index("driver_id")
 
         self.drivers.update(ret)
 
@@ -220,24 +220,24 @@ class DriversModel:
         ).reset_index(drop=True)
 
     def _check_duplicates(self) -> None:
-        if self.active_drivers["driverID"].duplicated().any():
-            sys.exit("Program terminated due to duplicate driverID.")
+        if self.active_drivers["driver_id"].duplicated().any():
+            sys.exit("Program terminated due to duplicate driver_id.")
 
     def get_retiring_drivers(self) -> list[int]:
-        return self.retiring_drivers["driverID"].tolist() if not self.retiring_drivers.empty else []
+        return self.retiring_drivers["driver_id"].tolist() if not self.retiring_drivers.empty else []
 
     # ====== DRIVER STATUS UPDATES ======
 
     def mark_drivers_dead(self, driver_ids: list[int], event_date: str) -> None:
-        self.active_drivers.loc[self.active_drivers["driverID"].isin(driver_ids), "alive"] = False
-        self.drivers.loc[self.drivers["driverID"].isin(driver_ids), "alive"] = False
-        self.active_drivers = self.active_drivers[~self.active_drivers["driverID"].isin(driver_ids)]
+        self.active_drivers.loc[self.active_drivers["driver_id"].isin(driver_ids), "alive"] = False
+        self.drivers.loc[self.drivers["driver_id"].isin(driver_ids), "alive"] = False
+        self.active_drivers = self.active_drivers[~self.active_drivers["driver_id"].isin(driver_ids)]
         self.dead_drivers.append([event_date, driver_ids])
 
     def race_reputations(self, reputation: int, results: list[int]) -> None:
         for idx, driver_id in enumerate(results, start=1):
             self.active_drivers.loc[
-                self.active_drivers["driverID"] == driver_id, "reputation_race"
+                self.active_drivers["driver_id"] == driver_id, "reputation_race"
             ] += (reputation // idx)
 
     def update_reputations(self) -> None:
@@ -300,11 +300,11 @@ class DriversModel:
             adj = self.calculate_adjustment(df.loc[i], pos, target_year)
             df.at[i, "ability"] += adj
         df["ability_best"] = df.apply(lambda row: max(row["ability"], row["ability_best"]), axis=1)
-        return df.drop(columns=["position"])[["driverID", "ability", "ability_best"]]
+        return df.drop(columns=["position"])[["driver_id", "ability", "ability_best"]]
 
     def _update_driver_abilities(self, updated: pd.DataFrame) -> None:
-        self.active_drivers.set_index("driverID", inplace=True)
-        updated.set_index("driverID", inplace=True)
+        self.active_drivers.set_index("driver_id", inplace=True)
+        updated.set_index("driver_id", inplace=True)
         self.active_drivers.update(updated)
         self.active_drivers.reset_index(inplace=True)
 
@@ -351,7 +351,7 @@ class DriversModel:
 
     @staticmethod
     def _generate_driver_id(df: pd.DataFrame, id_offset: int) -> tuple[int, int]:
-        max_id = df["driverID"].max() if not df.empty else 0
+        max_id = df["driver_id"].max() if not df.empty else 0
         new_id = max_id + 1 + id_offset
         return new_id, id_offset + 1
 
@@ -360,7 +360,7 @@ class DriversModel:
             driver_id: int, forename: str, surname: str, nationality: str, year: int, ability: int
     ) -> dict:
         return {
-            "driverID": driver_id,
+            "driver_id": driver_id,
             "forename": forename,
             "surname": surname,
             "year": year,

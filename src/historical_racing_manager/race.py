@@ -112,12 +112,12 @@ class RaceModel:
             return []
 
         # overenie existencie stĺpca
-        if "teamID" not in self.results.columns:
+        if "team_id" not in self.results.columns:
             return []
 
         # vybrať stĺpec, odstrániť NA, konvertovať na int ak je to možné,
         # zachovať poradie prvého výskytu pomocou drop_duplicates
-        series = self.results["teamID"].dropna()
+        series = self.results["team_id"].dropna()
 
         try:
             series_int = series.astype(int)
@@ -139,12 +139,12 @@ class RaceModel:
             return []
 
         # overenie existencie stĺpca
-        if "driverID" not in self.results.columns:
+        if "driver_id" not in self.results.columns:
             return []
 
         # vybrať stĺpec, odstrániť NA, konvertovať na int ak je to možné,
         # zachovať poradie prvého výskytu pomocou drop_duplicates
-        series = self.results["driverID"].dropna()
+        series = self.results["driver_id"].dropna()
 
         try:
             series_int = series.astype(int)
@@ -239,23 +239,23 @@ class RaceModel:
         # If driver column exists, merge driver names and create a driver_name column
         if 'driver' in pivot.columns:
             pivot = pivot.merge(
-                drivers[["driverID", "forename", "surname"]],
+                drivers[["driver_id", "forename", "surname"]],
                 left_on="driver",
-                right_on="driverID",
+                right_on="driver_id",
                 how="left"
             )
             pivot["driver_name"] = pivot["forename"] + " " + pivot["surname"]
-            pivot.drop(columns=["driverID", "forename", "surname", "driver"], inplace=True)
+            pivot.drop(columns=["driver_id", "forename", "surname", "driver"], inplace=True)
 
         # If team column exists, merge team names
         if 'team' in pivot.columns:
             pivot = pivot.merge(
-                teams[["teamID", "team_name"]],
+                teams[["team_id", "team_name"]],
                 left_on="team",
-                right_on="teamID",
+                right_on="team_id",
                 how="left"
             )
-            pivot.drop(columns=["teamID", "team"], inplace=True)
+            pivot.drop(columns=["team_id", "team"], inplace=True)
 
         # Map manufacturer IDs to names for engine, chassi, and pneu columns
         mf_map = manufacturers.set_index("manufacture_id")["name"].to_dict()
@@ -322,7 +322,7 @@ class RaceModel:
         df = self.results[
             (self.results["series_id"] == series_id) & (self.results["season"] == season)
             ][
-            ["driverID", "teamID", "engineID", "chassiID", "pneuID", "raceID", "position", "round"]
+            ["driver_id", "team_id", "engineID", "chassiID", "pneuID", "raceID", "position", "round"]
         ].copy()
         return df.reset_index(drop=True)
 
@@ -393,17 +393,17 @@ class RaceModel:
 
         max_rounds = filtered.groupby("year")["round"].max().reset_index()
         result = pd.merge(filtered, max_rounds, on=["year", "round"])
-        result = result.rename(columns={"subjectID": "driverID"})
+        result = result.rename(columns={"subjectID": "driver_id"})
 
         position_counts = result.pivot_table(
-            index="driverID", columns="position", aggfunc="size", fill_value=0
+            index="driver_id", columns="position", aggfunc="size", fill_value=0
         )
         sorted_df = position_counts.sort_values(
             by=position_counts.columns.tolist(), ascending=[False] * len(position_counts.columns)
         ).reset_index()
 
-        names = drivers_model.drivers[["driverID", "forename", "surname"]]
-        return pd.merge(sorted_df, names, on="driverID", how="left")
+        names = drivers_model.drivers[["driver_id", "forename", "surname"]]
+        return pd.merge(sorted_df, names, on="driver_id", how="left")
 
     def pivot_results_by_race(self, series_id: int, season: int, manufacturers: pd.DataFrame,
                               fill_value=None) -> pd.DataFrame:
@@ -430,7 +430,7 @@ class RaceModel:
         df["pneuID"] = df["pneuID"].map(manu_map)
 
         pivot = df.pivot(
-            index=["driverID", "teamID", "engineID", "chassiID", "pneuID"],
+            index=["driver_id", "team_id", "engineID", "chassiID", "pneuID"],
             columns="col_label",
             values="position",
         )
@@ -455,12 +455,12 @@ class RaceModel:
                 last_idx = st2.groupby("subjectID")["round"].idxmax()
                 final = st2.loc[last_idx].rename(
                     columns={
-                        "subjectID": "driverID",
+                        "subjectID": "driver_id",
                         "position": "final_position",
                         "points": "final_points",
                     }
-                )[["driverID", "final_position", "final_points"]]
-                pivot = pivot.merge(final, on="driverID", how="left")
+                )[["driver_id", "final_position", "final_points"]]
+                pivot = pivot.merge(final, on="driver_id", how="left")
 
         return pivot
 
@@ -519,8 +519,8 @@ class RaceModel:
             List of driver IDs who died during the simulated race (returned by simulate_race).
         """
         series_id = int(races_today.iloc[idx]["series_id"])
-        layout_id = int(races_today.iloc[idx]["layoutID"])
-        layout_row = self.circuit_layouts[self.circuit_layouts["layoutID"] == layout_id].iloc[0]
+        layout_id = int(races_today.iloc[idx]["layout_id"])
+        layout_row = self.circuit_layouts[self.circuit_layouts["layout_id"] == layout_id].iloc[0]
 
         # Select active driver-team contracts valid for the current year
         active_dt = contracts_model.dt_contract[
@@ -529,20 +529,20 @@ class RaceModel:
             & (contracts_model.dt_contract["endYear"] >= current_date.year)
             ]
         # Keep only drivers that are currently active in drivers_model
-        active_dt = active_dt[active_dt["driverID"].isin(drivers_model.active_drivers["driverID"])]
+        active_dt = active_dt[active_dt["driver_id"].isin(drivers_model.active_drivers["driver_id"])]
 
         # Teams that participate in this series
         teams_in_series = contracts_model.st_contract[
             contracts_model.st_contract["series_id"] == series_id
-            ]["teamID"]
+            ]["team_id"]
         # Grid entries limited to teams in the series
-        grid_dt = active_dt[active_dt["teamID"].isin(teams_in_series)]
+        grid_dt = active_dt[active_dt["team_id"].isin(teams_in_series)]
 
         # Merge driver ability into the grid
         selected = pd.merge(
             grid_dt,
-            drivers_model.active_drivers[["driverID", "ability"]],
-            on="driverID",
+            drivers_model.active_drivers[["driver_id", "ability"]],
+            on="driver_id",
             how="left",
         )
 
@@ -584,8 +584,8 @@ class RaceModel:
         # Apply parts to selected grid entries: set part IDs and accumulate stats
 
         for _, part in merged.iterrows():
-            team_id = part["teamID"]
-            mask = selected["teamID"] == team_id
+            team_id = part["team_id"]
+            mask = selected["team_id"] == team_id
             selected.loc[mask, part["part_type"]] = (
                 int(part["manufacture_id"]) if pd.notna(part["manufacture_id"]) else -1
             )
@@ -605,14 +605,14 @@ class RaceModel:
         # Build the race_data DataFrame with required columns
         race_data = pd.DataFrame(
             columns=[
-                "driverID",
+                "driver_id",
                 "ability",
                 "carID",
                 "carSpeedAbility",
                 "carReliability",
                 "carSafety",
                 "totalAbility",
-                "teamID",
+                "team_id",
                 "engineID",
                 "chassiID",
                 "pneuID",
@@ -627,14 +627,14 @@ class RaceModel:
             ability = int(row.get("ability", 0))
 
             race_data.loc[len(race_data)] = [
-                int(row["driverID"]),
+                int(row["driver_id"]),
                 ability,
                 j,
                 power,
                 int(rel * wet_val),
                 int(saf * wet_val),
                 int(power * track_factor + ability * 100),
-                int(row["teamID"]),
+                int(row["team_id"]),
                 int(row.get("engine", 0)),
                 int(row.get("chassi", 0)),
                 int(row.get("pneu", 0)),
@@ -737,7 +737,7 @@ class RaceModel:
                         chosen = idx_pool[j]
                         break
             ranking.append((chosen, True))
-            rep_drivers.append(int(finish.loc[chosen, "driverID"]))
+            rep_drivers.append(int(finish.loc[chosen, "driver_id"]))
             idx_pool.remove(chosen)
 
         # Update driver reputations if the drivers_model supports it
@@ -748,7 +748,7 @@ class RaceModel:
         if hasattr(teams_model, "add_race_reputation"):
             team_results = []
             for driver_id in rep_drivers:
-                team_id = finish.loc[finish["driverID"] == driver_id, "teamID"].iloc[0]
+                team_id = finish.loc[finish["driver_id"] == driver_id, "team_id"].iloc[0]
                 team_results.append(int(team_id))
 
             teams_model.add_race_reputation(int(race_row.get("reputation", 0) or 0), team_results)
@@ -766,8 +766,8 @@ class RaceModel:
         for pos, (fin_idx, _) in enumerate(ranking, start=1):
             self.results.loc[len(self.results)] = [
                 int(race_row["raceID"]),
-                int(finish.loc[fin_idx, "driverID"]),
-                int(finish.loc[fin_idx, "teamID"]),
+                int(finish.loc[fin_idx, "driver_id"]),
+                int(finish.loc[fin_idx, "team_id"]),
                 int(finish.loc[fin_idx, "carID"]),
                 int(pos),
                 int(race_row["season"]),
@@ -782,8 +782,8 @@ class RaceModel:
         for _, row in crash.iterrows():
             self.results.loc[len(self.results)] = [
                 int(race_row["raceID"]),
-                int(row["driverID"]),
-                int(row["teamID"]),
+                int(row["driver_id"]),
+                int(row["team_id"]),
                 int(row["carID"]),
                 CRASH_CODE,
                 int(race_row["season"]),
@@ -798,8 +798,8 @@ class RaceModel:
         for _, row in death.iterrows():
             self.results.loc[len(self.results)] = [
                 int(race_row["raceID"]),
-                int(row["driverID"]),
-                int(row["teamID"]),
+                int(row["driver_id"]),
+                int(row["team_id"]),
                 int(row["carID"]),
                 DEATH_CODE,
                 int(race_row["season"]),
@@ -809,7 +809,7 @@ class RaceModel:
                 int(row["chassiID"]),
                 int(row["pneuID"]),
             ]
-            died.append(int(row["driverID"]))
+            died.append(int(row["driver_id"]))
 
         # Update championship standings if this race is part of the championship
         if bool(race_row.get("championship", False)):
@@ -886,7 +886,7 @@ class RaceModel:
         race_row : pd.Series
             Row describing the race (series_id, season, raceID, etc.).
         race_data : pd.DataFrame
-            DataFrame with entries for the race; must include subject ID columns like "driverID".
+            DataFrame with entries for the race; must include subject ID columns like "driver_id".
         ranking : list
             Ordered list of finishing entries (tuples of index and something else).
         finish : pd.DataFrame
@@ -1102,15 +1102,15 @@ class RaceModel:
                         continue
 
                     # Choose a random circuit and a matching layout
-                    track_id = int(rd.choice(self.circuits["circuitID"].tolist()))
-                    matching = self.circuit_layouts[self.circuit_layouts["circuitID"] == track_id]
+                    track_id = int(rd.choice(self.circuits["circuit_id"].tolist()))
+                    matching = self.circuit_layouts[self.circuit_layouts["circuit_id"] == track_id]
                     if matching.empty:
                         continue
-                    layout_id = int(rd.choice(matching["layoutID"].tolist()))
+                    layout_id = int(rd.choice(matching["layout_id"].tolist()))
                     # Read layout safety rating
                     safety = float(
                         self.circuit_layouts.loc[
-                            self.circuit_layouts["layoutID"] == layout_id, "safety"
+                            self.circuit_layouts["layout_id"] == layout_id, "safety"
                         ].iloc[0]
                     )
 
@@ -1128,7 +1128,7 @@ class RaceModel:
                         "series_id": int(srow["series_id"]),
                         "season": int(season),
                         "trackID": track_id,
-                        "layoutID": layout_id,
+                        "layout_id": layout_id,
                         "trackSafety": safety,
                         "race_date": race_date,
                         "name": f"Preteky {srow['name']}",

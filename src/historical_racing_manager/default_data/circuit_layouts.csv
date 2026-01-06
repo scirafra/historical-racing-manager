@@ -1,4 +1,4 @@
-layoutID,circuitID,length,capacity,corners,safety,since,until
+layout_id,circuit_id,length,capacity,corners,safety,since,until
 0,0,126,10000,2,55,1894,9999
 1,1,1,10000,90,244,1894,9999
 2,2,1178,10000,70,700,1894,9999

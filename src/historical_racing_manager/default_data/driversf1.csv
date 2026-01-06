@@ -1,4 +1,4 @@
-driverID,forename,surname,year,dob,nationality,ability,ability_original,ability_best
+driver_id,forename,surname,year,dob,nationality,ability,ability_original,ability_best
 1,Lewis,Hamilton,1985,1985-01-07,British,68,68,68
 30,Michael,Schumacher,1969,1969-01-03,German,67,67,67
 579,Juan,Fangio,1911,1911-06-24,Argentine,67,67,67
