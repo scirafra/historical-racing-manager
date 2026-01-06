@@ -93,8 +93,8 @@ COLUMN_LABELS = {
     "nationality": "Nationality",
     "age": "Age",
     "salary": "Salary",
-    "startYear": "Start Year",
-    "endYear": "End Year",
+    "start_year": "Start Year",
+    "end_year": "End Year",
     "part_type": "Part Type",
     "cost": "Cost",
     "name": "Component Name",
@@ -172,13 +172,13 @@ POINT_RULES_FILE = "point_rules.csv"
 # --- Column names for series ---
 COL_SERIES_ID = "series_id"
 COL_SERIES_NAME = "name"
-COL_SERIES_START = "startYear"
-COL_SERIES_END = "endYear"
+COL_SERIES_START = "start_year"
+COL_SERIES_END = "end_year"
 
 # --- Column names for point rules ---
 COL_RULE_SERIES_ID = "series_id"
-COL_RULE_START = "startSeason"
-COL_RULE_END = "endSeason"
+COL_RULE_START = "start_season"
+COL_RULE_END = "end_season"
 
 # ===== Teams Model =====
 TEAMS_FILE = "teams.csv"

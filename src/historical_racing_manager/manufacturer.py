@@ -122,10 +122,10 @@ class ManufacturerModel:
         """Merge contracts with rules and filter to those active in the given year."""
         merged = pd.merge(contracts, self.rules, on=["series_id", "part_type"], how="left")
         mask = (
-                (merged["startYear"] <= year)
-                & (merged["startSeason"] <= year)
-                & (merged["endYear"] >= year)
-                & (merged["endSeason"] >= year)
+                (merged["start_year"] <= year)
+                & (merged["start_season"] <= year)
+                & (merged["end_year"] >= year)
+                & (merged["end_season"] >= year)
         )
         return merged.loc[mask].copy()
 

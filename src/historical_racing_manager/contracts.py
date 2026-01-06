@@ -52,8 +52,8 @@ class ContractsModel:
                     "team_id": None,
                     "salary": 0,
                     "wanted_reputation": 0,
-                    "startYear": 0,
-                    "endYear": 0,
+                    "start_year": 0,
+                    "end_year": 0,
                     "active": True,
                 },
             )
@@ -95,8 +95,8 @@ class ContractsModel:
             signed = (
                 self.dt_contract[
                     (self.dt_contract["team_id"] == team_id)
-                    & (self.dt_contract["startYear"] <= year)
-                    & (self.dt_contract["endYear"] >= year)
+                    & (self.dt_contract["start_year"] <= year)
+                    & (self.dt_contract["end_year"] >= year)
                     & (self.dt_contract["active"])
                     ].shape[0]
             )
@@ -150,8 +150,8 @@ class ContractsModel:
                 (self.dt_contract["team_id"] == team_id)
                 & (self.dt_contract["active"])
                 & (
-                        (self.dt_contract["endYear"] >= start_range)
-                        | (self.dt_contract["startYear"] >= start_range)
+                        (self.dt_contract["end_year"] >= start_range)
+                        | (self.dt_contract["start_year"] >= start_range)
                 )
         )
         contracts = self.dt_contract[mask].copy()
@@ -167,7 +167,7 @@ class ContractsModel:
                 year_standings = race_model.standings[race_model.standings["year"] == yr]
 
                 # Reduce to last known round (or last entry)
-                last_round = year_standings.sort_values("round").groupby("subjectID").last().reset_index()
+                last_round = year_standings.sort_values("round").groupby("subject_id").last().reset_index()
 
                 last_round = last_round.merge(series[["series_id", "name"]], on="series_id", how="left")
 
@@ -177,12 +177,12 @@ class ContractsModel:
                         "position": f"Position_{yr}",
                         "points": f"Points_{yr}",
                     }
-                )[["subjectID", f"{yr}", f"Position_{yr}", f"Points_{yr}"]]
+                )[["subject_id", f"{yr}", f"Position_{yr}", f"Points_{yr}"]]
 
-                merged = merged.merge(year_standings, left_on="driver_id", right_on="subjectID", how="left")
-                merged = merged.drop(columns=["subjectID"], errors="ignore")
+                merged = merged.merge(year_standings, left_on="driver_id", right_on="subject_id", how="left")
+                merged = merged.drop(columns=["subject_id"], errors="ignore")
 
-            base_cols = ["forename", "surname", "nationality", "age", "salary", "startYear", "endYear"]
+            base_cols = ["forename", "surname", "nationality", "age", "salary", "start_year", "end_year"]
             other_cols = [c for c in merged.columns if c not in base_cols and c != "driver_id"]
             merged = merged[base_cols + other_cols]
             merged = merged.drop(columns=["team_id", "wanted_reputation", "active", "driver_id"], errors="ignore")
@@ -194,8 +194,8 @@ class ContractsModel:
     def get_contracts_for_year(self, year: int) -> pd.DataFrame:
         """Returns all active contracts for the given year."""
         return self.dt_contract[
-            (self.dt_contract["startYear"] <= year)
-            & (self.dt_contract["endYear"] >= year)
+            (self.dt_contract["start_year"] <= year)
+            & (self.dt_contract["end_year"] >= year)
             & (self.dt_contract["active"] is True)
             ].copy()
 
@@ -234,15 +234,15 @@ class ContractsModel:
         mask = (
                 (self.mt_contract["team_id"] == team_id)
                 & (
-                        (self.mt_contract["endYear"] >= start_range)
-                        | (self.mt_contract["startYear"] >= start_range)
+                        (self.mt_contract["end_year"] >= start_range)
+                        | (self.mt_contract["start_year"] >= start_range)
                 )
         )
         contracts = self.mt_contract[mask].copy()
 
         if contracts.empty:
             return pd.DataFrame(columns=[
-                "name", "part_type", "cost", "startYear", "endYear",
+                "name", "part_type", "cost", "start_year", "end_year",
                 "series_id", "Position", "Points"
             ])
 
@@ -272,7 +272,7 @@ class ContractsModel:
                     filt = (
                             (year_standings["typ"] == part_type)
                             & (year_standings["series_id"] == series_id)
-                            & (year_standings["subjectID"] == manu_id)
+                            & (year_standings["subject_id"] == manu_id)
                     )
                     tmp = year_standings[filt]
 
@@ -295,7 +295,7 @@ class ContractsModel:
                     merged = merged.merge(df_year, on=["manufacture_id", "part_type"], how="left")
 
         # 🧾 Order columns: base + years in order year → position → points
-        base_cols = ["name", "part_type", "cost", "startYear", "endYear"]
+        base_cols = ["name", "part_type", "cost", "start_year", "end_year"]
         year_blocks = {}
 
         for col in merged.columns:
@@ -371,14 +371,14 @@ class ContractsModel:
         if current:
             mask = (
                     (self.dt_contract["driver_id"] == driver_id) &
-                    (self.dt_contract["startYear"] <= current_year) &
-                    (self.dt_contract["endYear"] >= current_year) &
+                    (self.dt_contract["start_year"] <= current_year) &
+                    (self.dt_contract["end_year"] >= current_year) &
                     (self.dt_contract["active"] is True)
             )
         else:
             mask = (
                     (self.dt_contract["driver_id"] == driver_id) &
-                    (self.dt_contract["startYear"] > current_year) &
+                    (self.dt_contract["start_year"] > current_year) &
                     (self.dt_contract["active"] is True)
             )
 
@@ -491,13 +491,13 @@ class ContractsModel:
                 (self.dt_contract["driver_id"] == driver_id)
                 & (self.dt_contract["team_id"] != new_team_id)
                 & (self.dt_contract["active"])
-                & (self.dt_contract["endYear"] >= year)
+                & (self.dt_contract["end_year"] >= year)
         )
 
         for idx, row in self.dt_contract[mask].iterrows():
-            # print(new_team_id, year, self.dt_contract.at[idx, "endYear"], row)
-            self.dt_contract.at[idx, "endYear"] = year - 1
-            # print(self.dt_contract.at[idx, "endYear"], row)
+            # print(new_team_id, year, self.dt_contract.at[idx, "end_year"], row)
+            self.dt_contract.at[idx, "end_year"] = year - 1
+            # print(self.dt_contract.at[idx, "end_year"], row)
             # self.dt_contract.at[idx, "active"] = False
 
     def _create_driver_contract(
@@ -509,8 +509,8 @@ class ContractsModel:
             "team_id": int(team_id),
             "salary": int(salary),
             "wanted_reputation": series_reputation,
-            "startYear": int(start_year),
-            "endYear": int(start_year + length),
+            "start_year": int(start_year),
+            "end_year": int(start_year + length),
             "active": True,
         }
 
@@ -552,8 +552,8 @@ class ContractsModel:
 
         # Get active contracts
         active_contracts = self.dt_contract[
-            (self.dt_contract["startYear"] <= year) &
-            (self.dt_contract["endYear"] >= year) &
+            (self.dt_contract["start_year"] <= year) &
+            (self.dt_contract["end_year"] >= year) &
             (self.dt_contract["active"])
             ]
 
@@ -581,16 +581,16 @@ class ContractsModel:
         """Return all active driver contracts for a given team in a specific year."""
         return self.dt_contract[
             (self.dt_contract["team_id"] == team_id)
-            & (self.dt_contract["startYear"] <= year)
-            & (self.dt_contract["endYear"] >= year)
+            & (self.dt_contract["start_year"] <= year)
+            & (self.dt_contract["end_year"] >= year)
             & (self.dt_contract["active"])
             ]
 
     def _get_teams_without_driver(self, teams_df: pd.DataFrame, year: int) -> list[int]:
         """Return a list of team IDs that do not have an active driver contract in the given year."""
         active_contracts = self.dt_contract[
-            (self.dt_contract["active"]) & (self.dt_contract["startYear"] <= year) & (
-                    self.dt_contract["endYear"] >= year)]
+            (self.dt_contract["active"]) & (self.dt_contract["start_year"] <= year) & (
+                    self.dt_contract["end_year"] >= year)]
         contracted_team_ids = active_contracts["team_id"].unique()
         all_team_ids = teams_df["team_id"].unique()
         return [int(tid) for tid in all_team_ids if int(tid) not in contracted_team_ids]
@@ -613,8 +613,8 @@ class ContractsModel:
             "team_id": None,
             "salary": 0,
             "wanted_reputation": 0,
-            "startYear": 0,
-            "endYear": 0,
+            "start_year": 0,
+            "end_year": 0,
             "active": True,
         })
 
@@ -856,8 +856,8 @@ class ContractsModel:
                     "team_id": team_id,
                     "manufacture_id": manufacture_id,
                     "part_type": part_type,
-                    "startYear": year,
-                    "endYear": year + contract_len,
+                    "start_year": year,
+                    "end_year": year + contract_len,
                     "cost": int(cost),
                 }
             )
@@ -901,8 +901,8 @@ class ContractsModel:
                 "team_id": None,
                 "manufacture_id": None,
                 "part_type": "",
-                "startYear": 0,
-                "endYear": 0,
+                "start_year": 0,
+                "end_year": 0,
                 "cost": 0,
             },
         )
@@ -916,7 +916,7 @@ class ContractsModel:
             (teams["owner_id"] > 0) & (teams["found"] <= current_date.year) & (teams["folded"] >= current_date.year)]
 
         active_contracts = self.mt_contract[
-            (self.mt_contract["startYear"] <= current_date.year) & (self.mt_contract["endYear"] >= current_date.year)]
+            (self.mt_contract["start_year"] <= current_date.year) & (self.mt_contract["end_year"] >= current_date.year)]
         self._deduct_existing_contract_costs(human_teams, active_contracts, teams)
 
         new_contracts: list[dict[str, object]] = []
@@ -955,8 +955,8 @@ class ContractsModel:
                         "team_id": offer["team_id"],
                         "manufacture_id": self._get_manufacturer_for_part(offer["part_id"]),
                         "part_type": self._get_part_type(offer["part_id"]),
-                        "startYear": offer["year"],
-                        "endYear": offer["year"] + offer["length"],
+                        "start_year": offer["year"],
+                        "end_year": offer["year"] + offer["length"],
                         "cost": offer["price"],
                     }])
                 ], ignore_index=True)
@@ -970,11 +970,11 @@ class ContractsModel:
         return int(match["series_id"].iloc[0]) if not match.empty else -1
 
     def _get_manufacturer_for_part(self, part_id: int) -> int:
-        match = self.car_parts[self.car_parts["partID"] == part_id]
+        match = self.car_parts[self.car_parts["part_id"] == part_id]
         return int(match["manufacture_id"].iloc[0]) if not match.empty else -1
 
     def _get_part_type(self, part_id: int) -> str:
-        match = self.car_parts[self.car_parts["partID"] == part_id]
+        match = self.car_parts[self.car_parts["part_id"] == part_id]
         return str(match["part_type"].iloc[0]) if not match.empty else ""
 
     def offer_car_part_contract(self, manufacturer_id: int, team_id: int, length: int, price: int, year: int,
@@ -988,8 +988,8 @@ class ContractsModel:
             "team_id": None,
             "manufacture_id": None,
             "part_type": "",
-            "startYear": 0,
-            "endYear": 0,
+            "start_year": 0,
+            "end_year": 0,
             "cost": 0,
         })
 
@@ -997,8 +997,8 @@ class ContractsModel:
         overlap_mask = (
                 (self.mt_contract["team_id"] == team_id) &
                 (self.mt_contract["part_type"] == part_type) &
-                (self.mt_contract["startYear"] <= year + length - 1) &
-                (self.mt_contract["endYear"] >= year)
+                (self.mt_contract["start_year"] <= year + length - 1) &
+                (self.mt_contract["end_year"] >= year)
         )
 
         if overlap_mask.any():
@@ -1020,8 +1020,8 @@ class ContractsModel:
             "team_id": team_id,
             "manufacture_id": manufacturer_id,
             "part_type": part_type,
-            "startYear": year,
-            "endYear": year + length - 1,
+            "start_year": year,
+            "end_year": year + length - 1,
             "cost": price,
         }
 
@@ -1164,18 +1164,18 @@ class ContractsModel:
         contracts = self.dt_contract[
             (self.dt_contract["team_id"] == team_id) &
             (self.dt_contract["active"] is True) &
-            (self.dt_contract["endYear"] >= current_year)
+            (self.dt_contract["end_year"] >= current_year)
             ].copy()
 
         if contracts.empty:
             return contracts
 
         contracts["termination_cost"] = contracts.apply(
-            lambda row: max(0, row["endYear"] - current_year) * row["salary"],
+            lambda row: max(0, row["end_year"] - current_year) * row["salary"],
             axis=1
         )
 
-        contracts["current"] = contracts["startYear"] <= current_year
+        contracts["current"] = contracts["start_year"] <= current_year
 
         return contracts
 
@@ -1194,7 +1194,7 @@ class ContractsModel:
         mask = (
                 (self.dt_contract["driver_id"] == driver_id) &
                 (self.dt_contract["team_id"] == team_id) &
-                (self.dt_contract["endYear"] >= current_year)
+                (self.dt_contract["end_year"] >= current_year)
         )
         contract = self.dt_contract[mask]
 
@@ -1202,7 +1202,7 @@ class ContractsModel:
             return 0
 
         salary = int(contract.iloc[0]["salary"])
-        end_year = int(contract.iloc[0]["endYear"])
+        end_year = int(contract.iloc[0]["end_year"])
         cost = max(0, end_year - current_year) * salary
 
         # Remove the contract
@@ -1225,14 +1225,14 @@ class ContractsModel:
             "team_id": None,
             "manufacture_id": None,
             "part_type": "",
-            "startYear": 0,
-            "endYear": 0,
+            "start_year": 0,
+            "end_year": 0,
             "cost": 0,
         })
 
         active = self.mt_contract[
-            (self.mt_contract["startYear"] <= year) &
-            (self.mt_contract["endYear"] >= year)
+            (self.mt_contract["start_year"] <= year) &
+            (self.mt_contract["end_year"] >= year)
             ].copy()
 
         return active

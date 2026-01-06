@@ -169,9 +169,9 @@ class RaceModel:
 
         # required columns
         columns = {
-            "engineID": "engine",
-            "chassiID": "chassi",
-            "pneuID": "pneu"
+            "engine_id": "engine",
+            "chassi_id": "chassi",
+            "pneu_id": "pneu"
         }
 
         for col in columns:
@@ -220,11 +220,11 @@ class RaceModel:
         # now pick champions (position == 1) from those final-round rows
         champions = final_round_rows[final_round_rows['position'] == 1].copy()
 
-        # pivot so each typ becomes a column with the subjectID of the champion
+        # pivot so each typ becomes a column with the subject_id of the champion
         pivot = champions.pivot_table(
             index='year',
             columns='typ',
-            values='subjectID',
+            values='subject_id',
             aggfunc='first'  # one winner per type/year
         ).reset_index()
 
@@ -322,7 +322,7 @@ class RaceModel:
         df = self.results[
             (self.results["series_id"] == series_id) & (self.results["season"] == season)
             ][
-            ["driver_id", "team_id", "engineID", "chassiID", "pneuID", "raceID", "position", "round"]
+            ["driver_id", "team_id", "engine_id", "chassi_id", "pneu_id", "race_id", "position", "round"]
         ].copy()
         return df.reset_index(drop=True)
 
@@ -331,7 +331,7 @@ class RaceModel:
         Return seasonal statistics for a subject (driver/team) based on standings and results.
         """
         subject_stands = self.standings[
-            (self.standings["subjectID"] == subject_id) &
+            (self.standings["subject_id"] == subject_id) &
             (self.standings["typ"] == subject_type)
             ].copy()
 
@@ -349,10 +349,10 @@ class RaceModel:
 
             total_points = max_round_row["points"]
             championship_position = max_round_row["position"]
-            races = group["raceID"].nunique()
+            races = group["race_id"].nunique()
 
             race_results = self.results[
-                (self.results[subject_type + "ID"] == subject_id) &
+                (self.results[subject_type + "_id"] == subject_id) &
                 (self.results["season"] == year) &
                 (self.results["series_id"] == series_id)
                 ]
@@ -393,7 +393,7 @@ class RaceModel:
 
         max_rounds = filtered.groupby("year")["round"].max().reset_index()
         result = pd.merge(filtered, max_rounds, on=["year", "round"])
-        result = result.rename(columns={"subjectID": "driver_id"})
+        result = result.rename(columns={"subject_id": "driver_id"})
 
         position_counts = result.pivot_table(
             index="driver_id", columns="position", aggfunc="size", fill_value=0
@@ -418,24 +418,24 @@ class RaceModel:
         df["position"] = df["position"].replace({CRASH_CODE: "Crash", DEATH_CODE: "Death"})
 
         # Label non-championship races (round == 0) as NC1, NC2, ...
-        zero_rids = sorted(df.loc[df["round"] == 0, "raceID"].unique())
+        zero_rids = sorted(df.loc[df["round"] == 0, "race_id"].unique())
         zero_map = {rid: f"NC{i + 1}" for i, rid in enumerate(zero_rids)}
         df["col_label"] = df.apply(
-            lambda r: zero_map[r["raceID"]] if r["round"] == 0 else str(r["round"]), axis=1
+            lambda r: zero_map[r["race_id"]] if r["round"] == 0 else str(r["round"]), axis=1
         )
 
         # Replace manufacturer IDs with names for engine, chassi and tyre
-        df["engineID"] = df["engineID"].map(manu_map)
-        df["chassiID"] = df["chassiID"].map(manu_map)
-        df["pneuID"] = df["pneuID"].map(manu_map)
+        df["engine_id"] = df["engine_id"].map(manu_map)
+        df["chassi_id"] = df["chassi_id"].map(manu_map)
+        df["pneu_id"] = df["pneu_id"].map(manu_map)
 
         pivot = df.pivot(
-            index=["driver_id", "team_id", "engineID", "chassiID", "pneuID"],
+            index=["driver_id", "team_id", "engine_id", "chassi_id", "pneu_id"],
             columns="col_label",
             values="position",
         )
 
-        order = df[["col_label", "raceID"]].drop_duplicates().sort_values("raceID")
+        order = df[["col_label", "race_id"]].drop_duplicates().sort_values("race_id")
         labels = order["col_label"].tolist()
         pivot = pivot[labels]
         pivot = pivot.fillna("" if fill_value is None else fill_value)
@@ -448,14 +448,14 @@ class RaceModel:
                 (self.standings["series_id"] == series_id)
                 & (self.standings["year"] == season)
                 & (self.standings["typ"] == "driver"),
-                ["subjectID", "round", "points", "position"],
+                ["subject_id", "round", "points", "position"],
             ].copy()
             if not st2.empty:
                 st2["round"] = pd.to_numeric(st2["round"], errors="coerce").dropna().astype(int)
-                last_idx = st2.groupby("subjectID")["round"].idxmax()
+                last_idx = st2.groupby("subject_id")["round"].idxmax()
                 final = st2.loc[last_idx].rename(
                     columns={
-                        "subjectID": "driver_id",
+                        "subject_id": "driver_id",
                         "position": "final_position",
                         "points": "final_points",
                     }
@@ -525,8 +525,8 @@ class RaceModel:
         # Select active driver-team contracts valid for the current year
         active_dt = contracts_model.dt_contract[
             (contracts_model.dt_contract["active"])
-            & (contracts_model.dt_contract["startYear"] <= current_date.year)
-            & (contracts_model.dt_contract["endYear"] >= current_date.year)
+            & (contracts_model.dt_contract["start_year"] <= current_date.year)
+            & (contracts_model.dt_contract["end_year"] >= current_date.year)
             ]
         # Keep only drivers that are currently active in drivers_model
         active_dt = active_dt[active_dt["driver_id"].isin(drivers_model.active_drivers["driver_id"])]
@@ -552,8 +552,8 @@ class RaceModel:
 
         # Active manufacturer-team contracts for this series and year
         active_mt = contracts_model.mt_contract[
-            (contracts_model.mt_contract["startYear"] <= current_date.year)
-            & (contracts_model.mt_contract["endYear"] >= current_date.year)
+            (contracts_model.mt_contract["start_year"] <= current_date.year)
+            & (contracts_model.mt_contract["end_year"] >= current_date.year)
             & (contracts_model.mt_contract["series_id"] == series_id)
             ].copy()
 
@@ -607,15 +607,15 @@ class RaceModel:
             columns=[
                 "driver_id",
                 "ability",
-                "carID",
+                "car_id",
                 "carSpeedAbility",
                 "carReliability",
                 "carSafety",
                 "totalAbility",
                 "team_id",
-                "engineID",
-                "chassiID",
-                "pneuID",
+                "engine_id",
+                "chassi_id",
+                "pneu_id",
             ]
         )
 
@@ -646,12 +646,12 @@ class RaceModel:
         # Lookup point rules for the series and season
         rules = series_model.point_rules[
             (series_model.point_rules["series_id"] == series_id)
-            & (series_model.point_rules["startSeason"] <= current_date.year)
-            & (series_model.point_rules["endSeason"] >= current_date.year)
+            & (series_model.point_rules["start_season"] <= current_date.year)
+            & (series_model.point_rules["end_season"] >= current_date.year)
             ].reset_index(drop=True)
 
-        # Resolve point system by psID referenced in rules
-        ps = self.point_system[self.point_system["psID"] == rules.loc[0, "psID"]].reset_index(
+        # Resolve point system by ps_id referenced in rules
+        ps = self.point_system[self.point_system["ps_id"] == rules.loc[0, "ps_id"]].reset_index(
             drop=True
         )
 
@@ -684,7 +684,7 @@ class RaceModel:
         teams_model : object
             Teams model; may implement add_race_reputation(reputation, team_list).
         race_row : pd.Series
-            Race metadata (raceID, series_id, season, trackSafety, wet, reputation, championship).
+            Race metadata (race_id, series_id, season, track_safety, wet, reputation, championship).
         race_data : pd.DataFrame
             Prepared race grid with car and driver attributes.
         current_point_rules : pd.DataFrame
@@ -702,7 +702,7 @@ class RaceModel:
             return []
 
         # Apply track safety and wetness to car reliability
-        track_safety = float(race_row.get("trackSafety", 1) or 1)
+        track_safety = float(race_row.get("track_safety", 1) or 1)
         wet_val = float(race_row.get("wet", 1) or 1)
         race_data["carReliability"] = (race_data["carReliability"] * track_safety * wet_val).astype(
             int
@@ -765,49 +765,49 @@ class RaceModel:
         # Record finishing results with positions
         for pos, (fin_idx, _) in enumerate(ranking, start=1):
             self.results.loc[len(self.results)] = [
-                int(race_row["raceID"]),
+                int(race_row["race_id"]),
                 int(finish.loc[fin_idx, "driver_id"]),
                 int(finish.loc[fin_idx, "team_id"]),
-                int(finish.loc[fin_idx, "carID"]),
+                int(finish.loc[fin_idx, "car_id"]),
                 int(pos),
                 int(race_row["season"]),
                 int(race_row["series_id"]),
                 int(round_no),
-                int(finish.loc[fin_idx, "engineID"]),
-                int(finish.loc[fin_idx, "chassiID"]),
-                int(finish.loc[fin_idx, "pneuID"]),
+                int(finish.loc[fin_idx, "engine_id"]),
+                int(finish.loc[fin_idx, "chassi_id"]),
+                int(finish.loc[fin_idx, "pneu_id"]),
             ]
 
         # Record crash results using CRASH_CODE
         for _, row in crash.iterrows():
             self.results.loc[len(self.results)] = [
-                int(race_row["raceID"]),
+                int(race_row["race_id"]),
                 int(row["driver_id"]),
                 int(row["team_id"]),
-                int(row["carID"]),
+                int(row["car_id"]),
                 CRASH_CODE,
                 int(race_row["season"]),
                 int(race_row["series_id"]),
                 int(round_no),
-                int(row["engineID"]),
-                int(row["chassiID"]),
-                int(row["pneuID"]),
+                int(row["engine_id"]),
+                int(row["chassi_id"]),
+                int(row["pneu_id"]),
             ]
 
         # Record death results using DEATH_CODE and collect deceased driver IDs
         for _, row in death.iterrows():
             self.results.loc[len(self.results)] = [
-                int(race_row["raceID"]),
+                int(race_row["race_id"]),
                 int(row["driver_id"]),
                 int(row["team_id"]),
-                int(row["carID"]),
+                int(row["car_id"]),
                 DEATH_CODE,
                 int(race_row["season"]),
                 int(race_row["series_id"]),
                 int(round_no),
-                int(row["engineID"]),
-                int(row["chassiID"]),
-                int(row["pneuID"]),
+                int(row["engine_id"]),
+                int(row["chassi_id"]),
+                int(row["pneu_id"]),
             ]
             died.append(int(row["driver_id"]))
 
@@ -884,7 +884,7 @@ class RaceModel:
         Parameters
         ----------
         race_row : pd.Series
-            Row describing the race (series_id, season, raceID, etc.).
+            Row describing the race (series_id, season, race_id, etc.).
         race_data : pd.DataFrame
             DataFrame with entries for the race; must include subject ID columns like "driver_id".
         ranking : list
@@ -896,7 +896,7 @@ class RaceModel:
         death : pd.DataFrame
             DataFrame of entries that resulted in death.
         current_point_rules : pd.DataFrame
-            DataFrame containing point rules and counts for subjects (e.g., driverCts, teamCts).
+            DataFrame containing point rules and counts for subjects (e.g., driver_cts, team_cts).
         ps : pd.DataFrame
             DataFrame mapping finishing positions to points (stringified position keys).
         """
@@ -911,12 +911,12 @@ class RaceModel:
 
         # Iterate over each subject type to compute points and positions
         for typ in ("driver", "team", "engine", "chassi", "pneu"):
-            subj_col = f"{typ}ID"
+            subj_col = f"{typ}_id"
             # Start with unique subjects present in race_data
             subjects = race_data[[subj_col]].drop_duplicates().copy()
             # Number of cars that count for this subject; drivers count as 1, others use rules
             subjects["cars"] = (
-                1 if typ == "driver" else int(current_point_rules.iloc[0].get(f"{typ}Cts", 1))
+                1 if typ == "driver" else int(current_point_rules.iloc[0].get(f"{typ}_cts", 1))
             )
             subjects["points"] = 0
 
@@ -926,7 +926,7 @@ class RaceModel:
             last_round_block = (
                 prev_for_typ[prev_for_typ["round"] == this_round].copy()
                 if this_round
-                else pd.DataFrame(columns=["subjectID", "points"])
+                else pd.DataFrame(columns=["subject_id", "points"])
             )
 
             # Award points for finishers according to ranking and points schedule (ps)
@@ -946,7 +946,7 @@ class RaceModel:
                 subjects.loc[mask, ["cars", "points"]] += [-1, 0]
 
             # Add race metadata to the subjects block
-            subjects["raceID"] = int(race_row["raceID"])
+            subjects["race_id"] = int(race_row["race_id"])
             subjects["year"] = int(race_row["season"])
             subjects["round"] = 1 if last_round_block.empty else int(this_round) + 1
             subjects["position"] = 0
@@ -955,19 +955,19 @@ class RaceModel:
 
             # If previous round exists, add previous points to current points
             if not last_round_block.empty:
-                prev_pts = last_round_block.set_index("subjectID")["points"]
+                prev_pts = last_round_block.set_index("subject_id")["points"]
                 subjects["points"] = subjects[subj_col].map(prev_pts).fillna(0).astype(
                     int
                 ) + subjects["points"].astype(int)
 
                 # Include any subjects that were present in previous standings but not in this race
                 missing = last_round_block[
-                    ~last_round_block["subjectID"].isin(subjects[subj_col])
+                    ~last_round_block["subject_id"].isin(subjects[subj_col])
                 ].copy()
                 if not missing.empty:
                     missing["round"] = int(subjects["round"].iloc[0])
-                    missing["raceID"] = int(race_row["raceID"])
-                    missing = missing.rename(columns={"subjectID": subj_col})
+                    missing["race_id"] = int(race_row["race_id"])
+                    missing = missing.rename(columns={"subject_id": subj_col})
                     subjects = pd.concat(
                         [
                             subjects,
@@ -975,7 +975,7 @@ class RaceModel:
                                 [
                                     subj_col,
                                     "points",
-                                    "raceID",
+                                    "race_id",
                                     "year",
                                     "round",
                                     "position",
@@ -986,18 +986,18 @@ class RaceModel:
                         ignore_index=True,
                     )
 
-            # Normalize column name to subjectID for the standings table
-            subjects = subjects.rename(columns={subj_col: "subjectID"})
+            # Normalize column name to subject_id for the standings table
+            subjects = subjects.rename(columns={subj_col: "subject_id"})
             subjects["points"] = subjects["points"].astype(int)
-            # Sort by points descending, then by subjectID ascending for deterministic ordering
+            # Sort by points descending, then by subject_id ascending for deterministic ordering
             subjects = subjects.sort_values(
-                by=["points", "subjectID"], ascending=[False, True]
+                by=["points", "subject_id"], ascending=[False, True]
             ).reset_index(drop=True)
             # Assign positions based on sorted order
             subjects["position"] = range(1, len(subjects) + 1)
 
             # Ensure integer types for key columns
-            for col in ["subjectID", "series_id", "year", "round"]:
+            for col in ["subject_id", "series_id", "year", "round"]:
                 subjects[col] = subjects[col].astype(int)
 
             final_blocks.append(subjects)
@@ -1020,7 +1020,7 @@ class RaceModel:
         ----------
         series_model : object
             Model or container that holds series definitions in series_model.series DataFrame.
-            Expected columns: "startYear", "endYear", "series_id", "name", "reputation".
+            Expected columns: "start_year", "end_year", "series_id", "name", "reputation".
         current_date : date-like
             Starting date for planning (converted to pandas.Timestamp).
         champ_per_series : int
@@ -1066,7 +1066,7 @@ class RaceModel:
                 int(pd.Timestamp(current_date).year)]
             for season in seasons:
                 # skip series not active this season
-                if not (int(srow["startYear"]) <= season <= int(srow["endYear"])):
+                if not (int(srow["start_year"]) <= season <= int(srow["end_year"])):
                     continue
 
                 total_required = int(champ_per_series) + int(nonchamp_per_series)
@@ -1120,16 +1120,16 @@ class RaceModel:
                                      RAIN_STRENGTH_MAX) / 100 + 1 if wet_roll == RAIN_TRIGGER_MAX else 1
 
                     # Determine new race ID (incremental)
-                    new_race_id = 0 if self.races.empty else int(self.races["raceID"].max()) + 1
+                    new_race_id = 0 if self.races.empty else int(self.races["race_id"].max()) + 1
 
                     # Append the new race entry to the races DataFrame
                     self.races.loc[len(self.races)] = {
-                        "raceID": new_race_id,
+                        "race_id": new_race_id,
                         "series_id": int(srow["series_id"]),
                         "season": int(season),
-                        "trackID": track_id,
+                        "track_id": track_id,
                         "layout_id": layout_id,
-                        "trackSafety": safety,
+                        "track_safety": safety,
                         "race_date": race_date,
                         "name": f"Preteky {srow['name']}",
                         "championship": bool(is_championship),

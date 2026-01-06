@@ -1,4 +1,4 @@
-raceID,series_id,season,trackID,layout_id,trackSafety,race_date,name,championship,reputation,reward,wet
+race_id,series_id,season,track_id,layout_id,track_safety,race_date,name,championship,reputation,reward,wet
 0,1,1894,0,0,50,1894-01-02,"Paris-Rouen",False,1000,1000000,1
 1,1,1895,1,1,100,1895-05-18,"Torino–Asti–Torino",False,1000,1000000,1
 2,1,1895,2,2,150,1895-06-13,"Paris–Bordeaux–Paris",False,1000,1000000,1

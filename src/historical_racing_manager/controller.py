@@ -795,14 +795,14 @@ class Controller:
         # Map manufacture_id → name
         mf_map = self.manufacturer_model.manufacturers.set_index("manufacture_id")["name"].to_dict()
 
-        # Handle columns engine/chassi/pneu or engineID/chassiID/pneuID
+        # Handle columns engine/chassi/pneu or engine_id/chassi_id/pneu_id
         part_columns = {
             "engine": "Engine",
-            "engineID": "Engine",
+            "engine_id": "Engine",
             "chassi": "Chassi",
-            "chassiID": "Chassi",
+            "chassi_id": "Chassi",
             "pneu": "Tyres",
-            "pneuID": "Tyres"
+            "pneu_id": "Tyres"
         }
 
         for raw_col, final_col in part_columns.items():

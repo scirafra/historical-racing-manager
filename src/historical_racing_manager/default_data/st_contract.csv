@@ -1,4 +1,4 @@
-series_id,team_id,salary,startYear,endYear
+series_id,team_id,salary,start_year,end_year
 1,0,5,1894,3000
 1,1,5,1894,3000
 1,2,5,1894,3000
