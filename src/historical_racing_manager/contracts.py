@@ -14,7 +14,7 @@ class ContractsModel:
     """
 
     def __init__(self) -> None:
-        # TODO: better would be snake_case naming such as dt_contract
+
         self.dt_contract: pd.DataFrame = pd.DataFrame()
         self.st_contract: pd.DataFrame = pd.DataFrame()
         self.cs_contract: pd.DataFrame = pd.DataFrame()
@@ -44,7 +44,7 @@ class ContractsModel:
             self.cs_contract = pd.read_csv(folder / "cs_contract.csv")
             self.ms_contract = pd.read_csv(folder / "ms_contract.csv")
             self.mt_contract = pd.read_csv(folder / "mt_contract.csv")
-            # TODO: why inconsistent column names and not in some enum/constants?
+            # TODO: why not in some enum/constants?
             self._ensure_columns(
                 self.dt_contract,
                 {
@@ -127,7 +127,6 @@ class ContractsModel:
                 else datetime.now().year + 1
             )
             self.driver_slots_next = self.init_driver_slots_for_year(next_year, self.rules)
-            print("rollover (empty next) => initialized")
             return
 
         self.driver_slots_current = self.driver_slots_next.copy(deep=True)
@@ -229,8 +228,7 @@ class ContractsModel:
 
         years = (start_range, start_range - 1, start_range - 2)
 
-        # TODO: emojis in comments are a bit weird... look like AI generated?
-        # 🔍 Select all contracts for the given team
+        # Select all contracts for the given team
         mask = (
                 (self.mt_contract["team_id"] == team_id)
                 & (
@@ -246,7 +244,7 @@ class ContractsModel:
                 "series_id", "Position", "Points"
             ])
 
-        # 🔧 Merge with manufacturer table (if available)
+        # Merge with manufacturer table (if available)
         if manufacturer_model is not None and hasattr(manufacturer_model, "manufacturers"):
             manu_df = manufacturer_model.manufacturers[
                 ["manufacture_id", "name", "owner", "money", "engine", "chassi", "pneu", "emp"]
@@ -255,7 +253,7 @@ class ContractsModel:
 
         merged = contracts.copy()
 
-        # 📈 Add data from standings (results by part_type and series_id)
+        # Add data from standings (results by part_type and series_id)
         if race_model is not None and hasattr(race_model, "standings"):
             for yr in years:
                 year_standings = race_model.standings[
@@ -294,7 +292,7 @@ class ContractsModel:
                     df_year = pd.DataFrame(year_data)
                     merged = merged.merge(df_year, on=["manufacture_id", "part_type"], how="left")
 
-        # 🧾 Order columns: base + years in order year → position → points
+        # Order columns: base + years in order year → position → points
         base_cols = ["name", "part_type", "cost", "start_year", "end_year"]
         year_blocks = {}
 
@@ -385,7 +383,6 @@ class ContractsModel:
         affected = self.dt_contract.loc[mask]
         self.dt_contract.loc[mask, "active"] = False
 
-        print(f"[ContractsModel] Disabled {'current' if current else 'future'} contract for driver {driver_id}.")
         print(affected)
 
     def get_ms_contract(self) -> pd.DataFrame:
@@ -474,7 +471,6 @@ class ContractsModel:
         current = self.reserved_slots.get(team_id, 0)
         if current < max_cars:
             self.reserved_slots[team_id] = current + 1
-        print(f"Reserved slots: {self.reserved_slots}")
 
     def _estimate_salary(self, drivers_df: pd.DataFrame, driver_id: int) -> int:
         """Estimate salary for a driver based on base salary and race reputation."""
@@ -495,10 +491,7 @@ class ContractsModel:
         )
 
         for idx, row in self.dt_contract[mask].iterrows():
-            # print(new_team_id, year, self.dt_contract.at[idx, "end_year"], row)
             self.dt_contract.at[idx, "end_year"] = year - 1
-            # print(self.dt_contract.at[idx, "end_year"], row)
-            # self.dt_contract.at[idx, "active"] = False
 
     def _create_driver_contract(
             self, driver_id: int, team_id: int, series_reputation: int, salary: int, start_year: int, length: int
@@ -651,7 +644,6 @@ class ContractsModel:
 
             for _ in range(missing):
                 if is_human and team_inputs.get(team_id):
-                    print("R")
                     self._handle_human_contract(team_id, series_id, current_date.year, active_drivers, series, rules,
                                                 team_inputs)
                 else:
@@ -725,7 +717,6 @@ class ContractsModel:
 
         if is_human:
             if team_id in team_inputs:
-                print("T")
                 self._handle_human_contract(team_id, series_id, current_date.year + 1, active_drivers, series, rules,
                                             team_inputs)
             return
@@ -745,7 +736,6 @@ class ContractsModel:
             team_inputs: dict[int, tuple]
     ) -> None:
         """Handle contract signing for a human-controlled team."""
-        print("Human team:", team_id)
         driver_id, salary, length = team_inputs[team_id]
         available = self._get_available_drivers(active_drivers, series, year, series_id, team_id, rules)
 
@@ -762,7 +752,6 @@ class ContractsModel:
             self, team_id: int, series_id: int, year: int, future_years: int,
             active_drivers: pd.DataFrame, series: pd.DataFrame, rules: pd.DataFrame
     ) -> None:
-        # print("AI team:", team_id)
         available = self._get_available_drivers(active_drivers, series, year + future_years, series_id, team_id, rules)
         if available.empty:
             return
@@ -800,7 +789,6 @@ class ContractsModel:
         current = self.reserved_slots.get(team_id, 0)
         if current < max_cars:
             self.reserved_slots[team_id] = current + 1
-        # print(self.reserved_slots)
 
     def _decrement_reserved_slot(self, team_id: int) -> None:
         """Decrease the number of reserved slots for a team if it exists."""
@@ -870,7 +858,7 @@ class ContractsModel:
         Return car parts available for a team in its series for the given year.
         """
         if not hasattr(self, "st_contract"):
-            print("[ContractsModel] ⚠️ st_contract is not initialized.")
+            print("[ContractsModel] st_contract is not initialized.")
             return pd.DataFrame()
 
         # Determine which series the team belongs to
@@ -879,7 +867,6 @@ class ContractsModel:
             return pd.DataFrame()
 
         series_id = int(match.iloc[0]["series_id"])
-        print("C", series_id)
         # Filter by series and year
         available_parts = car_parts[
             (car_parts["series_id"] == series_id) &
@@ -1002,8 +989,6 @@ class ContractsModel:
         )
 
         if overlap_mask.any():
-            print(
-                f"[ContractsModel] Team {team_id} already has a contract for {part_type} in {year}–{year + length - 1}.")
             return False
 
         # Determine the series for the team
@@ -1026,8 +1011,6 @@ class ContractsModel:
         }
 
         self.mt_contract = pd.concat([self.mt_contract, pd.DataFrame([new_contract])], ignore_index=True)
-        print(
-            f"[ContractsModel] ✅ New contract for {part_type} from manufacturer {manufacturer_id} for team {team_id} created.")
         return True
 
     def get_available_drivers_for_offer(
@@ -1038,11 +1021,8 @@ class ContractsModel:
         """
         team_row = self.st_contract[self.st_contract["team_id"] == team_id]
         if team_row.empty:
-            print("teamrow empty")
             return pd.DataFrame()
         series_id = int(team_row.iloc[0]["series_id"])
-        print(len(active_drivers), year, series_id, team_id,
-              len(self._get_available_drivers(active_drivers, series, year, series_id, team_id, rules)))
         return self._get_available_drivers(active_drivers, series, year, series_id, team_id, rules)
 
     def offer_driver_contract(
@@ -1067,7 +1047,6 @@ class ContractsModel:
             "days_pending": 1,  # driver will decide within one day
         }
         self.pending_offers.append(offer)
-        print(f"[ContractsModel] Offer for driver {driver_id} created (year {year}).")
 
     def process_driver_offers(self, current_date: datetime, active_drivers: pd.DataFrame) -> list[dict]:
         """
@@ -1079,7 +1058,6 @@ class ContractsModel:
         signed_contracts = []
 
         remaining_offers = []
-        print("number of pending offers", self.pending_offers)
 
         for offer in self.pending_offers:
             driver_id = offer["driver_id"]
@@ -1114,7 +1092,6 @@ class ContractsModel:
             if year == current_date.year:
                 # Contract for current year → check active slots
                 if salary >= min_salary and active < max_cars:
-                    print(f"Driver {driver_id} accepted offer from team {team_id} (current year).")
                     self._create_driver_contract(driver_id, team_id, 0, salary, year, length - 1)
                     signed_contracts.append({
                         "driver_id": driver_id,
@@ -1122,23 +1099,16 @@ class ContractsModel:
                         "salary": salary,
                         "year": year
                     })
-                else:
-                    print(
-                        f"Driver {driver_id} rejected offer (current year) – salary {salary} < {min_salary} or team full.")
+
             elif year == current_date.year + 1:
                 # Contract for next year → check reservations
                 if reserved > 0 and salary >= min_salary and (reserved + active) <= max_cars:
-                    print(f"Driver {driver_id} accepted offer from team {team_id} (next year).")
                     self._create_driver_contract(driver_id, team_id, 0, salary, year, length - 1)
                     self._decrement_reserved_slot(team_id)
-                else:
-                    print(
-                        f"Driver {driver_id} rejected offer (next year) – salary {salary} < {min_salary} or no reservation.")
             else:
                 print(f"Unknown year {year} – offer ignored.")
 
         self.pending_offers = remaining_offers
-        print("clearing pending", self.pending_offers, current_date, "reserved", self.reserved_slots)
         return signed_contracts
 
     def reset_reserved_slot(self) -> None:
@@ -1154,7 +1124,6 @@ class ContractsModel:
             o for o in self.pending_offers if not (o["driver_id"] == driver_id and o["team_id"] == team_id)
         ]
         self._decrement_reserved_slot(team_id)
-        print(f"[ContractsModel] Offer for driver {driver_id} from team {team_id} cancelled.")
 
     def get_terminable_contracts(self, team_id: int, current_year: int) -> pd.DataFrame:
         """
@@ -1207,7 +1176,6 @@ class ContractsModel:
 
         # Remove the contract
         self.dt_contract = self.dt_contract.drop(contract.index)
-        print(f"[ContractsModel] Driver {driver_id}'s contract terminated. Cost: {cost}")
         return cost
 
     def get_active_part_contracts_for_year(self, year: int) -> pd.DataFrame:

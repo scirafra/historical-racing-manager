@@ -235,7 +235,6 @@ class TeamsModel:
         """Deduct money from the team's balance (e.g., for paying contracts)."""
         if team_id in self.teams[COL_TEAM_ID].values:
             self.teams.loc[self.teams[COL_TEAM_ID] == team_id, "money"] -= amount
-            # print(f"Team {team_id} paid {amount}.")
         else:
             print(f"Team {team_id} does not exist — cannot deduct money.")
 

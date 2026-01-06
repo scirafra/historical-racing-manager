@@ -74,82 +74,82 @@ class RaceModel:
 
     # ===== Queries =====
     def get_raced_series(self) -> list[int]:
-        # TODO: translate comments
         """
-        Vráti unikátne series_id z self.results ako list int v poradí prvého výskytu.
-        Predpoklad: self.results je pandas.DataFrame.
+        Return unique series_id values from self.results as a list of ints,
+        preserving the order of first appearance.
+        Assumption: self.results is a pandas.DataFrame.
         """
-        # overenie typu
+        # type check
         if not isinstance(self.results, pd.DataFrame):
-            # ak nie je DataFrame, vrátime prázdny zoznam
+            # if it's not a DataFrame, return an empty list
             return []
 
-        # overenie existencie stĺpca
+        # check if the column exists
         if "series_id" not in self.results.columns:
             return []
 
-        # vybrať stĺpec, odstrániť NA, konvertovať na int ak je to možné,
-        # zachovať poradie prvého výskytu pomocou drop_duplicates
+        # select the column, drop NA values, attempt to convert to int,
+        # preserve first-occurrence order using drop_duplicates
         series = self.results["series_id"].dropna()
 
         try:
             series_int = series.astype(int)
         except Exception:
-            # ak konverzia zlyhá (napr. textové ID), vrátime unikátne hodnoty ako stringy
+            # if conversion fails (e.g., text IDs), return unique values as strings
             return series.astype(str).drop_duplicates(keep="first").tolist()
 
         return series_int.drop_duplicates(keep="first").tolist()
 
     def get_raced_teams(self) -> list[int]:
-        # TODO: translate comments
         """
-        Vráti unikátne series_id z self.results ako list int v poradí prvého výskytu.
-        Predpoklad: self.results je pandas.DataFrame.
+        Return unique team_id values from self.results as a list of ints,
+        preserving the order of first appearance.
+        Assumption: self.results is a pandas.DataFrame.
         """
-        # overenie typu
+        # type check
         if not isinstance(self.results, pd.DataFrame):
-            # ak nie je DataFrame, vrátime prázdny zoznam
+            # if it's not a DataFrame, return an empty list
             return []
 
-        # overenie existencie stĺpca
+        # check if the column exists
         if "team_id" not in self.results.columns:
             return []
 
-        # vybrať stĺpec, odstrániť NA, konvertovať na int ak je to možné,
-        # zachovať poradie prvého výskytu pomocou drop_duplicates
+        # select the column, drop NA values, attempt to convert to int,
+        # preserve first-occurrence order using drop_duplicates
         series = self.results["team_id"].dropna()
 
         try:
             series_int = series.astype(int)
         except Exception:
-            # ak konverzia zlyhá (napr. textové ID), vrátime unikátne hodnoty ako stringy
+            # if conversion fails (e.g., text IDs), return unique values as strings
             return series.astype(str).drop_duplicates(keep="first").tolist()
 
         return series_int.drop_duplicates(keep="first").tolist()
 
     def get_raced_drivers(self) -> list[int]:
-        # TODO: translate comments
         """
-        Vráti unikátne series_id z self.results ako list int v poradí prvého výskytu.
-        Predpoklad: self.results je pandas.DataFrame.
+        Return unique driver_id values from self.results as a list of ints,
+        preserving the order of first appearance.
+        Assumption: self.results is a pandas.DataFrame.
         """
-        # overenie typu
+        # type check
         if not isinstance(self.results, pd.DataFrame):
-            # ak nie je DataFrame, vrátime prázdny zoznam
+            # if it's not a DataFrame, return an empty list
             return []
 
-        # overenie existencie stĺpca
+        # check if the column exists
         if "driver_id" not in self.results.columns:
             return []
 
-        # vybrať stĺpec, odstrániť NA, konvertovať na int ak je to možné,
-        # zachovať poradie prvého výskytu pomocou drop_duplicates
+        # select the column, drop NA values, attempt to convert to int,
+        # preserve first-occurrence order using drop_duplicates
         series = self.results["driver_id"].dropna()
 
         try:
             series_int = series.astype(int)
         except Exception:
-            # ak konverzia zlyhá (napr. textové ID), vrátime unikátne hodnoty ako stringy
+            # if conversion fails (e.g., text IDs), return unique values as strings
             return series.astype(str).drop_duplicates(keep="first").tolist()
 
         return series_int.drop_duplicates(keep="first").tolist()

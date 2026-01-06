@@ -56,13 +56,12 @@ class Controller:
         self.view.run()
 
     def _set_default_active_team(self):
-        # TODO: to english
         """
-        Nastaví aktívny tím na prvý tím zoznamu tímov, ktoré majú owner_id > 0.
-        Bezpečne ignoruje prípad, že žiadny tím nie je vlastnený.
+        Sets the active team to the first team in the list whose owner_id > 0.
+        Safely ignores the case where no team is owned.
         """
         try:
-            teams = self.get_team_list()  # vracia list dictov {"team_name", "owner_id"}
+            teams = self.get_team_list()  # returns a list of dicts {"team_name", "owner_id"}
             if not teams:
                 return False
             first_team_name = teams[0]["team_name"]
@@ -120,7 +119,6 @@ class Controller:
 
             self.active_team = team_name
             self.active_team_id = int(match.iloc[0]["team_id"])
-            print(f"[Controller] Active team set to {team_name} (ID {self.active_team_id})")
 
             # Automatically refresh the My Team tab
             self.refresh_myteam()
@@ -291,7 +289,6 @@ class Controller:
         try:
             if hasattr(self, "view") and hasattr(self.view, "refresh_myteam_tab"):
                 self.view.refresh_myteam_tab()
-                print("[Controller] My Team tab refreshed.")
             else:
                 print("[Controller] View is not initialized, refresh skipped.")
         except Exception as e:
@@ -348,7 +345,6 @@ class Controller:
 
         seasons = list(reversed(self.seasons))
         a = [str(y) for y in seasons]
-        print(a.sort(), seasons)
         return [str(y) for y in seasons]
 
     def simulate_days(self, days: int):
@@ -359,22 +355,9 @@ class Controller:
         for _ in range(days):
             date += timedelta(days=1)
             if self._is_season_start(date):
-                # print("start of season", self.current_date.year)
                 self._handle_season_start(date)
-                with pd.option_context('display.max_columns', None, 'display.expand_frame_repr', False):
-                    print(date.year)
-                    # print(self.teams_model.teams.sort_values(by="reputation", ascending=False))
-                    # print(self.drivers_model.drivers.head(30))
-                # print(self.drivers_model.active_drivers.sort_values(by="reputation_race", ascending=False).head(50))
+
             if date.year >= FIRST_REAL_SEASON_YEAR:
-                # TODO: a lot of commented code around?
-                """
-                driver_inputs = self.view.ask_driver_contracts(
-                    self.teams_model.get_human_teams(date),
-                    self.drivers_model.active_drivers,
-                    date.year
-                )
-                """
                 driver_inputs = {}
                 self.contracts_model.sign_driver_contracts(
                     active_series=self.series_model.get_active_series(date.year),
@@ -493,7 +476,6 @@ class Controller:
         contracts = self.contracts_model.get_contracts_for_year(year)
         for _, row in contracts.iterrows():
             self.teams_model.deduct_money(row["team_id"], row["salary"])
-            # print(f"Team {row['team_id']} paid {row['salary']} for driver {row['driver_id']} in {year}.")
 
     def _deduct_all_part_contracts_for_year(self, year: int):
         contracts = self.contracts_model.get_active_part_contracts_for_year(year)
@@ -542,7 +524,6 @@ class Controller:
         # The user triggers investments via a button in the GUI.
 
     def _update_entities_for_new_season(self, date: datetime):
-        # print("rts", self.current_date.year, self.drivers_model.get_retiring_drivers())
         self.contracts_model.disable_driver_contracts(self.drivers_model.get_retiring_drivers())
         self.drivers_model.update_drivers(date)
         self.drivers_model.update_reputations()
@@ -627,7 +608,6 @@ class Controller:
                 series=self.series_model.series,
                 rules=rules
             )
-            # print(f"[Controller] Found {len(df)} available drivers for year {year}.")
             return df
         except Exception as e:
             print(f"[Controller] Error loading available drivers: {e}")
@@ -646,7 +626,6 @@ class Controller:
 
             year = self.current_date.year + (1 if next_year else 0)
             self.contracts_model.offer_driver_contract(driver_id, team_id, salary, length, year)
-            # print(f"[Controller] Offer for driver {driver_id} (year {year}) created.")
             return True
         except Exception as e:
             print(f"[Controller] Error creating offer: {e}")
@@ -665,9 +644,6 @@ class Controller:
             for contract in signed:
                 if contract["year"] == self.current_date.year:
                     self.teams_model.deduct_money(contract["team_id"], contract["salary"])
-
-            # self.refresh_myteam()
-            # print("[Controller] Processed all driver offers.")
         except Exception as e:
             print(f"[Controller] Error processing offers: {e}")
 
@@ -716,7 +692,6 @@ class Controller:
 
         if died:
             self.drivers_model.mark_drivers_dead(died, date.year)
-            # print("ts", date.year, died)
             self.contracts_model.disable_driver_contracts(died)
 
             if date.year >= 1894:
@@ -740,11 +715,7 @@ class Controller:
             return pd.DataFrame()
 
         season = int(season_str)
-        # print("tu")
         df = self.race_model.pivot_results_by_race(sid, season, self.manufacturer_model.get_manufacturers())
-        # print(df)
-        # print("tam")
-        # print(self._format_results(df, season))
         return self._format_results(df, season)
 
     def get_stats(self, subject_name: str, stats_type: str, manufacturer_type: str) -> pd.DataFrame:
@@ -816,16 +787,6 @@ class Controller:
                 df.drop(columns=[raw_col], inplace=True)
 
         # Add driver name and age
-        # TODO: commented via docstring?
-        """print("I")
-        with pd.option_context(
-                "display.max_columns", None,
-                "display.width", None,
-                "display.max_colwidth", None,
-                "display.expand_frame_repr", False
-        ):
-            print(df.head(60))
-            print(self.drivers_model.drivers.head(60))"""
 
         df["driver_id"] = df["driver_id"].astype(int)
         self.drivers_model.drivers["driver_id"] = self.drivers_model.drivers["driver_id"].astype(int)
@@ -837,15 +798,7 @@ class Controller:
         )
 
         df["Age"] = season - df["year"]
-        # TODO: commented via docstring?
-        """print("J")
-        with pd.option_context(
-                "display.max_columns", None,
-                "display.width", None,
-                "display.max_colwidth", None,
-                "display.expand_frame_repr", False
-        ):
-            print(df.head(60))"""
+
         df.drop(columns=["year", "driver_id"], inplace=True)
 
         # Add team name
@@ -940,7 +893,6 @@ class Controller:
             return f"No active contract found for driver {driver_id}."
 
         # Deactivate contract
-        # print("t", self.current_date.year, driver_id, is_current)
         self.contracts_model.disable_driver_contract(driver_id, is_current, self.current_date.year)
 
         # Deduct money

@@ -15,19 +15,16 @@ from historical_racing_manager.consts import (
     COL_RULE_END,
 )
 
-# TODO: docstring?
-"""
-SeriesModel
-
-Handles loading, saving and querying series metadata and point rules.
-The model keeps two tables in memory:
-- self.series: information about available series (id, name, start/end years)
-- self.point_rules: point allocation rules per series and season range
-"""
-
 
 class SeriesModel:
-    """Model for series metadata and point rules."""
+    """
+    SeriesModel
+
+    Handles loading, saving and querying series metadata and point rules.
+    The model keeps two tables in memory:
+    - self.series: information about available series (id, name, start/end years)
+    - self.point_rules: point allocation rules per series and season range
+    """
 
     def __init__(self):
         # DataFrames holding series definitions and point rules

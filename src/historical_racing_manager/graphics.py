@@ -28,7 +28,6 @@ class Graphics:
         self.selected_team = ctk.StringVar()
 
         # Optional top menu (logo or nothing)
-        # self._setup_menu()
         self._setup_team_selector()
         self._setup_controls()
         self._setup_tabview()
@@ -121,8 +120,6 @@ class Graphics:
         self.cmb_2 = ctk.CTkComboBox(controls, variable=self.var_2, state="readonly", command=self.show_results)
         self.cmb_2.grid(row=0, column=1, padx=5)
         self.cmb_2.bind("<<ComboboxSelected>>", command=self.show_results)
-
-        # self._create_button(controls, "Show Results", self.show_results, 2)
 
         # Simulation shortcuts
         for idx, (label, days) in enumerate(SIMULATION_STEPS.items(), start=3):
@@ -442,13 +439,6 @@ class Graphics:
                     self.cmb_1.set(items[0])
                 self.on_subject_change([""])
 
-                """elif current_tab == "Manufacturers":
-                items = self.controller.get_names(current_tab)
-                self.cmb_1.configure(values=items)
-                if items:
-                    self.cmb_1.set(items[0])
-                self.on_subject_change(["engine", "chassi", "pneu"])"""
-
             elif current_tab == "Manufacturers":
                 manu_dict = self.controller.get_names(current_tab)  # dict: name -> parts
 
@@ -515,8 +505,7 @@ class Graphics:
             dialog = ctk.CTkToplevel(self.root)
             dialog.title("Offer Contract to Driver")
             dialog.geometry("500x400")
-            # TODO: translate
-            # --- přidané řádky pro modalitu a přednost ---
+            # --- added lines for modality and priority ---
             dialog.transient(self.root)
             dialog.grab_set()
             dialog.lift()
@@ -599,8 +588,7 @@ class Graphics:
             dialog = ctk.CTkToplevel(self.root)
             dialog.title("Terminate Driver Contract")
             dialog.geometry("500x400")
-            # TODO: translate
-            # --- přidané řádky pro modalitu a přednost ---
+            # --- added lines for modality and priority ---
             dialog.transient(self.root)
             dialog.grab_set()
             dialog.lift()
@@ -664,8 +652,7 @@ class Graphics:
             dialog = ctk.CTkToplevel(self.root)
             dialog.title("Offer Car Part Contract")
             dialog.geometry("500x400")
-            # TODO: translate
-            # --- přidané řádky pro modalitu a přednost ---
+            # --- added lines for modality and priority ---
             dialog.transient(self.root)
             dialog.grab_set()
             dialog.lift()
@@ -750,7 +737,7 @@ class Graphics:
             dialog.title("Create Own Part")
             dialog.geometry("400x200")
 
-            # --- přidané řádky pro modalitu a přednost ---
+            # --- added lines for modality and priority ---
             dialog.transient(self.root)
             dialog.grab_set()
             dialog.lift()
@@ -800,8 +787,7 @@ class Graphics:
             dialog = ctk.CTkToplevel(self.root)
             dialog.title("Adjust Marketing Staff")
             dialog.geometry("400x250")
-            # TODO: translate
-            # --- přidané řádky pro modalitu a přednost ---
+            # --- added lines for modality and priority ---
             dialog.transient(self.root)
             dialog.grab_set()
             dialog.lift()
