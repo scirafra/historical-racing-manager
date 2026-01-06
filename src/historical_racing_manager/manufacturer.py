@@ -89,11 +89,11 @@ class ManufacturerModel:
 
         new_parts = final[
             [
-                "partID",
-                "partType",
-                "manufacturerID",
+                "part_id",
+                "part_type",
+                "manufacture_id",
                 "rulesID",
-                "seriesID",
+                "series_id",
                 "power",
                 "reliability",
                 "safety",
@@ -101,26 +101,26 @@ class ManufacturerModel:
                 "cost",
             ]
         ].copy()
-        new_parts.loc[:, "partID"] = self._generate_new_part_ids(len(new_parts))
+        new_parts.loc[:, "part_id"] = self._generate_new_part_ids(len(new_parts))
 
         self.car_parts = pd.concat([self.car_parts, new_parts], ignore_index=True)
 
     def get_manufacturers(self) -> pd.DataFrame:
         """Return manufacturer IDs and names, or an empty DataFrame if unavailable."""
         return (
-            self.manufacturers[["manufacturerID", "name"]].copy()
+            self.manufacturers[["manufacture_id", "name"]].copy()
             if not self.manufacturers.empty
-            else pd.DataFrame(columns=["manufacturerID", "name"])
+            else pd.DataFrame(columns=["manufacture_id", "name"])
         )
 
     def get_manufacturers_id(self, manufacturer_name: str) -> int | None:
-        """Return the manufacturerID for a given name, or None if not found."""
+        """Return the manufacture_id for a given name, or None if not found."""
         result = self.manufacturers.query("name == @manufacturer_name")
-        return result["manufacturerID"].iat[0] if not result.empty else None
+        return result["manufacture_id"].iat[0] if not result.empty else None
 
     def _merge_contracts_with_rules(self, contracts: pd.DataFrame, year: int) -> pd.DataFrame:
         """Merge contracts with rules and filter to those active in the given year."""
-        merged = pd.merge(contracts, self.rules, on=["seriesID", "partType"], how="left")
+        merged = pd.merge(contracts, self.rules, on=["series_id", "part_type"], how="left")
         mask = (
                 (merged["startYear"] <= year)
                 & (merged["startSeason"] <= year)
@@ -158,11 +158,11 @@ class ManufacturerModel:
 
     def _generate_new_part_ids(self, count: int) -> range:
         """Generate a sequence of new part IDs continuing from the current maximum."""
-        if self.car_parts.empty or self.car_parts["partID"].isnull().all():
+        if self.car_parts.empty or self.car_parts["part_id"].isnull().all():
             start = 0
         else:
             try:
-                max_id = pd.to_numeric(self.car_parts["partID"], errors="coerce").max()
+                max_id = pd.to_numeric(self.car_parts["part_id"], errors="coerce").max()
                 start = int(max_id) + 1 if pd.notna(max_id) else 0
             except Exception:
                 start = 0
@@ -170,8 +170,8 @@ class ManufacturerModel:
 
     def map_manufacturer_ids_to_names(self, manu_dict: dict[int, list[str]]) -> dict[str, list[str]]:
         """
-        Convert {manufacturerID: [parts]} to {manufacturer_name: [parts]}.
-        If manufacturerID does not exist, the key becomes "" (empty string).
+        Convert {manufacture_id: [parts]} to {manufacturer_name: [parts]}.
+        If manufacture_id does not exist, the key becomes "" (empty string).
         """
         df = self.manufacturers
 
@@ -181,7 +181,7 @@ class ManufacturerModel:
 
         # Build lookup: "0" -> "Ferrari"
         lookup = (
-            df.assign(mid_norm=df["manufacturerID"].astype(str))
+            df.assign(mid_norm=df["manufacture_id"].astype(str))
             .set_index("mid_norm")["name"]
             .to_dict()
         )

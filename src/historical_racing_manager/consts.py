@@ -72,7 +72,7 @@ TEAM_SELECTOR_WIDTH = 250
 
 # Simulation Steps
 SIMULATION_STEPS = {
-    "Next Day": 1,
+    "Next Day": 1500,
     "Next Week": 7,
     "Next Year": 365
 }
@@ -95,7 +95,7 @@ COLUMN_LABELS = {
     "salary": "Salary",
     "startYear": "Start Year",
     "endYear": "End Year",
-    "partType": "Part Type",
+    "part_type": "Part Type",
     "cost": "Cost",
     "name": "Component Name",
     "staff": "Staff",
@@ -117,7 +117,7 @@ MANUFACTURER_REQUIRED_FILES = [
 ]
 
 # --- Merge keys used when generating new parts ---
-MERGE_KEYS = ["rulesID", "manufacturerID", "partType", "seriesID"]
+MERGE_KEYS = ["rulesID", "manufacture_id", "part_type", "series_id"]
 
 # --- Default cost of generated parts ---
 DEFAULT_PART_COST = 250_000
@@ -136,7 +136,7 @@ UPGRADE_SAFETY_MAX = 9
 RACE_REQUIRED_FILES = [
     "stands.csv",
     "races.csv",
-    "pointSystem.csv",
+    "point_system.csv",
     "results.csv",
     "circuits.csv",
     "circuit_layouts.csv",
@@ -170,13 +170,13 @@ SERIES_FILE = "series.csv"
 POINT_RULES_FILE = "point_rules.csv"
 
 # --- Column names for series ---
-COL_SERIES_ID = "seriesID"
+COL_SERIES_ID = "series_id"
 COL_SERIES_NAME = "name"
 COL_SERIES_START = "startYear"
 COL_SERIES_END = "endYear"
 
 # --- Column names for point rules ---
-COL_RULE_SERIES_ID = "seriesID"
+COL_RULE_SERIES_ID = "series_id"
 COL_RULE_START = "startSeason"
 COL_RULE_END = "endSeason"
 

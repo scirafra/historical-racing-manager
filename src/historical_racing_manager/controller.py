@@ -10,6 +10,7 @@ from historical_racing_manager.consts import (
     DEFAULT_BEGIN_YEAR, DEFAULT_END_YEAR, DEFAULT_DRIVERS_PER_YEAR, DEFAULT_SIM_YEARS_STEP,
     SEASON_START_DAY, SEASON_START_MONTH, FIRST_REAL_SEASON_YEAR, FIRST_RACE_PLANNING_YEAR
 )
+# TODO: you could do: import historical_racing_manager.consts as consts and then use consts.DEFAULT_BEGIN_YEAR etc.
 from historical_racing_manager.contracts import ContractsModel
 from historical_racing_manager.drivers import DriversModel
 from historical_racing_manager.graphics import Graphics
@@ -55,6 +56,7 @@ class Controller:
         self.view.run()
 
     def _set_default_active_team(self):
+        # TODO: to english
         """
         Nastaví aktívny tím na prvý tím zoznamu tímov, ktoré majú owner_id > 0.
         Bezpečne ignoruje prípad, že žiadny tím nie je vlastnený.
@@ -365,6 +367,7 @@ class Controller:
                     # print(self.drivers_model.drivers.head(30))
                 # print(self.drivers_model.active_drivers.sort_values(by="reputation_race", ascending=False).head(50))
             if date.year >= FIRST_REAL_SEASON_YEAR:
+                # TODO: a lot of commented code around?
                 """
                 driver_inputs = self.view.ask_driver_contracts(
                     self.teams_model.get_human_teams(date),
@@ -420,6 +423,10 @@ class Controller:
             self.race_model,
         )
 
+    def load_default_game(self):
+        # TODO: why there is also start_new_season method which is never used?
+        return self.load_game("default_data", base_folder=PACKAGE_DIR)
+
     def load_game(self, name: str, base_folder: pathlib.Path = USER_DIR) -> bool:
         folder = base_folder / name
         data_file = folder / "data.csv"
@@ -467,7 +474,7 @@ class Controller:
         self.contracts_model.terminate_driver_contract(team_id, driver_id, self.current_date.year)
 
     def get_active_driver_contracts(self):
-        return self.contracts_model.DTcontract[self.contracts_model.DTcontract["active"]]
+        return self.contracts_model.dt_contract[self.contracts_model.dt_contract["active"]]
 
     def get_human_teams(self, date: datetime) -> pd.DataFrame:
         """
@@ -546,7 +553,7 @@ class Controller:
         self.race_model.all_time_best(self.drivers_model, 1)
 
     def _handle_contracts(self, date: datetime):
-        self.manufacturer_model.develop_part(date, self.contracts_model.get_MScontract())
+        self.manufacturer_model.develop_part(date, self.contracts_model.get_ms_contract())
 
         car_part_inputs = {}
         self.contracts_model.sign_car_part_contracts(
@@ -785,8 +792,8 @@ class Controller:
         if df is None or df.empty:
             return pd.DataFrame()
 
-        # Map manufacturerID → name
-        mf_map = self.manufacturer_model.manufacturers.set_index("manufacturerID")["name"].to_dict()
+        # Map manufacture_id → name
+        mf_map = self.manufacturer_model.manufacturers.set_index("manufacture_id")["name"].to_dict()
 
         # Handle columns engine/chassi/pneu or engineID/chassiID/pneuID
         part_columns = {
@@ -809,6 +816,7 @@ class Controller:
                 df.drop(columns=[raw_col], inplace=True)
 
         # Add driver name and age
+        # TODO: commented via docstring?
         """print("I")
         with pd.option_context(
                 "display.max_columns", None,
@@ -829,6 +837,7 @@ class Controller:
         )
 
         df["Age"] = season - df["year"]
+        # TODO: commented via docstring?
         """print("J")
         with pd.option_context(
                 "display.max_columns", None,
@@ -921,10 +930,10 @@ class Controller:
             return "No active team selected."
 
         # Verify the contract exists (optional if UI filters correctly)
-        contract = self.contracts_model.DTcontract[
-            (self.contracts_model.DTcontract["driverID"] == driver_id) &
-            (self.contracts_model.DTcontract["teamID"] == team_id) &
-            (self.contracts_model.DTcontract["active"] is True)
+        contract = self.contracts_model.dt_contract[
+            (self.contracts_model.dt_contract["driverID"] == driver_id) &
+            (self.contracts_model.dt_contract["teamID"] == team_id) &
+            (self.contracts_model.dt_contract["active"] is True)
             ]
 
         if contract.empty:
@@ -939,6 +948,7 @@ class Controller:
 
         # Type of contract
         contract_type = "current" if is_current else "future"
+        # TODO: really not nice to return string that is then displayed directly in GUI...
         return f"Contract with driver {driver_id} terminated. Type: {contract_type}. Cost: €{cost:,}"
 
     def get_available_car_parts(self) -> pd.DataFrame:
@@ -953,10 +963,10 @@ class Controller:
         )
 
         manufacturers = self.manufacturer_model.get_manufacturers()
-        manufacturers["manufacturerID"] = manufacturers["manufacturerID"].astype(int)
+        manufacturers["manufacture_id"] = manufacturers["manufacture_id"].astype(int)
 
-        parts["manufacturerID"] = parts["manufacturerID"].astype(int)
-        parts = parts.merge(manufacturers[["manufacturerID", "name"]], on="manufacturerID", how="left")
+        parts["manufacture_id"] = parts["manufacture_id"].astype(int)
+        parts = parts.merge(manufacturers[["manufacture_id", "name"]], on="manufacture_id", how="left")
         parts.rename(columns={"name": "manufacturer_name"}, inplace=True)
 
         return parts

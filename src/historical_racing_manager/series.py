@@ -15,6 +15,7 @@ from historical_racing_manager.consts import (
     COL_RULE_END,
 )
 
+# TODO: docstring?
 """
 SeriesModel
 

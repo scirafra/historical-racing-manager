@@ -1,4 +1,4 @@
-rulesID,seriesID,startSeason,endSeason,min_cars,max_cars,minDrivers,maxDrivers,teamCts,engineCts,chassiCts,pneuCts,min_age,max_age,psID
+rulesID,series_id,startSeason,endSeason,min_cars,max_cars,minDrivers,maxDrivers,teamCts,engineCts,chassiCts,pneuCts,min_age,max_age,psID
 0,1,1894,1930,1,2,1,1,1,2,3,4,18,99,8
 1,5,1894,3000,1,3,1,1,1,2,3,4,15,26,0
 2,6,1894,3000,1,3,1,1,1,2,3,4,15,99,1

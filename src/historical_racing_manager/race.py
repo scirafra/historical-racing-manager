@@ -52,7 +52,7 @@ class RaceModel:
             # Parse race_date column into pandas datetime
             self.races["race_date"] = pd.to_datetime(self.races["race_date"], errors="coerce")
 
-        self.point_system = pd.read_csv(folder / "pointSystem.csv")
+        self.point_system = pd.read_csv(folder / "point_system.csv")
         self.results = pd.read_csv(folder / "results.csv")
         self.circuits = pd.read_csv(folder / "circuits.csv")
         self.circuit_layouts = pd.read_csv(folder / "circuit_layouts.csv")
@@ -67,16 +67,16 @@ class RaceModel:
             return
         self.races.to_csv(folder / "races.csv", index=False)
         self.standings.to_csv(folder / "stands.csv", index=False)
-        self.point_system.to_csv(folder / "pointSystem.csv", index=False)
+        self.point_system.to_csv(folder / "point_system.csv", index=False)
         self.results.to_csv(folder / "results.csv", index=False)
         self.circuits.to_csv(folder / "circuits.csv", index=False)
         self.circuit_layouts.to_csv(folder / "circuit_layouts.csv", index=False)
 
     # ===== Queries =====
     def get_raced_series(self) -> list[int]:
-
+        # TODO: translate comments
         """
-        Vráti unikátne seriesID z self.results ako list int v poradí prvého výskytu.
+        Vráti unikátne series_id z self.results ako list int v poradí prvého výskytu.
         Predpoklad: self.results je pandas.DataFrame.
         """
         # overenie typu
@@ -85,12 +85,12 @@ class RaceModel:
             return []
 
         # overenie existencie stĺpca
-        if "seriesID" not in self.results.columns:
+        if "series_id" not in self.results.columns:
             return []
 
         # vybrať stĺpec, odstrániť NA, konvertovať na int ak je to možné,
         # zachovať poradie prvého výskytu pomocou drop_duplicates
-        series = self.results["seriesID"].dropna()
+        series = self.results["series_id"].dropna()
 
         try:
             series_int = series.astype(int)
@@ -101,9 +101,9 @@ class RaceModel:
         return series_int.drop_duplicates(keep="first").tolist()
 
     def get_raced_teams(self) -> list[int]:
-
+        # TODO: translate comments
         """
-        Vráti unikátne seriesID z self.results ako list int v poradí prvého výskytu.
+        Vráti unikátne series_id z self.results ako list int v poradí prvého výskytu.
         Predpoklad: self.results je pandas.DataFrame.
         """
         # overenie typu
@@ -128,9 +128,9 @@ class RaceModel:
         return series_int.drop_duplicates(keep="first").tolist()
 
     def get_raced_drivers(self) -> list[int]:
-
+        # TODO: translate comments
         """
-        Vráti unikátne seriesID z self.results ako list int v poradí prvého výskytu.
+        Vráti unikátne series_id z self.results ako list int v poradí prvého výskytu.
         Predpoklad: self.results je pandas.DataFrame.
         """
         # overenie typu
@@ -156,7 +156,7 @@ class RaceModel:
 
     def get_raced_manufacturers(self) -> dict[int, list[str]]:
         """
-        Returns a dict mapping manufacturerID -> list of used part types.
+        Returns a dict mapping manufacture_id -> list of used part types.
         Example:
         {
             5: ["engine", "pneu"],
@@ -208,7 +208,7 @@ class RaceModel:
         and manufacturers when those columns are present.
         """
         # keep only rows for the requested series
-        s = self.standings[self.standings['seriesID'] == series_id].copy()
+        s = self.standings[self.standings['series_id'] == series_id].copy()
 
         # compute max round per year and typ (if you want final per typ separately).
         # If final should be per year regardless of typ, group only by 'year' instead of ['year','typ'].
@@ -228,11 +228,11 @@ class RaceModel:
             aggfunc='first'  # one winner per type/year
         ).reset_index()
 
-        # Insert seriesID column back into the pivot
-        pivot.insert(0, 'seriesID', series_id)
+        # Insert series_id column back into the pivot
+        pivot.insert(0, 'series_id', series_id)
 
         # Get series name label
-        series_name = series.loc[series["seriesID"] == series_id, "name"].values
+        series_name = series.loc[series["series_id"] == series_id, "name"].values
         series_label = series_name[0] if len(series_name) > 0 else None
         pivot.insert(1, 'series', series_label)
 
@@ -258,7 +258,7 @@ class RaceModel:
             pivot.drop(columns=["teamID", "team"], inplace=True)
 
         # Map manufacturer IDs to names for engine, chassi, and pneu columns
-        mf_map = manufacturers.set_index("manufacturerID")["name"].to_dict()
+        mf_map = manufacturers.set_index("manufacture_id")["name"].to_dict()
         for part in ["engine", "chassi", "pneu"]:
             if part in pivot.columns:
                 pivot[part] = pivot[part].map(mf_map)
@@ -272,8 +272,8 @@ class RaceModel:
         final_order = ['series'] + desired_order + other_columns
         pivot = pivot[[col for col in final_order if col in pivot.columns]]
 
-        # Remove seriesID column from final output
-        pivot.drop(columns=["seriesID"], inplace=True)
+        # Remove series_id column from final output
+        pivot.drop(columns=["series_id"], inplace=True)
 
         return pivot
 
@@ -288,7 +288,7 @@ class RaceModel:
 
             # Filter relevant races
             races = self.races[
-                (self.races["seriesID"].isin(series_ids)) &
+                (self.races["series_id"].isin(series_ids)) &
                 (self.races["race_date"] >= current_date)
                 ].copy()
 
@@ -296,7 +296,7 @@ class RaceModel:
             races.rename(columns={"name": "Race Name"}, inplace=True)
 
             # Join with series names
-            races = races.merge(series[["seriesID", "name"]], on="seriesID", how="left")
+            races = races.merge(series[["series_id", "name"]], on="series_id", how="left")
 
             # Rename series column and race_date to Date
             races.rename(columns={"name": "Series", "race_date": "Date"}, inplace=True)
@@ -320,7 +320,7 @@ class RaceModel:
 
     def get_results_for_series_and_season(self, series_id: int, season: int) -> pd.DataFrame:
         df = self.results[
-            (self.results["seriesID"] == series_id) & (self.results["season"] == season)
+            (self.results["series_id"] == series_id) & (self.results["season"] == season)
             ][
             ["driverID", "teamID", "engineID", "chassiID", "pneuID", "raceID", "position", "round"]
         ].copy()
@@ -338,7 +338,7 @@ class RaceModel:
         if subject_stands.empty:
             return pd.DataFrame()
 
-        grouped = subject_stands.groupby(["year", "seriesID"])
+        grouped = subject_stands.groupby(["year", "series_id"])
         records = []
 
         for (year, series_id), group in grouped:
@@ -354,7 +354,7 @@ class RaceModel:
             race_results = self.results[
                 (self.results[subject_type + "ID"] == subject_id) &
                 (self.results["season"] == year) &
-                (self.results["seriesID"] == series_id)
+                (self.results["series_id"] == series_id)
                 ]
 
             wins = (race_results["position"] == 1).sum()
@@ -362,7 +362,7 @@ class RaceModel:
             best_position = race_results["position"].min()
 
             # Get series name
-            series_name = series.loc[series["seriesID"] == series_id, "name"].values
+            series_name = series.loc[series["series_id"] == series_id, "name"].values
             series_label = series_name[0] if len(series_name) > 0 else None
 
             records.append({
@@ -381,12 +381,12 @@ class RaceModel:
     def get_seasons_for_series(self, series_id: int) -> list[int]:
         if self.results.empty:
             return []
-        seasons = self.results.loc[self.results["seriesID"] == series_id, "season"].unique()
+        seasons = self.results.loc[self.results["series_id"] == series_id, "season"].unique()
         return sorted(seasons.tolist())
 
     def all_time_best(self, drivers_model, series_id: int) -> pd.DataFrame:
         filtered = self.standings[
-            (self.standings["seriesID"] == series_id) & (self.standings["typ"] == "driver")
+            (self.standings["series_id"] == series_id) & (self.standings["typ"] == "driver")
             ]
         if filtered.empty:
             return pd.DataFrame()
@@ -409,7 +409,7 @@ class RaceModel:
                               fill_value=None) -> pd.DataFrame:
         df = self.get_results_for_series_and_season(series_id, season)
         # Create mapping from manufacturer ID to manufacturer name
-        manu_map = manufacturers.set_index("manufacturerID")["name"].to_dict()
+        manu_map = manufacturers.set_index("manufacture_id")["name"].to_dict()
 
         if df.empty:
             return pd.DataFrame()
@@ -445,7 +445,7 @@ class RaceModel:
         # If championship rounds exist, attach final position and points for drivers
         if "1" in labels:
             st2 = self.standings.loc[
-                (self.standings["seriesID"] == series_id)
+                (self.standings["series_id"] == series_id)
                 & (self.standings["year"] == season)
                 & (self.standings["typ"] == "driver"),
                 ["subjectID", "round", "points", "position"],
@@ -464,6 +464,7 @@ class RaceModel:
 
         return pivot
 
+    # TODO: docstring here?
     """
     Race simulation helpers: prepare race entry data and run race simulation.
 
@@ -504,7 +505,7 @@ class RaceModel:
         manufacturer_model : object
             Manufacturer model containing car_parts DataFrame.
         contracts_model : object
-            Contracts model containing DTcontract, MTcontract, STcontract DataFrames.
+            Contracts model containing dt_contract, mt_contract, st_contract DataFrames.
         races_today : pd.DataFrame
             DataFrame of races scheduled for the current date.
         idx : int
@@ -517,22 +518,22 @@ class RaceModel:
         list[int]
             List of driver IDs who died during the simulated race (returned by simulate_race).
         """
-        series_id = int(races_today.iloc[idx]["seriesID"])
+        series_id = int(races_today.iloc[idx]["series_id"])
         layout_id = int(races_today.iloc[idx]["layoutID"])
         layout_row = self.circuit_layouts[self.circuit_layouts["layoutID"] == layout_id].iloc[0]
 
         # Select active driver-team contracts valid for the current year
-        active_dt = contracts_model.DTcontract[
-            (contracts_model.DTcontract["active"])
-            & (contracts_model.DTcontract["startYear"] <= current_date.year)
-            & (contracts_model.DTcontract["endYear"] >= current_date.year)
+        active_dt = contracts_model.dt_contract[
+            (contracts_model.dt_contract["active"])
+            & (contracts_model.dt_contract["startYear"] <= current_date.year)
+            & (contracts_model.dt_contract["endYear"] >= current_date.year)
             ]
         # Keep only drivers that are currently active in drivers_model
         active_dt = active_dt[active_dt["driverID"].isin(drivers_model.active_drivers["driverID"])]
 
         # Teams that participate in this series
-        teams_in_series = contracts_model.STcontract[
-            contracts_model.STcontract["seriesID"] == series_id
+        teams_in_series = contracts_model.st_contract[
+            contracts_model.st_contract["series_id"] == series_id
             ]["teamID"]
         # Grid entries limited to teams in the series
         grid_dt = active_dt[active_dt["teamID"].isin(teams_in_series)]
@@ -547,49 +548,54 @@ class RaceModel:
 
         # Ensure part-related columns exist with default 0
         for col in ("power", "reliability", "safety", "engine", "chassi", "pneu"):
-            selected[col] = selected.get(col, 0)
+            selected[col] = selected.get(col, -1)
 
         # Active manufacturer-team contracts for this series and year
-        active_mt = contracts_model.MTcontract[
-            (contracts_model.MTcontract["startYear"] <= current_date.year)
-            & (contracts_model.MTcontract["endYear"] >= current_date.year)
-            & (contracts_model.MTcontract["seriesID"] == series_id)
+        active_mt = contracts_model.mt_contract[
+            (contracts_model.mt_contract["startYear"] <= current_date.year)
+            & (contracts_model.mt_contract["endYear"] >= current_date.year)
+            & (contracts_model.mt_contract["series_id"] == series_id)
             ].copy()
 
         # Manufacturer parts available for this series and year
         parts = manufacturer_model.car_parts[
-            (manufacturer_model.car_parts["seriesID"] == series_id)
+            (manufacturer_model.car_parts["series_id"] == series_id)
             & (manufacturer_model.car_parts["year"] == current_date.year)
             ].copy()
 
         # Normalize merge keys to integer type for a reliable merge
-        merge_keys = ["seriesID", "manufacturerID"]
+        merge_keys = ["series_id", "manufacture_id"]
         for key in merge_keys:
             parts[key] = parts[key].astype(int)
             active_mt[key] = active_mt[key].astype(int)
 
-        # Ensure partType is string for merging
-        parts["partType"] = parts["partType"].astype(str)
-        active_mt["partType"] = active_mt["partType"].astype(str)
+        # Ensure part_type is string for merging
+        parts["part_type"] = parts["part_type"].astype(str)
+        active_mt["part_type"] = active_mt["part_type"].astype(str)
 
         # Merge active manufacturer contracts with available parts
         merged = pd.merge(
             active_mt,
             parts,
-            on=["seriesID", "manufacturerID", "partType"],
+            on=["series_id", "manufacture_id", "part_type"],
             how="left",
         )
 
         # Apply parts to selected grid entries: set part IDs and accumulate stats
+
         for _, part in merged.iterrows():
             team_id = part["teamID"]
             mask = selected["teamID"] == team_id
-            selected.loc[mask, part["partType"]] = (
-                int(part["manufacturerID"]) if pd.notna(part["manufacturerID"]) else 0
+            selected.loc[mask, part["part_type"]] = (
+                int(part["manufacture_id"]) if pd.notna(part["manufacture_id"]) else -1
             )
             selected.loc[mask, "power"] += int(part.get("power", 0))
             selected.loc[mask, "reliability"] += int(part.get("reliability", 0))
             selected.loc[mask, "safety"] += int(part.get("safety", 0))
+
+        # Remove non-complet cars
+        for part in ["engine", "chassi", "pneu"]:
+            selected = selected[(selected[part] != -1)]
 
         # Track characteristics and wetness modifiers
         corners = int(layout_row.get("corners", 1) or 1)
@@ -639,7 +645,7 @@ class RaceModel:
 
         # Lookup point rules for the series and season
         rules = series_model.point_rules[
-            (series_model.point_rules["seriesID"] == series_id)
+            (series_model.point_rules["series_id"] == series_id)
             & (series_model.point_rules["startSeason"] <= current_date.year)
             & (series_model.point_rules["endSeason"] >= current_date.year)
             ].reset_index(drop=True)
@@ -678,7 +684,7 @@ class RaceModel:
         teams_model : object
             Teams model; may implement add_race_reputation(reputation, team_list).
         race_row : pd.Series
-            Race metadata (raceID, seriesID, season, trackSafety, wet, reputation, championship).
+            Race metadata (raceID, series_id, season, trackSafety, wet, reputation, championship).
         race_data : pd.DataFrame
             Prepared race grid with car and driver attributes.
         current_point_rules : pd.DataFrame
@@ -705,8 +711,8 @@ class RaceModel:
         # Simulate outcome for each car: "Good", "Crash", or "Death"
         race_data["finished"] = race_data.apply(self._simulate_outcome, axis=1)
 
-        # Update global counters for Formula 1 era races (seriesID == 1 and season > 1949)
-        if int(race_row["seriesID"]) == 1 and int(race_row["season"]) > 1949:
+        # Update global counters for Formula 1 era races (series_id == 1 and season > 1949)
+        if int(race_row["series_id"]) == 1 and int(race_row["season"]) > 1949:
             self.crashes += int((race_data["finished"] == "Crash").sum())
             self.deaths += int((race_data["finished"] == "Death").sum())
             self.f1_races += 1
@@ -751,7 +757,7 @@ class RaceModel:
         round_no = 0
         if bool(race_row.get("championship", False)):
             pre = self.standings[
-                (self.standings["seriesID"] == race_row["seriesID"])
+                (self.standings["series_id"] == race_row["series_id"])
                 & (self.standings["year"] == race_row["season"])
                 ]
             round_no = 1 if pre.empty else int(pre["round"].max()) + 1
@@ -765,7 +771,7 @@ class RaceModel:
                 int(finish.loc[fin_idx, "carID"]),
                 int(pos),
                 int(race_row["season"]),
-                int(race_row["seriesID"]),
+                int(race_row["series_id"]),
                 int(round_no),
                 int(finish.loc[fin_idx, "engineID"]),
                 int(finish.loc[fin_idx, "chassiID"]),
@@ -781,7 +787,7 @@ class RaceModel:
                 int(row["carID"]),
                 CRASH_CODE,
                 int(race_row["season"]),
-                int(race_row["seriesID"]),
+                int(race_row["series_id"]),
                 int(round_no),
                 int(row["engineID"]),
                 int(row["chassiID"]),
@@ -797,7 +803,7 @@ class RaceModel:
                 int(row["carID"]),
                 DEATH_CODE,
                 int(race_row["season"]),
-                int(race_row["seriesID"]),
+                int(race_row["series_id"]),
                 int(round_no),
                 int(row["engineID"]),
                 int(row["chassiID"]),
@@ -878,7 +884,7 @@ class RaceModel:
         Parameters
         ----------
         race_row : pd.Series
-            Row describing the race (seriesID, season, raceID, etc.).
+            Row describing the race (series_id, season, raceID, etc.).
         race_data : pd.DataFrame
             DataFrame with entries for the race; must include subject ID columns like "driverID".
         ranking : list
@@ -896,7 +902,7 @@ class RaceModel:
         """
         # Filter previous standings for the same series and year
         pre = self.standings[
-            (self.standings["seriesID"] == race_row["seriesID"])
+            (self.standings["series_id"] == race_row["series_id"])
             & (self.standings["year"] == race_row["season"])
             ]
         final_blocks = []
@@ -944,7 +950,7 @@ class RaceModel:
             subjects["year"] = int(race_row["season"])
             subjects["round"] = 1 if last_round_block.empty else int(this_round) + 1
             subjects["position"] = 0
-            subjects["seriesID"] = int(race_row["seriesID"])
+            subjects["series_id"] = int(race_row["series_id"])
             subjects["typ"] = typ
 
             # If previous round exists, add previous points to current points
@@ -973,7 +979,7 @@ class RaceModel:
                                     "year",
                                     "round",
                                     "position",
-                                    "seriesID",
+                                    "series_id",
                                 ]
                             ].assign(typ=typ),
                         ],
@@ -991,7 +997,7 @@ class RaceModel:
             subjects["position"] = range(1, len(subjects) + 1)
 
             # Ensure integer types for key columns
-            for col in ["subjectID", "seriesID", "year", "round"]:
+            for col in ["subjectID", "series_id", "year", "round"]:
                 subjects[col] = subjects[col].astype(int)
 
             final_blocks.append(subjects)
@@ -1014,7 +1020,7 @@ class RaceModel:
         ----------
         series_model : object
             Model or container that holds series definitions in series_model.series DataFrame.
-            Expected columns: "startYear", "endYear", "seriesID", "name", "reputation".
+            Expected columns: "startYear", "endYear", "series_id", "name", "reputation".
         current_date : date-like
             Starting date for planning (converted to pandas.Timestamp).
         champ_per_series : int
@@ -1119,7 +1125,7 @@ class RaceModel:
                     # Append the new race entry to the races DataFrame
                     self.races.loc[len(self.races)] = {
                         "raceID": new_race_id,
-                        "seriesID": int(srow["seriesID"]),
+                        "series_id": int(srow["series_id"]),
                         "season": int(season),
                         "trackID": track_id,
                         "layoutID": layout_id,

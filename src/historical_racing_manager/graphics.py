@@ -313,9 +313,9 @@ class Graphics:
 
     # --- Game management ---
     def on_new_game(self):
-        """Initialize a new game from 'default_data' and refresh UI state."""
+        """Initialize a new game from default one and refresh UI state."""
         try:
-            ok = self.controller.load_game("default_data")
+            ok = self.controller.load_default_game()
             if ok:
                 self.date_label.configure(text=self.controller.get_date())
                 self._update_team_selector()
@@ -400,7 +400,7 @@ class Graphics:
     def sim_step(self, days: int):
         """Advance the simulation by a given number of days and refresh UI state."""
         try:
-            
+
             self.controller.simulate_days(days)
 
             self.date_label.configure(text=self.controller.get_date())
@@ -515,7 +515,7 @@ class Graphics:
             dialog = ctk.CTkToplevel(self.root)
             dialog.title("Offer Contract to Driver")
             dialog.geometry("500x400")
-
+            # TODO: translate
             # --- přidané řádky pro modalitu a přednost ---
             dialog.transient(self.root)
             dialog.grab_set()
@@ -599,7 +599,7 @@ class Graphics:
             dialog = ctk.CTkToplevel(self.root)
             dialog.title("Terminate Driver Contract")
             dialog.geometry("500x400")
-
+            # TODO: translate
             # --- přidané řádky pro modalitu a přednost ---
             dialog.transient(self.root)
             dialog.grab_set()
@@ -664,7 +664,7 @@ class Graphics:
             dialog = ctk.CTkToplevel(self.root)
             dialog.title("Offer Car Part Contract")
             dialog.geometry("500x400")
-
+            # TODO: translate
             # --- přidané řádky pro modalitu a přednost ---
             dialog.transient(self.root)
             dialog.grab_set()
@@ -676,7 +676,7 @@ class Graphics:
 
             ctk.CTkLabel(dialog, text="Select Part:", font=("Arial", 13, "bold")).pack(pady=5)
 
-            part_names = [f"{row.manufacturer_name} ({row.partType}) – Cost: €{row.cost}" for _, row in
+            part_names = [f"{row.manufacturer_name} ({row.part_type}) – Cost: €{row.cost}" for _, row in
                           parts_df.iterrows()]
 
             part_var = ctk.StringVar()
@@ -716,8 +716,8 @@ class Graphics:
 
                     row = parts_df.iloc[idx]
                     price = int(row.cost)
-                    manufacturer_id = int(row.manufacturerID)
-                    part_type = row.partType
+                    manufacturer_id = int(row.manufacture_id)
+                    part_type = row.part_type
                     start_year = self.controller.get_year()
                     if year_var.get() == "Next Year":
                         start_year += 1
@@ -800,7 +800,7 @@ class Graphics:
             dialog = ctk.CTkToplevel(self.root)
             dialog.title("Adjust Marketing Staff")
             dialog.geometry("400x250")
-
+            # TODO: translate
             # --- přidané řádky pro modalitu a přednost ---
             dialog.transient(self.root)
             dialog.grab_set()

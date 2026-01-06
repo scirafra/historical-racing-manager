@@ -1,4 +1,4 @@
-seriesID,reputation,name,startYear,endYear
+series_id,reputation,name,startYear,endYear
 1,1,Formula 1,1894,3000
 2,2,GT,3000,3000
 3,6,Formula E,1898,3000

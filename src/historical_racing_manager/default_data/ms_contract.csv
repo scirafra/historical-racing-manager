@@ -1,4 +1,4 @@
-seriesID,manufacturerID,partType,startYear,endYear
+series_id,manufacture_id,part_type,startYear,endYear
 1,0,engine,1894,3000
 1,1,engine,1894,3000
 1,0,chassi,1894,3000
