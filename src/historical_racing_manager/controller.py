@@ -182,6 +182,7 @@ class Controller:
             "parts": self.get_owners_team_parts_data(),
             "staff": self.get_team_staff(team_id),
             "races": self.get_upcoming_races(team_id),
+            "finances": self.get_team_finances(team_id),
         }
 
     def get_team_selector_values(self) -> list[str]:
@@ -221,6 +222,7 @@ class Controller:
                 "drivers": team_info["drivers"],
                 "components": team_info["parts"],
                 "staff": team_info["staff"],
+                "finances": team_info["finances"],
                 "races": team_info["races"],
             }
 
@@ -260,6 +262,23 @@ class Controller:
         except Exception as e:
             print(f" get_team_staff error: {e}")
             return pd.DataFrame(columns=["Department", "Employees"])
+
+    def get_team_finances(self, team_id: int) -> pd.DataFrame:
+        """
+        Returns financial history for the given team.
+        Includes columns: Season, Employees, Income.
+        """
+        try:
+            df = self.teams_model.get_team_finance_history(team_id)
+
+            if df.empty:
+                return pd.DataFrame(columns=["Season", "Employees", "Income"])
+
+            return df
+
+        except Exception as e:
+            print(f" get_team_finances error: {e}")
+            return pd.DataFrame(columns=["Season", "Employees", "Income"])
 
     def get_upcoming_races(self, team_id: int) -> pd.DataFrame:
         """

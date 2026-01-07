@@ -162,6 +162,30 @@ class TeamsModel:
         result = self.teams.loc[self.teams["team_id"] == team_id, ["team_id", "finance_employees", "design_employees"]]
         return result.reset_index(drop=True)
 
+    def get_team_finance_history(self, team_id: int) -> pd.DataFrame:
+        """
+        Return finance history for a given team_id with renamed columns:
+        Season, Employees, Income.
+        """
+        df = self.team_finances
+
+        if df is None or df.empty:
+            return pd.DataFrame(columns=["Season", "Employees", "Income"])
+
+        team_df = df[df["team_id"] == team_id].copy()
+        if team_df.empty:
+            return pd.DataFrame(columns=["Season", "Employees", "Income"])
+
+        team_df = team_df[["season", "finance_employees", "income"]].rename(
+            columns={
+                "season": "Season",
+                "finance_employees": "Employees",
+                "income": "Income",
+            }
+        )
+
+        return team_df.reset_index(drop=True)
+
     def invest_finance(self, year: int, investments: dict):
         """
         Apply finance investments for human teams for a given year.

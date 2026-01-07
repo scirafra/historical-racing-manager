@@ -199,7 +199,7 @@ class Graphics:
             tree_parts.pack(fill="x", padx=5, pady=5)
             self._populate_treeview(tree_parts, data["components"])
 
-            # STAFF + RACES section
+            # STAFF + FINANCE + RACES section
             info_frame = ctk.CTkFrame(parent)
             info_frame.pack(fill="x", padx=10, pady=(0, 5))
             info_frame.columnconfigure(0, weight=1)
@@ -213,9 +213,17 @@ class Graphics:
             tree_staff.pack(fill="x", padx=5, pady=5)
             self._populate_treeview(tree_staff, data["staff"])
 
-            # RACES
+            # FINANCES
             right_info = ctk.CTkFrame(info_frame)
             right_info.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
+            ctk.CTkLabel(right_info, text="Income", font=("Arial", 13, "bold")).pack(anchor="w", padx=5, pady=5)
+            tree_finances = ttk.Treeview(right_info, show="headings", height=4)
+            tree_finances.pack(fill="x", padx=5, pady=5)
+            self._populate_treeview(tree_finances, data["finances"])
+
+            # RACES
+            right_info = ctk.CTkFrame(info_frame)
+            right_info.grid(row=0, column=2, sticky="nsew", padx=5, pady=5)
             ctk.CTkLabel(right_info, text="Upcoming Races", font=("Arial", 13, "bold")).pack(anchor="w", padx=5, pady=5)
             tree_races = ttk.Treeview(right_info, show="headings", height=4)
             tree_races.pack(fill="x", padx=5, pady=5)
