@@ -58,10 +58,9 @@ class TeamsModel:
 
         return True
 
-    def save(self, base_name: str):
-        """Save teams DataFrame to CSV if a base name is provided."""
-        if base_name:
-            self.teams.to_csv(f"{base_name}{TEAMS_FILE}", index=False)
+    def save(self, folder: pathlib.Path):
+        """Save manufacturer-related dataframes to CSV files in the given folder."""
+        self.teams.to_csv(folder / TEAMS_FILE, index=False)
 
     def get_finance_employee_salary(self) -> int:
         """Return configured salary for a finance employee."""

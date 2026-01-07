@@ -733,7 +733,7 @@ class Controller:
                 return pd.DataFrame()
             name = subject_name.split()
 
-            sid = self.drivers_model.get_driver_id(name[-1], name[0])
+            sid = self.drivers_model.get_driver_id(name[0], name[-1])
 
             df = self.race_model.get_subject_season_stands(sid, "driver", self.series_model.get_series())
             return df

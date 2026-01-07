@@ -349,40 +349,53 @@ class RaceModel:
 
     def get_subject_season_stands(self, subject_id: int, subject_type: str, series: pd.DataFrame) -> pd.DataFrame:
         """
-        Return seasonal statistics for a subject (driver/team) based on standings and results.
+        Return seasonal statistics for a subject (driver/team), using RESULTS as the primary source.
+        If standings exist for that season, attach points and championship position.
         """
-        subject_stands = self.standings[
-            (self.standings["subject_id"] == subject_id) &
-            (self.standings["typ"] == subject_type)
-            ].copy()
 
-        if subject_stands.empty:
+        # --- 1) Primárny zdroj: RESULTS ---
+        subject_results = self.results[
+            (self.results[f"{subject_type}_id"] == subject_id)
+        ].copy()
+
+        if subject_results.empty:
             return pd.DataFrame()
 
-        grouped = subject_stands.groupby(["year", "series_id"])
+        # Získame všetky sezóny a series_id, kde subjekt pretekal
+        grouped = subject_results.groupby(["season", "series_id"])
+
         records = []
 
         for (year, series_id), group in grouped:
             group = group.copy()
-            group["round"] = pd.to_numeric(group["round"], errors="coerce")
-            max_round_idx = group["round"].idxmax()
-            max_round_row = group.loc[max_round_idx]
 
-            total_points = max_round_row["points"]
-            championship_position = max_round_row["position"]
+            # --- 2) Výpočty z RESULTS ---
+            wins = (group["position"] == 1).sum()
+            podiums = (group["position"] <= 3).sum()
+            best_position = group["position"].min()
             races = group["race_id"].nunique()
 
-            race_results = self.results[
-                (self.results[subject_type + "_id"] == subject_id) &
-                (self.results["season"] == year) &
-                (self.results["series_id"] == series_id)
+            # --- 3) Pokus o načítanie standings pre túto sezónu ---
+            stand_row = self.standings[
+                (self.standings["subject_id"] == subject_id) &
+                (self.standings["typ"] == subject_type) &
+                (self.standings["year"] == year) &
+                (self.standings["series_id"] == series_id)
                 ]
 
-            wins = (race_results["position"] == 1).sum()
-            podiums = (race_results["position"] <= 3).sum()
-            best_position = race_results["position"].min()
+            if not stand_row.empty:
+                # nájdeme posledné kolo (najvyšší round)
+                stand_row = stand_row.copy()
+                stand_row["round"] = pd.to_numeric(stand_row["round"], errors="coerce")
+                last = stand_row.loc[stand_row["round"].idxmax()]
 
-            # Get series name
+                points = last["points"]
+                championship = last["position"]
+            else:
+                points = None
+                championship = None
+
+            # --- 4) Series name ---
             series_name = series.loc[series["series_id"] == series_id, "name"].values
             series_label = series_name[0] if len(series_name) > 0 else None
 
@@ -392,9 +405,9 @@ class RaceModel:
                 "races": races,
                 "wins": wins,
                 "podiums": podiums,
-                "points": total_points,
-                "championship": championship_position,
-                "best_result": best_position
+                "best_result": best_position,
+                "points": points,
+                "championship": championship,
             })
 
         return pd.DataFrame(records)
