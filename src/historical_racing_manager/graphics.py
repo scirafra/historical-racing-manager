@@ -55,8 +55,11 @@ class Graphics:
             # Example format: ["Ferrari (Owner 1)", "McLaren (Owner 2)"]
             team_display = self.controller.get_team_selector_values()
             self.team_selector.configure(values=team_display)
+
             if team_display:
                 self.team_selector.set(team_display[0])
+            else:
+                self.team_selector.set("")
         except Exception as e:
             print(f" Failed to update team selector: {e}")
             self.team_selector.configure(values=["No teams loaded"])
@@ -290,6 +293,61 @@ class Graphics:
         )
         self.theme_option.grid(row=3, column=1, padx=5, pady=5)
         self.theme_option.set("System")
+        ctk.CTkButton(frame, text="Manage Teams", command=self.open_manage_teams).grid(row=4, column=0, columnspan=2,
+                                                                                       pady=10)
+
+    def open_manage_teams(self):
+        """Open a window to manage team ownership (owner_id)."""
+        try:
+            teams = self.controller.get_team_owners()  # now uses model getter
+            if teams.empty:
+                messagebox.showinfo("No Teams", "No teams available.")
+                return
+
+            dialog = ctk.CTkToplevel(self.root)
+            dialog.title("Manage Teams")
+            dialog.geometry("400x500")
+            dialog.transient(self.root)
+            dialog.grab_set()
+
+            # Scrollable frame
+            scroll = ctk.CTkScrollableFrame(dialog, width=380, height=400)
+            scroll.pack(padx=10, pady=10, fill="both", expand=True)
+
+            check_vars = {}
+
+            for _, row in teams.iterrows():
+                team_id = int(row["team_id"])
+                name = row["team_name"]
+                owned = int(row["owner_id"]) > 0
+
+                var = ctk.BooleanVar(value=owned)
+                check_vars[team_id] = var
+
+                frame = ctk.CTkFrame(scroll)
+                frame.pack(fill="x", pady=2)
+
+                ctk.CTkLabel(frame, text=f"{team_id}: {name}", anchor="w").pack(side="left", padx=5)
+                ctk.CTkCheckBox(frame, text="", variable=var).pack(side="right", padx=5)
+
+            def confirm():
+                try:
+                    updates = {team_id: (1 if var.get() else 0)
+                               for team_id, var in check_vars.items()}
+
+                    self.controller.update_team_owners(updates)  # now uses model setter
+                    messagebox.showinfo("Success", "Team ownership updated.")
+                    dialog.destroy()
+                    self._update_team_selector()
+                    self.refresh_myteam_tab()
+
+                except Exception as e:
+                    messagebox.showerror("Error", f"Failed to update teams: {e}")
+
+            ctk.CTkButton(dialog, text="Confirm", command=confirm).pack(pady=10)
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open team manager: {e}")
 
     def _create_tree_in_tab(self, tab):
         """Create a treeview with scrollbars inside a tab."""

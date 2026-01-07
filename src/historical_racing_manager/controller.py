@@ -115,7 +115,6 @@ class Controller:
             match = teams_df[teams_df["team_name"] == team_name]
 
             if match.empty:
-                print(f"[Controller] Team '{team_name}' not found.")
                 return
 
             self.active_team = team_name
@@ -185,9 +184,19 @@ class Controller:
             "finances": self.get_team_finances(team_id),
         }
 
+    def get_team_owners(self) -> pd.DataFrame:
+        return self.teams_model.get_team_owners_table()
+
+    def update_team_owners(self, updates: dict[int, int]):
+        """
+        updates = {team_id: owner_id}
+        """
+        self.teams_model.set_team_owners(updates)
+
     def get_team_selector_values(self) -> list[str]:
         teams_df = self.teams_model.get_teams()
         if teams_df.empty:
+            self.set_active_team("")
             return []
 
         values = []
@@ -214,6 +223,17 @@ class Controller:
         - upcoming races DataFrame
         """
         try:
+            if self.teams == 0:
+                empty = pd.DataFrame()
+                return {
+                    "team_name": "No Team Selected",
+                    "budget": 0,
+                    "drivers": empty,
+                    "components": empty,
+                    "staff": empty,
+                    "races": empty,
+                    "finances": empty,
+                }
             team_info = self.get_active_team_info()
 
             return {
@@ -269,12 +289,14 @@ class Controller:
         Includes columns: Season, Employees, Income.
         """
         try:
+            if self.teams == 0:
+                return pd.DataFrame(columns=["Season", "Employees", "Income"])
             df = self.teams_model.get_team_finance_history(team_id)
 
             if df.empty:
                 return pd.DataFrame(columns=["Season", "Employees", "Income"])
 
-            return df
+            return df.sort_values("Season", ascending=False).reset_index(drop=True)
 
         except Exception as e:
             print(f" get_team_finances error: {e}")
@@ -473,7 +495,7 @@ class Controller:
             self.current_date.year + 1, self.series_model.point_rules
         )
 
-        while self.current_date.year < 1894:
+        while self.current_date < datetime(1893, 12, 31):
             self.current_date = self.sim_day(self.current_date, 1)
 
         self.new_game = False

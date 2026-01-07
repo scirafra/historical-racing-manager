@@ -186,6 +186,23 @@ class TeamsModel:
 
         return team_df.reset_index(drop=True)
 
+    def get_team_owners_table(self) -> pd.DataFrame:
+        """
+        Return a DataFrame with columns: team_id, team_name, owner_id.
+        Used for GUI team management.
+        """
+        if self.teams.empty:
+            return pd.DataFrame(columns=["team_id", "team_name", "owner_id"])
+
+        return self.teams[["team_id", "team_name", "owner_id"]].copy().reset_index(drop=True)
+
+    def set_team_owners(self, updates: dict[int, int]):
+        """
+        updates = {team_id: owner_id}
+        """
+        for team_id, owner_id in updates.items():
+            self.teams.loc[self.teams["team_id"] == team_id, "owner_id"] = int(owner_id)
+
     def invest_finance(self, year: int, investments: dict):
         """
         Apply finance investments for human teams for a given year.
