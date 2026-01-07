@@ -102,37 +102,48 @@ class DriversModel:
             return pd.DataFrame(columns=["driver_id", "forename", "surname"])
         # Ensure required columns exist
         df = self.drivers.copy()
+        df_sorted = df.sort_values(by=["surname", "forename"], ascending=[True, True])
         for col in ("driver_id", "forename", "surname"):
-            if col not in df.columns:
-                df[col] = "" if col != "driver_id" else 0
-        return df[["driver_id", "forename", "surname"]].copy()
+            if col not in df_sorted.columns:
+                df_sorted[col] = "" if col != "driver_id" else 0
+        return df_sorted[["driver_id", "forename", "surname"]].copy()
 
     def get_driver_full_names(self, active_driver_ids: Iterable[int], driver_ids: Iterable[int]) -> list[str]:
         """
-        Return list of full driver names ("Forename Surname") for the provided driver_ids
-        in the same order. If an ID is not found, returns an empty string for that position.
+        Return list of full driver names ("Forename Surname") for the provided driver_ids.
+        Sorted by surname, then forename.
         """
+
         df = self.get_drivers_light()
         if df is None or df.empty:
             return ["" for _ in driver_ids]
 
-        # Build lookup map keyed by stringified id for robust matching
+        # Build lookup map: id -> (forename, surname)
         lookup = df.copy()
         lookup["id_norm"] = lookup["driver_id"].astype(str)
-        lookup["full_name"] = lookup["surname"].astype(str) + " " + lookup["forename"].astype(str)
-        name_map = lookup.set_index("id_norm")["full_name"].to_dict()
+        lookup["full_name"] = lookup["forename"].astype(str) + " " + lookup["surname"].astype(str)
 
-        active_result: list[str] = []
-        for did in active_driver_ids:
-            key = str(did)
-            active_result.append(name_map.get(key, ""))
-        rest_result: list[str] = []
-        for did in driver_ids:
-            key = str(did)
-            rest_result.append(name_map.get(key, ""))
-        active_result = sorted(active_result)
-        rest_result = sorted(rest_result)
-        return active_result + rest_result
+        # Map id -> (surname, forename, full_name)
+        name_map = lookup.set_index("id_norm")[["surname", "forename", "full_name"]].to_dict("index")
+
+        def collect(ids):
+            items = []
+            for did in ids:
+                key = str(did)
+                if key in name_map:
+                    entry = name_map[key]
+                    items.append((entry["surname"], entry["forename"], entry["full_name"]))
+                else:
+                    items.append(("", "", ""))  # missing driver
+            # Sort by surname, then forename
+            items.sort(key=lambda x: (x[0], x[1]))
+            # Return only full_name
+            return [x[2] for x in items]
+
+        active_sorted = collect(active_driver_ids)
+        rest_sorted = collect(driver_ids)
+
+        return active_sorted + rest_sorted
 
     def get_drivers(self) -> pd.DataFrame:
         return (

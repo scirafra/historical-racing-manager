@@ -63,12 +63,12 @@ def test_get_driver_full_names(model_with_mixed_drivers):
     result = m.get_driver_full_names(active, others)
 
     # Active drivers sorted alphabetically by full name
-    assert result[0] == "Hamilton Lewis"
-    assert result[1] == "Vettel Sebastian"
+    assert result[0] == "Lewis Hamilton"
+    assert result[1] == "Sebastian Vettel"
 
     # Other drivers sorted alphabetically
-    assert result[2] == "Schumacher Mick"
-    assert result[3] == "Verstappen Max"
+    assert result[2] == "Mick Schumacher"
+    assert result[3] == "Max Verstappen"
 
 
 def test_get_raced_drivers(model_with_mixed_drivers):
@@ -83,11 +83,11 @@ def test_get_raced_drivers(model_with_mixed_drivers):
     result = m.get_raced_drivers(ids)
 
     # Active drivers (1, 3) should come first, sorted alphabetically
-    assert result[0] == "Hamilton Lewis"  # driver 1
-    assert result[1] == "Vettel Sebastian"  # driver 3
+    assert result[0] == "Lewis Hamilton"  # driver 1
+    assert result[1] == "Sebastian Vettel"  # driver 3
 
     # Remaining drivers follow
-    assert result[2] == "Verstappen Max"  # driver 2
+    assert result[2] == "Max Verstappen"  # driver 2
 
 
 def test_initialize_active_drivers(model_with_mixed_drivers):

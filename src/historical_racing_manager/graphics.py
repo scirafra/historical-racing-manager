@@ -500,7 +500,6 @@ class Graphics:
 
             # Get available drivers from the controller
             df = self.controller.get_available_drivers_for_offer(next_year=next_year)
-            print(df)
             if df.empty:
                 messagebox.showinfo("No Available Drivers", "No drivers are currently available for contracts.")
                 return
@@ -520,7 +519,7 @@ class Graphics:
             # ------------------------------------------------
 
             ctk.CTkLabel(dialog, text="Select Driver:", font=("Arial", 13, "bold")).pack(pady=5)
-            driver_names = [f"{row.surname} {row.forename} ({row.nationality})" for _, row in df_sorted.iterrows()]
+            driver_names = [f"{row.forename} {row.surname} ({row.nationality})" for _, row in df_sorted.iterrows()]
             driver_ids = list(df_sorted["driver_id"])
             driver_var = ctk.StringVar()
             driver_box = ctk.CTkComboBox(dialog, variable=driver_var, values=driver_names, state="readonly",
