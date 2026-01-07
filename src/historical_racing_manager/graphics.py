@@ -209,7 +209,7 @@ class Graphics:
             left_info = ctk.CTkFrame(info_frame)
             left_info.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
             ctk.CTkLabel(left_info, text="Staff", font=("Arial", 13, "bold")).pack(anchor="w", padx=5, pady=5)
-            tree_staff = ttk.Treeview(left_info, show="headings", height=4)
+            tree_staff = ttk.Treeview(left_info, show="headings", height=5)
             tree_staff.pack(fill="x", padx=5, pady=5)
             self._populate_treeview(tree_staff, data["staff"])
 
@@ -217,7 +217,7 @@ class Graphics:
             right_info = ctk.CTkFrame(info_frame)
             right_info.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
             ctk.CTkLabel(right_info, text="Income", font=("Arial", 13, "bold")).pack(anchor="w", padx=5, pady=5)
-            tree_finances = ttk.Treeview(right_info, show="headings", height=4)
+            tree_finances = ttk.Treeview(right_info, show="headings", height=5)
             tree_finances.pack(fill="x", padx=5, pady=5)
             self._populate_treeview(tree_finances, data["finances"])
 
@@ -225,7 +225,7 @@ class Graphics:
             right_info = ctk.CTkFrame(info_frame)
             right_info.grid(row=0, column=2, sticky="nsew", padx=5, pady=5)
             ctk.CTkLabel(right_info, text="Upcoming Races", font=("Arial", 13, "bold")).pack(anchor="w", padx=5, pady=5)
-            tree_races = ttk.Treeview(right_info, show="headings", height=4)
+            tree_races = ttk.Treeview(right_info, show="headings", height=5)
             tree_races.pack(fill="x", padx=5, pady=5)
             self._populate_treeview(tree_races, data["races"])
 
@@ -836,6 +836,22 @@ class Graphics:
                           command=update_cost).pack(pady=10)
             ctk.CTkLabel(dialog, textvariable=cost_var, font=("Arial", 12, "bold")).pack(pady=5)
             update_cost()
+
+            # --- Buttons around slider (+1, +10, -1, -10) ---
+            btn_frame = ctk.CTkFrame(dialog)
+            btn_frame.pack(pady=5)
+
+            def adjust(delta: int):
+                """Adjust slider value by delta and update cost."""
+                new_val = staff_var.get() + delta
+                new_val = max(0, min(max_staff, new_val))  # clamp to range
+                staff_var.set(new_val)
+                update_cost()
+
+            ctk.CTkButton(btn_frame, text="-10", width=50, command=lambda: adjust(-10)).grid(row=0, column=0, padx=3)
+            ctk.CTkButton(btn_frame, text="-1", width=50, command=lambda: adjust(-1)).grid(row=0, column=1, padx=3)
+            ctk.CTkButton(btn_frame, text="+1", width=50, command=lambda: adjust(+1)).grid(row=0, column=2, padx=3)
+            ctk.CTkButton(btn_frame, text="+10", width=50, command=lambda: adjust(+10)).grid(row=0, column=3, padx=3)
 
             def confirm():
                 """Submit the staff adjustment via controller."""
