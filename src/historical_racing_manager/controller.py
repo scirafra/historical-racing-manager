@@ -537,7 +537,7 @@ class Controller:
         self.drivers_model.update_drivers(date)
         self.drivers_model.update_reputations()
         self.teams_model.auto_invest_ai_finance()
-        self.teams_model.update_reputations_and_money()
+        self.teams_model.update_reputations_and_money(date.year)
         self.teams_model.check_debt()
         self.drivers_model.choose_active_drivers(date)
         self.race_model.all_time_best(self.drivers_model, 1)

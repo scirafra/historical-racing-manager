@@ -59,7 +59,7 @@ TEAM_SELECTOR_WIDTH = 250
 
 # Simulation Steps
 SIMULATION_STEPS = {
-    "Next Day": 46000,
+    "Next Day": 1,
     "Next Week": 7
 }
 SIMULATION_NEXT_RACE = "Next Race"
@@ -194,6 +194,7 @@ COL_RULE_END = "end_season"
 
 # ===== Teams Model =====
 TEAMS_FILE = "teams.csv"
+TEAMS_FINANCE_FILE = "team_finance_history.csv"
 
 COL_TEAM_ID = "team_id"
 COL_TEAM_NAME = "team_name"

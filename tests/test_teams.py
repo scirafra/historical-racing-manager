@@ -21,6 +21,13 @@ def model():
         "found": [2000, 2005, 2010],
         "folded": [2030, 2030, 2020],
     })
+    m.team_finances = pd.DataFrame({
+        "team_id": [],
+        "season": [],
+        "finance_employees": [],
+        "income": [],
+
+    })
     return m
 
 
@@ -113,11 +120,15 @@ def test_invest_finance_valid(model):
 
 def test_update_money(model):
     before = model.teams["money"].copy()
-    model.update_money()
+    before_fin = model.teams["finance_employees"].copy()
+
+    model.update_money(2020)
     after = model.teams["money"]
 
-    # money must change for teams with finance employees
-    assert (after != before).any()
+    if (before_fin > 0).any():
+        assert (after != before).any()
+    else:
+        assert (after == before).all()
 
 
 # === Tests: change_finance_employees ===
@@ -171,7 +182,7 @@ def test_halve_reputations(model):
 
 def test_update_reputations_and_money(model):
     before_rep = model.teams["reputation"].copy()
-    model.update_reputations_and_money()
+    model.update_reputations_and_money(2000)
     after_rep = model.teams["reputation"]
 
     assert (after_rep < before_rep).all()

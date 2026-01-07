@@ -4,7 +4,7 @@ from collections.abc import Iterable
 import pandas as pd
 
 from historical_racing_manager.consts import (
-    TEAMS_FILE,
+    TEAMS_FILE, TEAMS_FINANCE_FILE,
     COL_TEAM_ID, COL_FOUND, COL_FOLDED,
     FINANCE_EMPLOYEE_SALARY, KICK_EMPLOYEE_PRICE,
     DEFAULT_FOUND_YEAR, DEFAULT_FOLDED_YEAR,
@@ -20,6 +20,7 @@ class TeamsModel:
 
     def __init__(self):
         self.teams = pd.DataFrame()
+        self.team_finances = pd.DataFrame()
 
     # --- Persistence ---
     def load(self, folder: pathlib.Path) -> bool:
@@ -28,13 +29,15 @@ class TeamsModel:
         If required columns are missing, add them with sensible defaults so GUI and logic work.
         """
         path = folder / TEAMS_FILE
-
+        path_finance = folder / TEAMS_FINANCE_FILE
         if not path.exists():
             self.teams = pd.DataFrame()
             return False
-
+        if not path_finance.exists():
+            self.team_finances = pd.DataFrame()
+            return False
         self.teams = pd.read_csv(path)
-
+        self.team_finances = pd.read_csv(path_finance)
         # Ensure required columns exist so GUI and business logic don't fail
         required_cols = [
             "team_id",
@@ -61,6 +64,7 @@ class TeamsModel:
     def save(self, folder: pathlib.Path):
         """Save manufacturer-related dataframes to CSV files in the given folder."""
         self.teams.to_csv(folder / TEAMS_FILE, index=False)
+        self.team_finances.to_csv(folder / TEAMS_FINANCE_FILE, index=False)
 
     def get_finance_employee_salary(self) -> int:
         """Return configured salary for a finance employee."""
@@ -194,30 +198,44 @@ class TeamsModel:
         self.teams.update(updated_df)
         self.teams.reset_index(inplace=True)
 
-    def update_money(self):
+    def update_money(self, year: int):
         """Apply periodic financial updates to all teams (e.g., revenue from finance employees)."""
-        self.teams = self.teams.apply(self._calculate_financial_update, axis=1)
+        self.teams = self.teams.apply(lambda row: self._calculate_financial_update(row, year), axis=1)
 
-    @staticmethod
-    def _calculate_financial_update(row: pd.Series) -> pd.Series:
+    def _calculate_financial_update(self, row: pd.Series, year: int) -> pd.Series:
         """
-        Internal helper to compute money changes based on finance employees.
-
-        Uses FINANCE_EARN_COEF as a tiered earning coefficient list.
+        Compute money changes based on finance employees and log the update
+        into self.team_finances.
         """
         earn_coef = FINANCE_EARN_COEF
 
-        money, finance_employees = row["money"], row["finance_employees"]
+        team_id = row["team_id"]
+        money = row["money"]
+        old_finance_employees = int(row["finance_employees"])
+
+        new_money = 0
+        remaining = old_finance_employees
 
         for coef in earn_coef:
-            if finance_employees <= 0:
+            if remaining <= 0:
                 break
-            used = min(finance_employees, 100)
-            money += coef * used
-            finance_employees -= used
+            used = min(remaining, 100)
+            new_money += coef * used
+            remaining -= used
 
-        row["money"] = int(money)
-        row["finance_employees"] = int(finance_employees)
+        # Update row values
+        row["money"] = int(money + new_money)
+        row["finance_employees"] = int(remaining)
+
+        # --- LOG TO team_finances ---
+        if old_finance_employees > 0:
+            self.team_finances.loc[len(self.team_finances)] = {
+                "team_id": team_id,
+                "season": year,
+                "finance_employees": old_finance_employees,
+                "income": int(new_money),
+            }
+
         return row
 
     def change_finance_employees(self, team_id: int, amount: int) -> None:
@@ -226,7 +244,6 @@ class TeamsModel:
         """
         if team_id in self.teams[COL_TEAM_ID].values:
             self.teams.loc[self.teams[COL_TEAM_ID] == team_id, "finance_employees"] = amount
-            print(f"Team {team_id} now has {amount} finance employees.")
         else:
             print(f"Team {team_id} does not exist — cannot update employees.")
 
@@ -263,9 +280,9 @@ class TeamsModel:
         """Halve all teams' reputation values (integer division)."""
         self.teams["reputation"] = self.teams["reputation"] // 2
 
-    def update_reputations_and_money(self):
+    def update_reputations_and_money(self, year: int):
         """Update money and then halve reputations as part of end-of-period maintenance."""
-        self.update_money()
+        self.update_money(year)
         self.halve_reputations()
 
     def add_race_reputation(self, base_reputation: int, results: list[int]):
