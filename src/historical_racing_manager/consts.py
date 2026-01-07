@@ -72,11 +72,10 @@ TEAM_SELECTOR_WIDTH = 250
 
 # Simulation Steps
 SIMULATION_STEPS = {
-    "Next Day": 1500,
-    "Next Week": 7,
-    "Next Year": 365
+    "Next Day": 1,
+    "Next Week": 7
 }
-
+SIMULATION_NEXT_RACE = "Next Race"
 # Contract
 CONTRACT_MIN_LENGTH = 1
 CONTRACT_MAX_LENGTH = 4

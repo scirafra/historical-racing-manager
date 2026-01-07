@@ -351,6 +351,21 @@ class Controller:
         self.current_date = self.sim_day(self.current_date, days)
         self.refresh_myteam()
 
+    def sim_to_next_race(self):
+        """
+        Simulate day-by-day until the next race date.
+        Uses RaceModel.get_next_race_date() to determine the target.
+        """
+
+        next_race_date = self.race_model.get_next_race_date(self.current_date)
+        if next_race_date is None or next_race_date.year > self.current_date.year:
+            target_stop = pd.Timestamp(year=self.current_date.year + 1, month=1, day=1)
+        else:
+            target_stop = next_race_date
+        while self.current_date < target_stop:
+            self.current_date = self.sim_day(self.current_date, 1)
+        return
+
     def sim_day(self, date: datetime, days: int) -> datetime:
         for _ in range(days):
             date += timedelta(days=1)
@@ -673,7 +688,7 @@ class Controller:
         return f"Finance employees set on:{new_employees}. Cost: €{cost}"
 
     def _simulate_race_day(self, date: datetime):
-        races_today = self.race_model.races[self.race_model.races["race_date"] == date].copy()
+        races_today = self.race_model.races[self.race_model.races["race_date"] == date - timedelta(days=1)].copy()
         if races_today.empty:
             return
 

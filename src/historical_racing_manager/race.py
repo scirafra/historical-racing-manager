@@ -1,6 +1,6 @@
 import pathlib
 import random as rd
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -153,6 +153,21 @@ class RaceModel:
             return series.astype(str).drop_duplicates(keep="first").tolist()
 
         return series_int.drop_duplicates(keep="first").tolist()
+
+    def get_next_race_date(self, date: datetime):
+        """
+        Return the nearest race_date that is on or after the given date.
+        If no such race exists, return None.
+        """
+
+        # Filter only future races
+        future = self.races[self.races["race_date"] >= date]
+
+        if future.empty:
+            return None
+
+        # Return the earliest race_date
+        return future["race_date"].min()
 
     def get_raced_manufacturers(self) -> dict[int, list[str]]:
         """

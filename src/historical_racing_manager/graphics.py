@@ -6,7 +6,7 @@ import pandas as pd
 
 from historical_racing_manager.consts import (
     WINDOW_TITLE, WINDOW_SIZE, DEFAULT_THEME, DEFAULT_COLOR_THEME,
-    TAB_NAMES, TEAM_SELECTOR_WIDTH, SIMULATION_STEPS, CONTRACT_MIN_LENGTH,
+    TAB_NAMES, TEAM_SELECTOR_WIDTH, SIMULATION_STEPS, SIMULATION_NEXT_RACE, CONTRACT_MIN_LENGTH,
     CONTRACT_MAX_LENGTH, DEFAULT_SALARY, CONTRACT_YEARS,
     PART_TYPES, COLUMN_LABELS
 )
@@ -123,7 +123,8 @@ class Graphics:
 
         # Simulation shortcuts
         for idx, (label, days) in enumerate(SIMULATION_STEPS.items(), start=3):
-            self._create_button(controls, label, lambda d=days: self.sim_step(d), idx)
+            self._create_button(controls, label, lambda d=days: self.sim_step(d, False), idx)
+        self._create_button(controls, SIMULATION_NEXT_RACE, lambda: self.sim_step(0, True), 5)
 
         self.date_label = ctk.CTkLabel(controls, text="", font=("Arial", 14))
         self.date_label.grid(row=0, column=9, padx=10, sticky="e")
@@ -394,11 +395,13 @@ class Graphics:
         except Exception:
             pass
 
-    def sim_step(self, days: int):
+    def sim_step(self, days: int, next_race: bool):
         """Advance the simulation by a given number of days and refresh UI state."""
         try:
-
-            self.controller.simulate_days(days)
+            if next_race:
+                self.controller.sim_to_next_race()
+            else:
+                self.controller.simulate_days(days)
 
             self.date_label.configure(text=self.controller.get_date())
             self.update_dropdown()
