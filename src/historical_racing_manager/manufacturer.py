@@ -4,6 +4,11 @@ import numpy as np
 import pandas as pd
 
 from historical_racing_manager.consts import (
+    FILE_CAR_PARTS,
+    FILE_CARS,
+    FILE_MANUFACTURERS,
+    FILE_CAR_PART_MODELS,
+    FILE_RULES,
     MANUFACTURER_REQUIRED_FILES,
     MERGE_KEYS,
     DEFAULT_PART_COST,
@@ -36,21 +41,20 @@ class ManufacturerModel:
             self._initialize_empty()
             return False
 
-        # TODO: Why not constants??
-        self.car_parts = pd.read_csv(folder / "car_parts.csv")
-        self.cars = pd.read_csv(folder / "cars.csv")
-        self.manufacturers = pd.read_csv(folder / "manufacturers.csv")
-        self.car_part_models = pd.read_csv(folder / "car_part_models.csv")
-        self.rules = pd.read_csv(folder / "rules.csv")
+        self.car_parts = pd.read_csv(folder / FILE_CAR_PARTS)
+        self.cars = pd.read_csv(folder / FILE_CARS)
+        self.manufacturers = pd.read_csv(folder / FILE_MANUFACTURERS)
+        self.car_part_models = pd.read_csv(folder / FILE_CAR_PART_MODELS)
+        self.rules = pd.read_csv(folder / FILE_RULES)
         return True
 
     def save(self, folder: pathlib.Path):
         """Save manufacturer-related dataframes to CSV files in the given folder."""
-        self.car_parts.to_csv(folder / "car_parts.csv", index=False)
-        self.cars.to_csv(folder / "cars.csv", index=False)
-        self.manufacturers.to_csv(folder / "manufacturers.csv", index=False)
-        self.car_part_models.to_csv(folder / "car_part_models.csv", index=False)
-        self.rules.to_csv(folder / "rules.csv", index=False)
+        self.car_parts.to_csv(folder / FILE_CAR_PARTS, index=False)
+        self.cars.to_csv(folder / FILE_CARS, index=False)
+        self.manufacturers.to_csv(folder / FILE_MANUFACTURERS, index=False)
+        self.car_part_models.to_csv(folder / FILE_CAR_PART_MODELS, index=False)
+        self.rules.to_csv(folder / FILE_RULES, index=False)
 
     def _initialize_empty(self):
         """Initialize all internal tables to empty DataFrames."""

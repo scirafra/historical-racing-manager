@@ -4,6 +4,13 @@ from datetime import datetime
 
 import pandas as pd
 
+from historical_racing_manager.consts import (
+    FILE_DT_CONTRACT, FILE_ST_CONTRACT, FILE_CS_CONTRACT,
+    FILE_MS_CONTRACT, FILE_MT_CONTRACT, CONTRACT_MIN_LENGTH, CONTRACT_MAX_LENGTH, AI_CONTRACT_LENGTHS,
+    AI_CONTRACT_WEIGHTS, DEFAULT_SALARY_BASE, SALARY_REPUTATION_MULTIPLIER,
+    MIN_SALARY_BASE, CONTRACT_DECISION_DAYS, PART_TYPES
+)
+
 
 class ContractsModel:
     """Model for managing contracts (drivers and parts).
@@ -38,12 +45,11 @@ class ContractsModel:
         Returns ``True`` on success, ``False`` on failure.
         """
         try:
-            # TODO: why no constants for those file names??
-            self.dt_contract = pd.read_csv(folder / "dt_contract.csv")
-            self.st_contract = pd.read_csv(folder / "st_contract.csv")
-            self.cs_contract = pd.read_csv(folder / "cs_contract.csv")
-            self.ms_contract = pd.read_csv(folder / "ms_contract.csv")
-            self.mt_contract = pd.read_csv(folder / "mt_contract.csv")
+            self.dt_contract = pd.read_csv(folder / FILE_DT_CONTRACT)
+            self.st_contract = pd.read_csv(folder / FILE_ST_CONTRACT)
+            self.cs_contract = pd.read_csv(folder / FILE_CS_CONTRACT)
+            self.ms_contract = pd.read_csv(folder / FILE_MS_CONTRACT)
+            self.mt_contract = pd.read_csv(folder / FILE_MT_CONTRACT)
             # TODO: why not in some enum/constants?
             self._ensure_columns(
                 self.dt_contract,
@@ -64,11 +70,11 @@ class ContractsModel:
 
     def save(self, folder: pathlib.Path) -> None:
         """Saves all contract-related DataFrames into CSV files in the given folder."""
-        self.dt_contract.to_csv(folder / "dt_contract.csv", index=False)
-        self.st_contract.to_csv(folder / "st_contract.csv", index=False)
-        self.cs_contract.to_csv(folder / "cs_contract.csv", index=False)
-        self.ms_contract.to_csv(folder / "ms_contract.csv", index=False)
-        self.mt_contract.to_csv(folder / "mt_contract.csv", index=False)
+        self.dt_contract.to_csv(folder / FILE_DT_CONTRACT, index=False)
+        self.st_contract.to_csv(folder / FILE_ST_CONTRACT, index=False)
+        self.cs_contract.to_csv(folder / FILE_CS_CONTRACT, index=False)
+        self.ms_contract.to_csv(folder / FILE_MS_CONTRACT, index=False)
+        self.mt_contract.to_csv(folder / FILE_MT_CONTRACT, index=False)
 
     def _ensure_columns(self, df: pd.DataFrame, required: dict[str, object]) -> None:
         """Ensures the DataFrame ``df`` contains required columns.
@@ -474,9 +480,9 @@ class ContractsModel:
 
     def _estimate_salary(self, drivers_df: pd.DataFrame, driver_id: int) -> int:
         """Estimate salary for a driver based on base salary and race reputation."""
-        base = 25000
+        base = DEFAULT_SALARY_BASE
         rep = int(drivers_df.loc[drivers_df["driver_id"] == driver_id, "reputation_race"].iloc[0])
-        return int(base + rep * 100)
+        return int(base + rep * SALARY_REPUTATION_MULTIPLIER)
 
     def _deactivate_lower_series_contract(self, driver_id: int, year: int, new_team_id: int) -> None:
         """
@@ -766,8 +772,8 @@ class ContractsModel:
         if future_years > 0:
             max_len = int(available.loc[available["driver_id"] == driver_id, "max_contract_len"].iloc[0])
             # Realistic distribution of contract lengths in F1
-            lengths = [1, 2, 3, 4]
-            weights = [40, 30, 20, 10]
+            lengths = AI_CONTRACT_LENGTHS
+            weights = AI_CONTRACT_WEIGHTS
 
             # If max_len is less than 4, restrict the lists
             max_len = max_len if max_len >= 1 else 1  # ensure it is not 0 or less
@@ -836,7 +842,7 @@ class ContractsModel:
             sampled = parts_of_type.sample(1).iloc[0]
             manufacture_id = int(sampled["manufacture_id"])
             cost = int(sampled["cost"])
-            contract_len = random.randint(1, 4)
+            contract_len = random.randint(CONTRACT_MIN_LENGTH, CONTRACT_MAX_LENGTH)
 
             contracts.append(
                 {
@@ -917,7 +923,7 @@ class ContractsModel:
             human_ids = set(teams_model.get_human_teams(current_date)["team_id"].astype(int).values)
             ai_teams_in_series = all_teams_in_series[~all_teams_in_series.isin(human_ids)]
 
-            for part_type in ["engine", "chassi", "pneu"]:
+            for part_type in PART_TYPES:
                 contracts = self._generate_part_contracts(
                     part_type,
                     series_parts,
@@ -1044,7 +1050,7 @@ class ContractsModel:
             "salary": int(salary),
             "length": int(length),
             "year": int(year),
-            "days_pending": 1,  # driver will decide within one day
+            "days_pending": CONTRACT_DECISION_DAYS,  # driver will decide within one day
         }
         self.pending_offers.append(offer)
 
@@ -1074,7 +1080,7 @@ class ContractsModel:
                 continue
 
             position = driver_pos[0] + 1
-            min_salary = 4000000 // position
+            min_salary = MIN_SALARY_BASE // position
 
             # Get team and series info
             team_series = self.st_contract[self.st_contract["team_id"] == team_id]

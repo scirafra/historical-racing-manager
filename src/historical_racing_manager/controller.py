@@ -7,6 +7,7 @@ import pandas as pd
 from dateutil.relativedelta import relativedelta
 
 from historical_racing_manager.consts import (
+    FILE_CONTROLLER_DATA, FILE_CONTROLLER_GENERATED_RACES, CONTROLLER_REQUIRED_FILES,
     DEFAULT_BEGIN_YEAR, DEFAULT_END_YEAR, DEFAULT_DRIVERS_PER_YEAR, DEFAULT_SIM_YEARS_STEP,
     SEASON_START_DAY, SEASON_START_MONTH, FIRST_REAL_SEASON_YEAR, FIRST_RACE_PLANNING_YEAR
 )
@@ -394,11 +395,6 @@ class Controller:
             start_date = self.sim_day(start_date, 1)
         return start_date
 
-    def start_new_season(self):
-        self.load_game("default_data", base_folder=PACKAGE_DIR)
-        self._set_default_active_team()
-        self.current_date = self.sim_year(self.current_date, self.sim_years_step)
-
     def save_game(self, name: str):
         folder = USER_DIR / name
         if not folder.exists():
@@ -409,8 +405,8 @@ class Controller:
             "begin": [self.begin_date.strftime("%Y-%m-%d")],
             "new_game": [self.new_game]
         })
-        meta.to_csv(f"{name}/data.csv", index=False)
-        self.generated_races.to_csv(f"{name}/generated_races.csv", index=False)
+        meta.to_csv(folder / FILE_CONTROLLER_DATA, index=False)
+        self.generated_races.to_csv(folder / FILE_CONTROLLER_GENERATED_RACES, index=False)
         self.load_model.save(
             folder,
             self.teams_model,
@@ -422,19 +418,17 @@ class Controller:
         )
 
     def load_default_game(self):
-        # TODO: why there is also start_new_season method which is never used?
         return self.load_game("default_data", base_folder=PACKAGE_DIR)
 
     def load_game(self, name: str, base_folder: pathlib.Path = USER_DIR) -> bool:
         folder = base_folder / name
-        data_file = folder / "data.csv"
-        if not data_file.exists():
+        missing = [f for f in CONTROLLER_REQUIRED_FILES if not (folder / f).exists()]
+        if missing:
+            print("Missing controller files:", missing)
             return False
-        generated_races_file = folder / "generated_races.csv"
-        if not generated_races_file.exists():
-            return False
-        meta = pd.read_csv(data_file)
-        self.generated_races = pd.read_csv(generated_races_file)
+        # Load using constants
+        meta = pd.read_csv(folder / FILE_CONTROLLER_DATA)
+        self.generated_races = pd.read_csv(folder / FILE_CONTROLLER_GENERATED_RACES)
         self.current_date = datetime.strptime(meta.loc[0, "date"], "%Y-%m-%d")
         self.begin_date = datetime.strptime(meta.loc[0, "begin"], "%Y-%m-%d")
         self.begin_year = self.begin_date.year

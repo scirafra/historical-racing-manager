@@ -6,6 +6,12 @@ import numpy as np
 import pandas as pd
 
 from historical_racing_manager.consts import (
+    FILE_STANDS,
+    FILE_RACES,
+    FILE_POINT_SYSTEM,
+    FILE_RESULTS,
+    FILE_CIRCUITS,
+    FILE_CIRCUIT_LAYOUTS,
     RACE_REQUIRED_FILES,
     DAYS_PER_SEASON,
     RACE_WEEKDAY,
@@ -46,16 +52,16 @@ class RaceModel:
         if missing:
             return False
 
-        self.standings = pd.read_csv(folder / "stands.csv")
-        self.races = pd.read_csv(folder / "races.csv")
+        self.standings = pd.read_csv(folder / FILE_STANDS)
+        self.races = pd.read_csv(folder / FILE_RACES)
         if not self.races.empty and "race_date" in self.races.columns:
             # Parse race_date column into pandas datetime
             self.races["race_date"] = pd.to_datetime(self.races["race_date"], errors="coerce")
 
-        self.point_system = pd.read_csv(folder / "point_system.csv")
-        self.results = pd.read_csv(folder / "results.csv")
-        self.circuits = pd.read_csv(folder / "circuits.csv")
-        self.circuit_layouts = pd.read_csv(folder / "circuit_layouts.csv")
+        self.point_system = pd.read_csv(folder / FILE_POINT_SYSTEM)
+        self.results = pd.read_csv(folder / FILE_RESULTS)
+        self.circuits = pd.read_csv(folder / FILE_CIRCUITS)
+        self.circuit_layouts = pd.read_csv(folder / FILE_CIRCUIT_LAYOUTS)
         return True
 
     def save(self, folder: pathlib.Path) -> None:
@@ -65,12 +71,12 @@ class RaceModel:
         """
         if not folder:
             return
-        self.races.to_csv(folder / "races.csv", index=False)
-        self.standings.to_csv(folder / "stands.csv", index=False)
-        self.point_system.to_csv(folder / "point_system.csv", index=False)
-        self.results.to_csv(folder / "results.csv", index=False)
-        self.circuits.to_csv(folder / "circuits.csv", index=False)
-        self.circuit_layouts.to_csv(folder / "circuit_layouts.csv", index=False)
+        self.races.to_csv(folder / FILE_RACES, index=False)
+        self.standings.to_csv(folder / FILE_STANDS, index=False)
+        self.point_system.to_csv(folder / FILE_POINT_SYSTEM, index=False)
+        self.results.to_csv(folder / FILE_RESULTS, index=False)
+        self.circuits.to_csv(folder / FILE_CIRCUITS, index=False)
+        self.circuit_layouts.to_csv(folder / FILE_CIRCUIT_LAYOUTS, index=False)
 
     # ===== Queries =====
     def get_raced_series(self) -> list[int]:
@@ -478,15 +484,6 @@ class RaceModel:
                 pivot = pivot.merge(final, on="driver_id", how="left")
 
         return pivot
-
-    # TODO: docstring here?
-    """
-    Race simulation helpers: prepare race entry data and run race simulation.
-
-    This file contains methods to prepare race grids from contracts, manufacturers,
-    and driver data, and to simulate a race producing results, crashes, and deaths.
-    All comments and docstrings are in English. Code logic is unchanged.
-    """
 
     # ===== Simulation =====
     def prepare_race(

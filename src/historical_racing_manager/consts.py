@@ -1,16 +1,3 @@
-# --- Contract defaults ---
-DEFAULT_SALARY_BASE = 25_000
-SALARY_REPUTATION_MULTIPLIER = 100
-HUMAN_CONTRACT_DECISION_DAYS = 1
-
-# --- Car part contract settings ---
-DEFAULT_CONTRACT_MIN_LENGTH = 1
-DEFAULT_CONTRACT_MAX_LENGTH = 4
-AI_CONTRACT_LENGTHS = [1, 2, 3, 4]
-AI_CONTRACT_WEIGHTS = [40, 30, 20, 10]  # % chance
-
-# --- Driver salary rules ---
-MIN_SALARY_BASE = 4_000_000  # base for calculate drivers price
 # --- Simulation timeline ---
 DEFAULT_BEGIN_YEAR = 1843
 DEFAULT_END_YEAR = 3000
@@ -73,17 +60,9 @@ TEAM_SELECTOR_WIDTH = 250
 # Simulation Steps
 SIMULATION_STEPS = {
     "Next Day": 1,
-    "Next Week": 7
+    "Next Week": 1777
 }
 SIMULATION_NEXT_RACE = "Next Race"
-# Contract
-CONTRACT_MIN_LENGTH = 1
-CONTRACT_MAX_LENGTH = 4
-DEFAULT_SALARY = 10000
-
-# Car Part Contracts
-CONTRACT_YEARS = ["Current Year", "Next Year"]
-PART_TYPES = ["engine", "chassi", "pneu"]
 
 # UI Labels for DataFrames
 COLUMN_LABELS = {
@@ -107,12 +86,31 @@ COLUMN_LABELS = {
 }
 
 # --- Required files for ManufacturerModel ---
+FILE_CAR_PARTS = "car_parts.csv"
+FILE_CARS = "cars.csv"
+FILE_MANUFACTURERS = "manufacturers.csv"
+FILE_CAR_PART_MODELS = "car_part_models.csv"
+FILE_RULES = "rules.csv"
 MANUFACTURER_REQUIRED_FILES = [
-    "car_parts.csv",
-    "cars.csv",
-    "manufacturers.csv",
-    "car_part_models.csv",
-    "rules.csv",
+    FILE_CAR_PARTS,
+    FILE_CARS,
+    FILE_MANUFACTURERS,
+    FILE_CAR_PART_MODELS,
+    FILE_RULES,
+]
+# --- Required files for ContractsModel ---
+FILE_DT_CONTRACT = "dt_contract.csv"  # Driver–Team contracts
+FILE_ST_CONTRACT = "st_contract.csv"  # Staff–Team contracts
+FILE_CS_CONTRACT = "cs_contract.csv"  # Car–Series contracts
+FILE_MS_CONTRACT = "ms_contract.csv"  # Manufacturer–Series contracts
+FILE_MT_CONTRACT = "mt_contract.csv"  # Manufacturer–Team contracts
+
+CONTRACTS_REQUIRED_FILES = [
+    FILE_DT_CONTRACT,
+    FILE_ST_CONTRACT,
+    FILE_CS_CONTRACT,
+    FILE_MS_CONTRACT,
+    FILE_MT_CONTRACT,
 ]
 
 # --- Merge keys used when generating new parts ---
@@ -132,13 +130,28 @@ UPGRADE_SAFETY_MIN = 0
 UPGRADE_SAFETY_MAX = 9
 
 # --- Required files for RaceModel ---
+FILE_STANDS = "stands.csv"
+FILE_RACES = "races.csv"
+FILE_POINT_SYSTEM = "point_system.csv"
+FILE_RESULTS = "results.csv"
+FILE_CIRCUITS = "circuits.csv"
+FILE_CIRCUIT_LAYOUTS = "circuit_layouts.csv"
+
 RACE_REQUIRED_FILES = [
-    "stands.csv",
-    "races.csv",
-    "point_system.csv",
-    "results.csv",
-    "circuits.csv",
-    "circuit_layouts.csv",
+    FILE_STANDS,
+    FILE_RACES,
+    FILE_POINT_SYSTEM,
+    FILE_RESULTS,
+    FILE_CIRCUITS,
+    FILE_CIRCUIT_LAYOUTS,
+]
+# --- Required files for Controller save/load ---
+FILE_CONTROLLER_DATA = "data.csv"
+FILE_CONTROLLER_GENERATED_RACES = "generated_races.csv"
+
+CONTROLLER_REQUIRED_FILES = [
+    FILE_CONTROLLER_DATA,
+    FILE_CONTROLLER_GENERATED_RACES,
 ]
 
 # --- Simulation scheduling constants ---
@@ -203,3 +216,26 @@ FINANCE_EARN_COEF = [
     7000, 6000, 5000, 4000, 3000,
     2000, 1000, 0
 ]
+
+# ===== CONTRACTS MODEL CONSTANTS =====
+
+# Contract lengths
+CONTRACT_MIN_LENGTH = 1
+CONTRACT_MAX_LENGTH = 4
+
+# AI contract preferences
+AI_CONTRACT_LENGTHS = [1, 2, 3, 4]
+AI_CONTRACT_WEIGHTS = [40, 30, 20, 10]  # probability distribution
+
+# Salary rules
+DEFAULT_SALARY = 10000
+DEFAULT_SALARY_BASE = 25_000
+SALARY_REPUTATION_MULTIPLIER = 100
+MIN_SALARY_BASE = 4_000_000  # base for calculating driver price
+
+# Human contract decision delay
+CONTRACT_DECISION_DAYS = 1
+
+# Car part contract types
+CONTRACT_YEARS = ["Current Year", "Next Year"]
+PART_TYPES = ["engine", "chassi", "pneu"]
