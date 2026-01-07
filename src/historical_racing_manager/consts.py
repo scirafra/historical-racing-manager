@@ -60,7 +60,7 @@ TEAM_SELECTOR_WIDTH = 250
 # Simulation Steps
 SIMULATION_STEPS = {
     "Next Day": 1,
-    "Next Week": 1777
+    "Next Week": 7
 }
 SIMULATION_NEXT_RACE = "Next Race"
 
