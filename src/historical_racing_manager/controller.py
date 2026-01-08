@@ -430,6 +430,9 @@ class Controller:
 
     def update_seasons(self, series_name: str):
         sid = self.series_model.get_series_id(series_name)
+        if sid is None:
+            self.seasons = []
+            return
         self.seasons = self.race_model.get_seasons_for_series(sid)
 
     def get_season_list(self):
@@ -463,7 +466,6 @@ class Controller:
                 self._handle_season_start(date)
 
             if date.year >= FIRST_REAL_SEASON_YEAR:
-                driver_inputs = {}
                 self.contracts_model.sign_driver_contracts(
                     active_series=self.series_model.get_active_series(date.year),
                     teams_model=self.teams_model,
@@ -473,7 +475,7 @@ class Controller:
                     series=self.series_model.series,
                     temp=False,
                     teams=self.teams_model.teams,
-                    team_inputs=driver_inputs,
+
                 )
             self._simulate_race_day(date)
             self.process_driver_offers()
@@ -634,20 +636,15 @@ class Controller:
     def _handle_contracts(self, date: datetime):
         self.manufacturer_model.develop_part(date, self.contracts_model.get_ms_contract())
 
-        car_part_inputs = {}
+        car_part_inputs: dict[str, int] = {}
         self.contracts_model.sign_car_part_contracts(
             active_series=self.series_model.get_active_series(date.year),
             current_date=date,
             car_parts=self.manufacturer_model.car_parts,
             teams_model=self.teams_model,
             manufacturers=self.manufacturer_model.manufacturers,
-            team_inputs=car_part_inputs,
-        )
 
-    def _handle_investments(self, date: datetime):
-        # Internal method; kept for cases where investments need to be triggered programmatically
-        investments = self.view.ask_finance_investments(self.teams_model.get_human_teams(date))
-        self.teams_model.invest_finance(date.year, investments)
+        )
 
     def apply_investments(self, year: int, investments: Any):
         """
@@ -789,7 +786,7 @@ class Controller:
             )
 
         if died:
-            self.drivers_model.mark_drivers_dead(died, date.year)
+            self.drivers_model.mark_drivers_dead(died, self.current_date.year)
             self.contracts_model.disable_driver_contracts(died)
 
             if date.year >= 1894:

@@ -239,7 +239,7 @@ class DriversModel:
 
     # ====== DRIVER STATUS UPDATES ======
 
-    def mark_drivers_dead(self, driver_ids: list[int], event_date: str) -> None:
+    def mark_drivers_dead(self, driver_ids: list[int], event_date: int) -> None:
         self.active_drivers.loc[self.active_drivers["driver_id"].isin(driver_ids), "alive"] = False
         self.drivers.loc[self.drivers["driver_id"].isin(driver_ids), "alive"] = False
         self.active_drivers = self.active_drivers[~self.active_drivers["driver_id"].isin(driver_ids)]

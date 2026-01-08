@@ -898,8 +898,7 @@ class ContractsModel:
         return available_parts
 
     def sign_car_part_contracts(self, active_series: pd.DataFrame, current_date: datetime, car_parts: pd.DataFrame,
-                                teams_model, manufacturers: pd.DataFrame,
-                                team_inputs: dict[int, dict[str, tuple]]) -> None:
+                                teams_model, manufacturers: pd.DataFrame) -> None:
         """
         Sign car part contracts for AI teams and process pending offers for human teams.
         """
