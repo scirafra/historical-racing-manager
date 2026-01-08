@@ -41,7 +41,7 @@ class Controller:
         self.ss = time.time()
         self.generated_races = pd.DataFrame()
         self._initialize_models()
-
+        self.teams = 0
         self.view = Graphics(self)
 
     def _initialize_models(self):
@@ -168,12 +168,29 @@ class Controller:
 
         return finance_employees, finance_employees + max_affordable, employee_salary, kick_price
 
+    def count_active_contracts(self, df: pd.DataFrame, year: int) -> int:
+        return df[(df["start_year"] <= year) & (df["end_year"] >= year)].shape[0]
+
     def get_active_team_info(self) -> dict:
         """Returns all data for the active team."""
         team_id = self.get_active_team_id()
         team_name = self.get_active_team()
         money = int(self.teams_model.teams.loc[self.teams_model.teams["team_id"] == team_id, "money"].iloc[0])
 
+        next_year_free = self.contracts_model.get_team_next_year_free_space(team_id)
+        series_id = self.contracts_model.get_team_series_id(team_id)
+        drivers = self.get_owners_team_driver_data()
+
+        drivers_this_year = self.count_active_contracts(drivers, self.current_date.year)
+        drivers_next_year = self.count_active_contracts(drivers, self.current_date.year + 1)
+        parts = self.get_owners_team_parts_data()
+        parts_this_year = self.count_active_contracts(parts, self.current_date.year)
+        parts_next_year = self.count_active_contracts(parts, self.current_date.year + 1)
+        pr = self.series_model.get_point_rules_for_series(series_id, self.current_date.year)
+        if len(pr) > 0:
+            max_cars = pr["max_cars"].iloc[0]
+        else:
+            max_cars = 0
         return {
             "name": team_name,
             "budget": money,
@@ -182,6 +199,8 @@ class Controller:
             "staff": self.get_team_staff(team_id),
             "races": self.get_upcoming_races(team_id),
             "finances": self.get_team_finances(team_id),
+            "driver_contracts": [drivers_this_year, max_cars, drivers_next_year, drivers_next_year + next_year_free],
+            "car_part_contracts": [parts_this_year, 3, parts_next_year, 3]
         }
 
     def get_team_owners(self) -> pd.DataFrame:
@@ -233,6 +252,10 @@ class Controller:
                     "staff": empty,
                     "races": empty,
                     "finances": empty,
+                    "driver_contracts": [0, 0, 0, 0],
+
+                    "car_part_contracts": [0, 0, 0, 0]
+
                 }
             team_info = self.get_active_team_info()
 
@@ -244,6 +267,8 @@ class Controller:
                 "staff": team_info["staff"],
                 "finances": team_info["finances"],
                 "races": team_info["races"],
+                "driver_contracts": team_info["driver_contracts"],
+                "car_part_contracts": team_info["car_part_contracts"]
             }
 
         except Exception as e:

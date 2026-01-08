@@ -85,10 +85,17 @@ class ManufacturerModel:
             how="left",
             on=merge_keys,
         )
-
         final = self._fill_missing_values(final)
         final = self._apply_car_part_improvements(final, date.year)
         final = self._clamp_values(final)
+
+        final = final.astype({
+            "power": "int64",
+            "reliability": "int64",
+            "safety": "int64",
+            "year": "int64",
+        })
+
         final["cost"] = DEFAULT_PART_COST
 
         new_parts = final[
@@ -106,8 +113,10 @@ class ManufacturerModel:
             ]
         ].copy()
         new_parts.loc[:, "part_id"] = self._generate_new_part_ids(len(new_parts))
-
-        self.car_parts = pd.concat([self.car_parts, new_parts], ignore_index=True)
+        if self.car_parts.empty:
+            self.car_parts = new_parts.copy()
+        else:
+            self.car_parts = pd.concat([self.car_parts, new_parts], ignore_index=True)
 
     def get_manufacturers(self) -> pd.DataFrame:
         """Return manufacturer IDs and names, or an empty DataFrame if unavailable."""
@@ -134,10 +143,16 @@ class ManufacturerModel:
         return merged.loc[mask].copy()
 
     def _fill_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Fill missing part attributes with safe defaults."""
+        numeric_cols = ["power", "reliability", "safety", "min_ability", "max_ability"]
+
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
         df["power"] = df["power"].fillna(df["min_ability"])
         df["reliability"] = df["reliability"].fillna(1)
         df["safety"] = df["safety"].fillna(1)
+
         return df
 
     def _apply_car_part_improvements(self, df: pd.DataFrame, year: int) -> pd.DataFrame:

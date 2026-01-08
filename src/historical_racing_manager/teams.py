@@ -200,8 +200,24 @@ class TeamsModel:
         """
         updates = {team_id: owner_id}
         """
-        for team_id, owner_id in updates.items():
-            self.teams.loc[self.teams["team_id"] == team_id, "owner_id"] = int(owner_id)
+        for team_id, new_owner_id in updates.items():
+            mask = self.teams["team_id"] == team_id
+            old_owner_id = int(self.teams.loc[mask, "owner_id"].iloc[0])
+
+            # ak sa nemení, nič nerobíme
+            if old_owner_id == new_owner_id:
+                continue
+
+            # nastav nového ownera
+            self.teams.loc[mask, "owner_id"] = int(new_owner_id)
+
+            # ak nový owner > 0, nastav money na 5M
+            if new_owner_id > 0:
+                self.teams.loc[mask, "money"] = 5_000_000
+
+            # 🔥 vymaž financie pre tento team, kde finance_employees == 1000
+            fm = self.team_finances
+            self.team_finances = fm[~((fm["team_id"] == team_id) & (fm["finance_employees"] == 1000))]
 
     def invest_finance(self, year: int, investments: dict):
         """

@@ -688,6 +688,20 @@ class ContractsModel:
         teams["free_slots"] = free_slots
         return teams
 
+    def get_team_series_id(self, team_id: int) -> int:
+        team_series = self.st_contract[self.st_contract["team_id"] == team_id]
+        if team_series.empty:
+            return -1
+        else:
+            return team_series.iloc[0]["series_id"]
+
+    def get_team_next_year_free_space(self, team_id: int) -> int:
+        team_series = self.st_contract[self.st_contract["team_id"] == team_id]
+        if team_series.empty:
+            return 0
+        reserved_next_year = self.reserved_slots.get(team_id, 0)
+        return reserved_next_year
+
     def _sign_next_year_contract_if_needed(
             self, teams_model, current_date: datetime,
             active_drivers: pd.DataFrame, series: pd.DataFrame, rules: pd.DataFrame,

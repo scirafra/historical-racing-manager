@@ -165,7 +165,6 @@ class Graphics:
         """Build the My Team tab layout with Drivers, Components, Staff, and Upcoming Races."""
         try:
             data = self.controller.get_myteam_tab_data()
-
             # HEADER
             header = ctk.CTkFrame(parent)
             header.pack(fill="x", padx=10, pady=(5, 10))
@@ -187,6 +186,9 @@ class Graphics:
             drivers_frame = ctk.CTkFrame(main_frame)
             drivers_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
             ctk.CTkLabel(drivers_frame, text="Drivers", font=("Arial", 14, "bold")).pack(anchor="w", padx=5, pady=5)
+            dc = data["driver_contracts"]
+            drivers_info = f"This year: {dc[0]}/{dc[1]}   Next year: {dc[2]}/{dc[3]}"
+            ctk.CTkLabel(drivers_frame, text=drivers_info, font=("Arial", 12)).pack(anchor="w", padx=5, pady=(0, 5))
 
             tree_drivers = ttk.Treeview(drivers_frame, show="headings", height=6)
             tree_drivers.pack(fill="x", padx=5, pady=5)
@@ -197,6 +199,9 @@ class Graphics:
             components_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
             ctk.CTkLabel(components_frame, text="Components", font=("Arial", 14, "bold")).pack(anchor="w", padx=5,
                                                                                                pady=5)
+            pc = data["car_part_contracts"]
+            parts_info = f"This year: {pc[0]}/{pc[1]}   Next year: {pc[2]}/{pc[3]}"
+            ctk.CTkLabel(components_frame, text=parts_info, font=("Arial", 12)).pack(anchor="w", padx=5, pady=(0, 5))
 
             tree_parts = ttk.Treeview(components_frame, show="headings", height=6)
             tree_parts.pack(fill="x", padx=5, pady=5)
@@ -212,7 +217,7 @@ class Graphics:
             left_info = ctk.CTkFrame(info_frame)
             left_info.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
             ctk.CTkLabel(left_info, text="Staff", font=("Arial", 13, "bold")).pack(anchor="w", padx=5, pady=5)
-            tree_staff = ttk.Treeview(left_info, show="headings", height=5)
+            tree_staff = ttk.Treeview(left_info, show="headings", height=4)
             tree_staff.pack(fill="x", padx=5, pady=5)
             self._populate_treeview(tree_staff, data["staff"])
 
@@ -220,7 +225,7 @@ class Graphics:
             right_info = ctk.CTkFrame(info_frame)
             right_info.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
             ctk.CTkLabel(right_info, text="Income", font=("Arial", 13, "bold")).pack(anchor="w", padx=5, pady=5)
-            tree_finances = ttk.Treeview(right_info, show="headings", height=5)
+            tree_finances = ttk.Treeview(right_info, show="headings", height=4)
             tree_finances.pack(fill="x", padx=5, pady=5)
             self._populate_treeview(tree_finances, data["finances"])
 
@@ -228,7 +233,7 @@ class Graphics:
             right_info = ctk.CTkFrame(info_frame)
             right_info.grid(row=0, column=2, sticky="nsew", padx=5, pady=5)
             ctk.CTkLabel(right_info, text="Upcoming Races", font=("Arial", 13, "bold")).pack(anchor="w", padx=5, pady=5)
-            tree_races = ttk.Treeview(right_info, show="headings", height=5)
+            tree_races = ttk.Treeview(right_info, show="headings", height=4)
             tree_races.pack(fill="x", padx=5, pady=5)
             self._populate_treeview(tree_races, data["races"])
 
@@ -334,7 +339,7 @@ class Graphics:
                 try:
                     updates = {team_id: (1 if var.get() else 0)
                                for team_id, var in check_vars.items()}
-
+                    print(updates)
                     self.controller.update_team_owners(updates)  # now uses model setter
                     messagebox.showinfo("Success", "Team ownership updated.")
                     dialog.destroy()
