@@ -174,6 +174,22 @@ class Controller:
     def get_active_team_info(self) -> dict:
         """Returns all data for the active team."""
         team_id = self.get_active_team_id()
+        if team_id is None:
+            empty = pd.DataFrame()
+            return {
+                "team_name": "No Team Selected",
+                "series": "",
+                "budget": 0,
+                "drivers": empty,
+                "components": empty,
+                "staff": empty,
+                "races": empty,
+                "finances": empty,
+                "driver_contracts": [0, 0, 0, 0],
+
+                "car_part_contracts": [0, 0, 0, 0]
+
+            }
         team_name = self.get_active_team()
         money = int(self.teams_model.teams.loc[self.teams_model.teams["team_id"] == team_id, "money"].iloc[0])
 
@@ -820,6 +836,7 @@ class Controller:
             tid = self.teams_model.get_teams_id(subject_name)
 
             df = self.race_model.get_subject_season_stands(tid, "team", self.series_model.get_series())
+
             return df
         elif stats_type == "Series":
             if not subject_name or not stats_type:
