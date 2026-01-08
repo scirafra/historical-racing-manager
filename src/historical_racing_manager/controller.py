@@ -466,7 +466,6 @@ class Controller:
                 self._handle_season_start(date)
 
             if date.year >= FIRST_REAL_SEASON_YEAR:
-                driver_inputs: dict[str, tuple] = {}
                 self.contracts_model.sign_driver_contracts(
                     active_series=self.series_model.get_active_series(date.year),
                     teams_model=self.teams_model,
@@ -476,7 +475,7 @@ class Controller:
                     series=self.series_model.series,
                     temp=False,
                     teams=self.teams_model.teams,
-                    team_inputs=driver_inputs,
+                    team_inputs={},
                 )
             self._simulate_race_day(date)
             self.process_driver_offers()
