@@ -973,7 +973,6 @@ class Controller:
         team_id = self.get_active_team_id()
         if team_id is None:
             return pd.DataFrame()
-
         contracts = self.contracts_model.get_terminable_contracts(team_id, self.current_date.year)
         if contracts.empty:
             return contracts
@@ -991,7 +990,7 @@ class Controller:
         contract = self.contracts_model.dt_contract[
             (self.contracts_model.dt_contract["driver_id"] == driver_id) &
             (self.contracts_model.dt_contract["team_id"] == team_id) &
-            (self.contracts_model.dt_contract["active"] is True)
+            (self.contracts_model.dt_contract["active"])
             ]
 
         if contract.empty:

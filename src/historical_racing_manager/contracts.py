@@ -377,19 +377,17 @@ class ContractsModel:
                     (self.dt_contract["driver_id"] == driver_id) &
                     (self.dt_contract["start_year"] <= current_year) &
                     (self.dt_contract["end_year"] >= current_year) &
-                    (self.dt_contract["active"] is True)
+                    (self.dt_contract["active"])
             )
         else:
             mask = (
                     (self.dt_contract["driver_id"] == driver_id) &
                     (self.dt_contract["start_year"] > current_year) &
-                    (self.dt_contract["active"] is True)
+                    (self.dt_contract["active"])
             )
 
         affected = self.dt_contract.loc[mask]
         self.dt_contract.loc[mask, "active"] = False
-
-        print(affected)
 
     def get_ms_contract(self) -> pd.DataFrame:
         """Return the ms_contract DataFrame."""
@@ -1153,7 +1151,7 @@ class ContractsModel:
         """
         contracts = self.dt_contract[
             (self.dt_contract["team_id"] == team_id) &
-            (self.dt_contract["active"] is True) &
+            (self.dt_contract["active"]) &
             (self.dt_contract["end_year"] >= current_year)
             ].copy()
 
