@@ -1148,7 +1148,7 @@ class RaceModel:
                     chosen_indices = [0] * total_required
                     candidate_dates = [pd.Timestamp(current_date)]
 
-                # decide which of the chosen slots are championship races: pick champ_per_series indices evenly among chosen_indices
+                # decide which of the chosen slots are championship races
                 champ_indices_in_chosen = set()
                 if champ_per_series > 0:
                     # choose positions among 0..total_required-1

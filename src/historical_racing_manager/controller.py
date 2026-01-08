@@ -415,7 +415,6 @@ class Controller:
     def get_season_list(self):
 
         seasons = list(reversed(self.seasons))
-        a = [str(y) for y in seasons]
         return [str(y) for y in seasons]
 
     def simulate_days(self, days: int):
