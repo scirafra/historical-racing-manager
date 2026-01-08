@@ -796,11 +796,12 @@ class Controller:
     def get_results(self, series_name: str, season_str: str) -> pd.DataFrame:
         sid = self.series_model.get_series_id(series_name)
 
-        if not season_str or not season_str.strip().isdigit():
+        if sid is None or not season_str or not season_str.strip().isdigit():
             return pd.DataFrame()
 
         season = int(season_str)
         df = self.race_model.pivot_results_by_race(sid, season, self.manufacturer_model.get_manufacturers())
+
         return self._format_results(df, season)
 
     def get_stats(self, subject_name: str, stats_type: str, manufacturer_type: str) -> pd.DataFrame:
@@ -810,7 +811,8 @@ class Controller:
             name = subject_name.split()
 
             sid = self.drivers_model.get_driver_id(name[0], name[-1])
-
+            if sid is None:
+                return pd.DataFrame()
             df = self.race_model.get_subject_season_stands(sid, "driver", self.series_model.get_series())
             return df
         elif stats_type == "Manufacturers":
@@ -818,6 +820,8 @@ class Controller:
                 return pd.DataFrame()
 
             mid = self.manufacturer_model.get_manufacturers_id(subject_name)
+            if mid is None:
+                return pd.DataFrame()
             df = self.race_model.get_subject_season_stands(mid, manufacturer_type, self.series_model.get_series())
             return df
         elif stats_type == "Teams":
@@ -825,7 +829,8 @@ class Controller:
                 return pd.DataFrame()
 
             tid = self.teams_model.get_teams_id(subject_name)
-
+            if tid is None:
+                return pd.DataFrame()
             df = self.race_model.get_subject_season_stands(tid, "team", self.series_model.get_series())
 
             return df
