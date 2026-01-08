@@ -300,7 +300,7 @@ class ContractsModel:
 
         # Order columns: base + years in order year → position → points
         base_cols = ["name", "part_type", "cost", "start_year", "end_year"]
-        year_blocks = {}
+        year_blocks: dict = {}
 
         for col in merged.columns:
             if col.isdigit():
@@ -766,7 +766,8 @@ class ContractsModel:
         max_len = int(available.loc[available["driver_id"] == driver_id, "max_contract_len"].iloc[0])
         length = min(length, max_len)
         series_reputation = self._get_reputation_by_series_id(series, series_id)
-        self._create_driver_contract(driver_id, team_id, series_reputation, salary, year, length)
+
+        self._create_driver_contract(driver_id, team_id, series_reputation or 999, salary, year, length)
 
     def _handle_ai_contract(
             self, team_id: int, series_id: int, year: int, future_years: int,
@@ -796,7 +797,7 @@ class ContractsModel:
 
             # Normalize weights to percentages
             total = sum(weights)
-            weights = [w / total for w in weights]
+            weights = [w // total for w in weights]
 
             # Choose contract length based on distribution
             length = random.choices(lengths, weights, k=1)[0]
@@ -1077,7 +1078,7 @@ class ContractsModel:
             return []
         signed_contracts = []
 
-        remaining_offers = []
+        remaining_offers: list[dict[str, int]] = []
 
         for offer in self.pending_offers:
             driver_id = offer["driver_id"]

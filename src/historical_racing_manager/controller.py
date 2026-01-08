@@ -126,7 +126,7 @@ class Controller:
         except Exception as e:
             print(f"[Controller] Error setting active team: {e}")
 
-    def get_active_team(self) -> str:
+    def get_active_team(self) -> str | None:
         """
         Returns the name of the current active team, if set.
         """

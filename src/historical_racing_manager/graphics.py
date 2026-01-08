@@ -955,8 +955,8 @@ class Graphics:
             tree["columns"] = cols
 
             # Ensure unique displayed labels (if duplicates occur)
-            display_labels = {}
-            used_labels = {}
+            display_labels: dict[str, str] = {}
+            used_labels: dict[str, int] = {}
             for col in cols:
                 label = COLUMN_LABELS.get(col, col.replace("_", " ").title())
                 if label in used_labels:

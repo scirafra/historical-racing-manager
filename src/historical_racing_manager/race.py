@@ -299,7 +299,7 @@ class RaceModel:
         return pivot
 
     def get_upcoming_races_for_series(self, series_ids: list[int], series: pd.DataFrame,
-                                      current_date: str) -> pd.DataFrame:
+                                      current_date: datetime) -> pd.DataFrame:
         """
         Return the next 5 upcoming races for the given series after the current date.
         """
