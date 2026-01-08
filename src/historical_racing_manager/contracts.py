@@ -788,7 +788,7 @@ class ContractsModel:
             max_len = int(available.loc[available["driver_id"] == driver_id, "max_contract_len"].iloc[0])
             # Realistic distribution of contract lengths in F1
             lengths = AI_CONTRACT_LENGTHS
-            weights = AI_CONTRACT_WEIGHTS
+            weights: list[float] = AI_CONTRACT_WEIGHTS
 
             # If max_len is less than 4, restrict the lists
             max_len = max_len if max_len >= 1 else 1  # ensure it is not 0 or less
