@@ -797,7 +797,7 @@ class ContractsModel:
 
             # Normalize weights to percentages
             total = sum(weights)
-            weights = [w // total for w in weights]
+            weights = [w / total for w in weights]
 
             # Choose contract length based on distribution
             length = random.choices(lengths, weights, k=1)[0]

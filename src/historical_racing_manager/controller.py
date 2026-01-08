@@ -466,6 +466,7 @@ class Controller:
                 self._handle_season_start(date)
 
             if date.year >= FIRST_REAL_SEASON_YEAR:
+                driver_inputs: dict[str, tuple] = {}
                 self.contracts_model.sign_driver_contracts(
                     active_series=self.series_model.get_active_series(date.year),
                     teams_model=self.teams_model,
@@ -475,7 +476,7 @@ class Controller:
                     series=self.series_model.series,
                     temp=False,
                     teams=self.teams_model.teams,
-
+                    team_inputs=driver_inputs,
                 )
             self._simulate_race_day(date)
             self.process_driver_offers()
@@ -635,8 +636,6 @@ class Controller:
 
     def _handle_contracts(self, date: datetime):
         self.manufacturer_model.develop_part(date, self.contracts_model.get_ms_contract())
-
-        car_part_inputs: dict[str, int] = {}
         self.contracts_model.sign_car_part_contracts(
             active_series=self.series_model.get_active_series(date.year),
             current_date=date,
@@ -741,15 +740,6 @@ class Controller:
                     self.teams_model.deduct_money(contract["team_id"], contract["salary"])
         except Exception as e:
             print(f"[Controller] Error processing offers: {e}")
-
-    def get_max_marketing_staff(self, team_id: int) -> int:
-        return self.teams_model.get_max_marketing_staff(team_id)
-
-    def get_marketing_hire_cost(self) -> int:
-        return self.teams_model.marketing_hire_cost
-
-    def get_marketing_fire_cost(self) -> int:
-        return self.teams_model.marketing_fire_cost
 
     def adjust_marketing_staff(self, new_employees: int, cost: int) -> str:
         """
