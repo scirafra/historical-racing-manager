@@ -438,13 +438,14 @@ class Graphics:
             current_tab = self.tabview.get()
 
             if current_tab == "Manufacturers":
-                manu_dict = self.controller.get_names(current_tab)
+                manu_dict = self.controller.get_manufacturer_name_mapping()
                 # Combo 2 = parts for the default manufacturer
                 parts = manu_dict[self.var_1.get()]
 
                 self.cmb_2.configure(values=parts)
                 if parts:
                     self.cmb_2.set(parts[0])
+                    self.show_results()
             elif current_tab == "Seasons":
                 self.controller.update_seasons(self.var_1.get())
 
@@ -515,7 +516,7 @@ class Graphics:
                 self.on_subject_change([""])
 
             elif current_tab == "Manufacturers":
-                manu_dict = self.controller.get_names(current_tab)  # dict: name -> parts
+                manu_dict = self.controller.get_manufacturer_name_mapping()  # dict: name -> parts
 
                 # Combo 1 = list manufacturer names
                 names = list(manu_dict.keys())

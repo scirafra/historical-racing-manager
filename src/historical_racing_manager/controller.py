@@ -402,14 +402,18 @@ class Controller:
     def get_series_names(self):
         return self.series_model.get_series()["name"].tolist()
 
+    def get_manufacturer_name_mapping(self) -> dict[str, list[str]]:
+        """
+        Returns mapping of manufacturer IDs to list of their names/labels,
+        based on raced manufacturers.
+        """
+        raced = self.race_model.get_raced_manufacturers()
+        return self.manufacturer_model.map_manufacturer_ids_to_names(raced)
+
     def get_names(self, subject_type: str):
         if subject_type == "Seasons":
             raced = self.race_model.get_raced_series()
             return sorted(self.series_model.get_series_by_id(raced))
-        if subject_type == "Manufacturers":
-            raced = self.race_model.get_raced_manufacturers()
-
-            return self.manufacturer_model.map_manufacturer_ids_to_names(raced)
 
         if subject_type == "Drivers":
             raced = self.race_model.get_raced_drivers()
