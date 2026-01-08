@@ -896,10 +896,23 @@ class Controller:
             "final_points": "Points",
         }, inplace=True)
 
-        # Sort by final position
-        if "Position" in df.columns:
-            df.sort_values("Position", inplace=True)
-
+        # Sort by final position, then by secondary_position (descending)
+        if "Position" in df.columns and "secondary_position" in df.columns:
+            df.sort_values(
+                by=["Position", "secondary_position"],
+                ascending=[True, False],
+                inplace=True
+            )
+        # Otherwise sort only by secondary_position (descending)
+        elif "secondary_position" in df.columns:
+            df.sort_values(
+                by=["secondary_position"],
+                ascending=False,
+                inplace=True
+            )
+        # Remove secondary_position column
+        if "secondary_position" in df.columns:
+            df.drop(columns=["secondary_position"], inplace=True)
         # Column ordering: base + others
         base_cols = ["Forename", "Surname", "Age", "Team Name"]
         for extra in ("Engine", "Chassi", "Tyres", "Position", "Points"):

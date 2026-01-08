@@ -472,7 +472,16 @@ class RaceModel:
         order = df[["col_label", "race_id"]].drop_duplicates().sort_values("race_id")
         labels = order["col_label"].tolist()
         pivot = pivot[labels]
-        pivot = pivot.fillna("" if fill_value is None else fill_value)
+        # Fill only object columns → no downcasting warning
+        obj_cols = pivot.select_dtypes(include="object").columns
+        fill = "" if fill_value is None else fill_value
+
+        # Replace NaN without using fillna → no FutureWarning
+        for col in obj_cols:
+            pivot[col] = pivot[col].where(pivot[col].notna(), fill)
+
+        pivot = pivot.infer_objects(copy=False)
+
         pivot.reset_index(inplace=True)
         pivot.columns.name = None
 
@@ -495,6 +504,30 @@ class RaceModel:
                     }
                 )[["driver_id", "final_position", "final_points"]]
                 pivot = pivot.merge(final, on="driver_id", how="left")
+        # --- CLEAN LEXICOGRAPHIC SORTING WITHOUT EXTRA COLUMNS ---
+
+        # Identify race result columns
+        race_cols = [c for c in pivot.columns if c not in
+                     ["driver_id", "team_id", "engine_id", "chassi_id", "pneu_id",
+                      "final_position", "final_points"]]
+
+        # Convert values to integers where possible (no applymap warning)
+        temp = pivot[race_cols].map(lambda x: pd.to_numeric(x, errors="coerce"))
+
+        # Build lexicographic sort key: tuple of counts for each position
+        # Example: (count_1, count_2, count_3, ...)
+        all_positions = sorted({v for col in temp.columns for v in temp[col].dropna().unique()})
+
+        def build_sort_key(row):
+            return tuple((row == pos).sum() for pos in all_positions)
+
+        sort_keys = temp.apply(build_sort_key, axis=1)
+
+        # Sort pivot by these keys
+        pivot = pivot.assign(_sort_key=sort_keys).sort_values("_sort_key").drop(columns="_sort_key")
+
+        # Add secondary ranking
+        pivot["secondary_position"] = range(1, len(pivot) + 1)
 
         return pivot
 
@@ -981,9 +1014,10 @@ class RaceModel:
             # If previous round exists, add previous points to current points
             if not last_round_block.empty:
                 prev_pts = last_round_block.set_index("subject_id")["points"]
-                subjects["points"] = subjects[subj_col].map(prev_pts).fillna(0).astype(
-                    int
-                ) + subjects["points"].astype(int)
+                prev_mapped = subjects[subj_col].map(prev_pts)
+                prev_mapped = pd.to_numeric(prev_mapped, errors="coerce").fillna(0).astype(int)
+
+                subjects["points"] = prev_mapped + subjects["points"].astype(int)
 
                 # Include any subjects that were present in previous standings but not in this race
                 missing = last_round_block[
@@ -1018,8 +1052,12 @@ class RaceModel:
             subjects = subjects.sort_values(
                 by=["points", "subject_id"], ascending=[False, True]
             ).reset_index(drop=True)
-            # Assign positions based on sorted order
-            subjects["position"] = range(1, len(subjects) + 1)
+            # Assign competition ranking: equal points → equal position
+            subjects["position"] = (
+                subjects["points"]
+                .rank(method="min", ascending=False)
+                .astype(int)
+            )
 
             # Ensure integer types for key columns
             for col in ["subject_id", "series_id", "year", "round"]:
