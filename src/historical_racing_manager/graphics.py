@@ -339,7 +339,6 @@ class Graphics:
                 try:
                     updates = {team_id: (1 if var.get() else 0)
                                for team_id, var in check_vars.items()}
-                    print(updates)
                     self.controller.update_team_owners(updates)  # now uses model setter
                     messagebox.showinfo("Success", "Team ownership updated.")
                     dialog.destroy()
