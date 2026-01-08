@@ -509,7 +509,7 @@ class Controller:
         )
 
     def load_default_game(self):
-        return self.load_game("default_data", base_folder=PACKAGE_DIR)
+        return self.load_game("default_data", base_folder=USER_DIR)
 
     def load_game(self, name: str, base_folder: pathlib.Path = USER_DIR) -> bool:
         folder = base_folder / name
