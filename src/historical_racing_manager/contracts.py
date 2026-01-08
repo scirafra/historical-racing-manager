@@ -201,7 +201,7 @@ class ContractsModel:
         return self.dt_contract[
             (self.dt_contract["start_year"] <= year)
             & (self.dt_contract["end_year"] >= year)
-            & (self.dt_contract["active"] is True)
+            & (self.dt_contract["active"])
             ].copy()
 
     def get_team_series(self, team_id: int) -> list[int]:

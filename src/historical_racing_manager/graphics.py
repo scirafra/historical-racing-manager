@@ -168,8 +168,10 @@ class Graphics:
             # HEADER
             header = ctk.CTkFrame(parent)
             header.pack(fill="x", padx=10, pady=(5, 10))
-
-            self.myteam_name_label = ctk.CTkLabel(header, text=data["team_name"], font=("Arial", 18, "bold"))
+            team_name = data["team_name"]
+            series_name = data["series"]
+            team_series_name = f"{team_name} - {series_name}"
+            self.myteam_name_label = ctk.CTkLabel(header, text=team_series_name, font=("Arial", 18, "bold"))
             self.myteam_name_label.pack(side="left", padx=10)
 
             formatted_budget = f"€{data['budget']:,.0f}".replace(",", " ")

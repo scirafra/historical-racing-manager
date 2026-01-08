@@ -179,6 +179,7 @@ class Controller:
 
         next_year_free = self.contracts_model.get_team_next_year_free_space(team_id)
         series_id = self.contracts_model.get_team_series_id(team_id)
+        series_name = self.series_model.get_series_by_id([series_id])[0]
         drivers = self.get_owners_team_driver_data()
 
         drivers_this_year = self.count_active_contracts(drivers, self.current_date.year)
@@ -194,6 +195,7 @@ class Controller:
         return {
             "name": team_name,
             "budget": money,
+            "series": series_name,
             "drivers": self.get_owners_team_driver_data(),
             "parts": self.get_owners_team_parts_data(),
             "staff": self.get_team_staff(team_id),
@@ -246,6 +248,7 @@ class Controller:
                 empty = pd.DataFrame()
                 return {
                     "team_name": "No Team Selected",
+                    "series": "",
                     "budget": 0,
                     "drivers": empty,
                     "components": empty,
@@ -261,6 +264,7 @@ class Controller:
 
             return {
                 "team_name": team_info["name"],
+                "series": team_info["series"],
                 "budget": team_info["budget"],
                 "drivers": team_info["drivers"],
                 "components": team_info["parts"],
