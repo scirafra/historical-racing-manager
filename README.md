@@ -61,6 +61,28 @@ historical-racing-manager
 - **Financial System**: Balance income, expenses, and marketing investments.
 - **Historical Progression**: Experience how motorsport evolves over time.
 
+## Building a Standalone Executable (PyInstaller)
+
+If you want to distribute the game as a single executable file (without requiring Python), you can use PyInstaller.
+
+### Install PyInstaller
+
+```bash
+pip install pyinstaller
+```
+
+### Build the executable
+
+```bash
+pyinstaller --onefile --windowed main.py
+```
+
+After the build completes, the executable will be located in:
+
+```bash
+dist/
+```
+
 ## Testing
 
 Run unit tests using pytest:
