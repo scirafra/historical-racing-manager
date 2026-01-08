@@ -803,7 +803,8 @@ class ContractsModel:
             length = random.choices(lengths, weights, k=1)[0]
 
         series_reputation = self._get_reputation_by_series_id(series, series_id)
-        self._create_driver_contract(driver_id, team_id, series_reputation, salary, year + future_years, length - 1)
+        self._create_driver_contract(driver_id, team_id, series_reputation or 999, salary, year + future_years,
+                                     length - 1)
 
     def _increment_reserved_slot(self, team_id: int, max_cars: int) -> None:
         """Increase the number of reserved slots for a team if it has not reached the maximum."""
@@ -961,8 +962,8 @@ class ContractsModel:
                     pd.DataFrame([{
                         "series_id": self._get_series_for_team(offer["team_id"]),
                         "team_id": offer["team_id"],
-                        "manufacture_id": self._get_manufacturer_for_part(offer["part_id"]),
-                        "part_type": self._get_part_type(offer["part_id"]),
+                        "manufacture_id": self._get_manufacturer_for_part(offer["part_id"], car_parts),
+                        "part_type": self._get_part_type(offer["part_id"], car_parts),
                         "start_year": offer["year"],
                         "end_year": offer["year"] + offer["length"],
                         "cost": offer["price"],
@@ -977,12 +978,12 @@ class ContractsModel:
         match = self.st_contract[self.st_contract["team_id"] == team_id]
         return int(match["series_id"].iloc[0]) if not match.empty else -1
 
-    def _get_manufacturer_for_part(self, part_id: int) -> int:
-        match = self.car_parts[self.car_parts["part_id"] == part_id]
+    def _get_manufacturer_for_part(self, part_id: int, car_parts: pd.DataFrame) -> int:
+        match = car_parts[car_parts["part_id"] == part_id]
         return int(match["manufacture_id"].iloc[0]) if not match.empty else -1
 
-    def _get_part_type(self, part_id: int) -> str:
-        match = self.car_parts[self.car_parts["part_id"] == part_id]
+    def _get_part_type(self, part_id: int, car_parts: pd.DataFrame) -> str:
+        match = car_parts[car_parts["part_id"] == part_id]
         return str(match["part_type"].iloc[0]) if not match.empty else ""
 
     def offer_car_part_contract(self, manufacturer_id: int, team_id: int, length: int, price: int, year: int,

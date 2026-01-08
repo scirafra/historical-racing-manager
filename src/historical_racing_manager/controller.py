@@ -826,6 +826,8 @@ class Controller:
                 return pd.DataFrame()
 
             sid = self.series_model.get_series_id(subject_name)
+            if sid is None:
+                return pd.DataFrame()
 
             df = self.race_model.extract_champions(
                 sid,
