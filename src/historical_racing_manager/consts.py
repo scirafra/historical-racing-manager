@@ -226,7 +226,7 @@ CONTRACT_MAX_LENGTH = 4
 
 # AI contract preferences
 AI_CONTRACT_LENGTHS = [1, 2, 3, 4]
-AI_CONTRACT_WEIGHTS = [40, 30, 20, 10]  # probability distribution
+AI_CONTRACT_WEIGHTS = [40.0, 30.0, 20.0, 10.0]  # probability distribution
 
 # Salary rules
 DEFAULT_SALARY = 10000
