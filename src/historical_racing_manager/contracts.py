@@ -386,7 +386,6 @@ class ContractsModel:
                     (self.dt_contract["active"])
             )
 
-        affected = self.dt_contract.loc[mask]
         self.dt_contract.loc[mask, "active"] = False
 
     def get_ms_contract(self) -> pd.DataFrame:
