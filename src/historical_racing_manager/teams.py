@@ -215,7 +215,7 @@ class TeamsModel:
             if new_owner_id > 0:
                 self.teams.loc[mask, "money"] = 5_000_000
 
-            # 🔥 vymaž financie pre tento team, kde finance_employees == 1000
+            # vymaž financie pre tento team, kde finance_employees == 1000
             fm = self.team_finances
             self.team_finances = fm[~((fm["team_id"] == team_id) & (fm["finance_employees"] == 1000))]
 
@@ -282,11 +282,11 @@ class TeamsModel:
 
         # Update row values
         row["money"] = int(money + new_money)
-        row["finance_employees"] = int(remaining)
+        row["finance_employees"] = 0
 
         # --- LOG TO team_finances ---
         if old_finance_employees > 0:
-            self.team_finances.loc[len(self.team_finances)] = {
+            self.team_finances.loc[self.team_finances.index.max() + 1] = {
                 "team_id": team_id,
                 "season": year,
                 "finance_employees": old_finance_employees,
